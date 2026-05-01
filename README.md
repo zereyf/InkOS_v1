@@ -22,5 +22,5 @@ InkOS utilizes a multi-layered engine to ensure every output is audited and aest
 *   **Audit Layer:** Automatic 100-point scoring system for prompt reliability and formatting.
 
 ## 📦 Deployment & Setup
-InkOS is built with **Python 3.12** and **Streamlit**.
+ **Coming Soon!**.
 
