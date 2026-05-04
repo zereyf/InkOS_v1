@@ -1,7 +1,7 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v1: Language switcher added at top. All labels use t() for i18n.
+v1.: Language switcher added at top. All labels use t() for i18n.
 """
 
 import streamlit as st
