@@ -1,7 +1,7 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v9: Language switcher added at top. All labels use t() for i18n.
+v1: Language switcher added at top. All labels use t() for i18n.
 """
 
 import streamlit as st
@@ -126,7 +126,7 @@ def render_sidebar() -> SidebarConfig:
                 """, unsafe_allow_html=True)
         framework = st.selectbox(
             t("logic_framework"),
-            ["Professional (RACE)", "Technical (Debugger)", "Academic", "Creative"],
+            ["Professional (RACE)", "Technical (Debugger)", "Academic", "Creative", "Visual Director"],
             key="sb_framework",
             help=t("framework_help"),
         )
