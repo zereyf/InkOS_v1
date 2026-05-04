@@ -1,7 +1,7 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v9: Language switcher — EN/AR/FR with RTL support.
+v1: Language switcher — EN/AR/FR with RTL support.
 """
 
 import sys
@@ -10,12 +10,33 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 st.set_page_config(page_title="InkOS", page_icon="⚡", layout="wide")
+
 st.markdown("""
     <style>
+        /* Sticky Header */
         header[data-testid="stHeader"] {
             position: fixed !important; top: 0 !important; z-index: 9999 !important;
         }
         .block-container { padding-top: 4rem !important; }
+        
+        /* Tab Fix 1: VelvetCodex Gold Underline */
+        .stTabs [data-baseweb="tab-highlight"] {
+            background-color: #C9A84C !important;
+        }
+
+        /* Tab Fix 2: Horizontal Swipe on Mobile (Prevents wrapping bug) */
+        .stTabs [data-baseweb="tab-list"] {
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding-bottom: 5px;
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+        }
+        
+        /* Hide scrollbar Chrome/Safari */
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+            display: none; 
+        }
     </style>
 """, unsafe_allow_html=True)
 
