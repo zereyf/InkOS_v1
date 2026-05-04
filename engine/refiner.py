@@ -3,7 +3,7 @@ engine/refiner.py — CIPHER Intelligence Engine
 ================================================
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
 
-v12.7 Upgrade: Deterministic Scoring Logic.
+v1 Upgrade: Deterministic Scoring Logic.
 Forces total score calculation in Python to prevent LLM mathematical hallucinations.
 Reduced RETRY_THRESHOLD to 70 for optimized performance.
 """
