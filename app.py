@@ -1,11 +1,12 @@
 """
 InkOS | app.py — Entry Point
-v1: Fixed Imports & Layout.
+==============================
+v1: UI Finalization & Branding Sync.
 """
+
 import sys
 import os
-
-# MANDATORY: This allows sub-folders like /ui to see config.py in the root
+# Ensure root is in path for all sub-modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
@@ -31,20 +32,30 @@ if API_KEY_MISSING:
 init_session_state()
 load_css()
 
-# ── RTL MODE & GLOBAL UI TWEAKS ──────────────────────────────────────────────
+# ── UI STABILIZATION ─────────────────────────────────────────────────────────
 st.markdown("""
     <style>
         header[data-testid="stHeader"] { z-index: 1000 !important; }
         .block-container { padding-top: 2rem !important; }
+        
+        /* Clean up the Navigation Selectbox UI */
+        .nav-safe-zone {
+            margin-bottom: 20px;
+            padding: 5px;
+            background: rgba(201, 168, 76, 0.02);
+            border: 1px solid rgba(201, 168, 76, 0.08);
+            border-radius: 4px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
+# ── RTL MODE ──────────────────────────────────────────────────────────────────
 if is_rtl():
     st.markdown("<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.add('rtl-mode');</script>", unsafe_allow_html=True)
 else:
     st.markdown("<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.remove('rtl-mode');</script>", unsafe_allow_html=True)
 
-# Render the sidebar and get config
+# ── RENDER SIDEBAR (Now includes branding) ────────────────────────────────────
 cfg = render_sidebar()
 
 # ── NAVIGATION ────────────────────────────────────────────────────────────────
@@ -59,10 +70,15 @@ nav_options = {
 }
 
 st.markdown('<div class="nav-safe-zone">', unsafe_allow_html=True)
-selected_nav = st.selectbox("Navigation", list(nav_options.keys()), label_visibility="collapsed")
+selected_nav = st.selectbox(
+    "Navigation", 
+    list(nav_options.keys()), 
+    label_visibility="collapsed",
+    key="main_nav_select"
+)
 st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown("<hr style='border: none; border-bottom: 1px solid rgba(201,168,76,0.15); margin: 0 0 20px 0;'>", unsafe_allow_html=True)
+st.markdown("<hr style='border: none; border-bottom: 1px solid rgba(201,168,76,0.12); margin: 0 0 20px 0;'>", unsafe_allow_html=True)
 
-# Run page
+# Execute page
 nav_options[selected_nav]()
