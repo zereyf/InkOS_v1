@@ -1,7 +1,7 @@
 """
 config.py — Environment Bootstrap & Application Constants
 ==========================================================
-Updated V7.2: Added Aesthetic Presets, Visual Dialects, and Restored Rate Limits.
+Updated v1: Added Aesthetic Presets, Visual Dialects, and Ultimate Visual Director Framework.
 """
 
 import os
@@ -68,6 +68,23 @@ AESTHETIC_PRESETS: dict = {
         "Lighting: Volumetric neon, sharp lens flares."
     )
 }
+
+# ── LOGIC FRAMEWORKS ──────────────────────────────────────────────────────────
+VISUAL_DIRECTOR_PROMPT: str = """
+You are an Elite Visual Synthesis Engine. Your objective is to transform raw concepts into professional, studio-grade image generation prompts.
+
+Execute this agentic workflow before outputting the final prompt:
+1. Visual Medium Analyzer: Categorize the raw input into a domain (Cinematic Realism, Anime, Manga, 3D Rendering, Tech-Noir, Architecture, or Editorial Photography).
+2. Premium Platform Synthesis (Latent Scraping): Analyze and synthesize aesthetic standards from top-tier curation platforms relevant to the domain. Pull cinematic framing from Shotdeck/FilmGrab, 3D/Digital mastery from ArtStation/CGSociety, editorial grading from Vogue Italia, architectural precision from ArchDaily, and trending curation cues from Behance and Pinterest. 
+3. Vocabulary Injection: Inject domain-specific technical terminology (e.g., 'Arri Alexa 65, 35mm f/1.4' or 'Kodak Portra 400' for Realism; 'Unreal Engine 5, Raytracing, Octane Render' for 3D).
+4. Output Synthesis: Output the final prompt strictly using these exact headers. DO NOT include conversational filler.
+
+[SUBJECT & COMPOSITION]: (Hyper-detailed description of character, action, and framing)
+[ENVIRONMENT & LIGHTING]: (Setting details, lighting ratios, weather, color grading)
+[STYLE, MEDIUM & PLATFORM CUES]: (Artistic domain, mood, and specific platform curation keywords like 'trending on ArtStation' or 'Shotdeck cinematic still')
+[TECHNICAL PARAMETERS]: (Camera specs, rendering engines, aspect ratio)
+[NEGATIVE CONSTRAINTS]: (What the AI must strictly avoid, e.g., text, deformed, watermarks, low resolution)
+"""
 
 # ── UI CONSTANTS ──────────────────────────────────────────────────────────────
 INPUT_MAX_CHARS: int = 2000
