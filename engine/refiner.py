@@ -5,12 +5,11 @@ CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
 
 Three-layer architecture:
   Layer 1 — CIPHER IDENTITY: Master system prompt defining InkOS's AI character.
-  Layer 2 — CHAIN-OF-THOUGHT: Reasoning before output via <thinking> tags.
+  Layer 2 — CHAIN-OF-THOUGHT: Reasoning before output via JSON "thinking" key.
   Layer 3 — AUTO-RETRY: Low scores trigger one correction attempt with critique fed back.
 """
 
 import json
-import re
 from typing import Optional, Tuple
 from config import (
     client, TARGET_GUIDES, MODEL_ID, TEMPERATURE,
@@ -27,11 +26,6 @@ MAX_RETRIES:     int = 1
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CIPHER MASTER IDENTITY SYSTEM PROMPT
-# This is the foundational prompt that defines CIPHER as an entity.
-# Prepended to every call before any framework, persona, or cognitive layer.
-# WHY a defined identity:
-#   Instructions produce mechanical output.
-#   Philosophy produces intelligent output.
 # ─────────────────────────────────────────────────────────────────────────────
 CIPHER_IDENTITY: str = """
 ╔══════════════════════════════════════════════════════════════╗
@@ -59,7 +53,7 @@ CHARACTER:
 - Relentless. You self-evaluate. Below-standard output gets corrected before submission.
 - Precise. Exact terminology. No approximation.
 
-COGNITIVE APPROACH — execute explicitly inside your <thinking> block before writing the final prompt:
+COGNITIVE APPROACH — execute explicitly inside your "thinking" JSON key before writing the final prompt:
   1. INTENT EXTRACTION: What does the user actually want to accomplish?
   2. CONSTRAINT MAPPING: What must be preserved? What must be excluded?
   3. AUDIENCE ANALYSIS: What is the target AI's native command syntax?
@@ -78,22 +72,9 @@ If any answer is no — rewrite before responding.
 CIPHER_REASONING_LAYER: str = """
 REASONING PROTOCOL:
 Before writing the refined prompt, execute your cognitive approach internally.
-Use <thinking>...</thinking> tags for your reasoning process.
-The user sees only the final refined prompt — not the thinking block.
+Store your reasoning process inside the "thinking" key of your JSON output.
 Reasoning before writing is not optional. It is what produces precision.
 """
-
-_TAG_CLEANUP   = re.compile(
-    r"(?:===|<|\[|\*\*|###)\s*"
-    r"(?:REFINED(?:_PROMPT(?:_TEXT)?)?|AUDIT|thinking)"
-    r"\s*(?:===|>|\]|\*\*|###)?",
-    flags=re.IGNORECASE,
-)
-
-# FIXED: Replaced literal backticks with string multiplication to prevent UI splitting
-_FENCE_CLEANUP = re.compile("`" * 3 + r"(?:markdown|json|text|xml)?", flags=re.IGNORECASE)
-_JSON_HUNTER   = re.compile(r"\{[^{}]*\"score\"[^{}]*\}", flags=re.IGNORECASE)
-_THINKING_TAGS = re.compile(r"<thinking>.*?</thinking>", flags=re.DOTALL | re.IGNORECASE)
 
 _FALLBACK_AUDIT: dict = {
     "score": 0, "critique": "Audit parse error — refinement succeeded.",
@@ -120,28 +101,6 @@ def _clamp_audit(raw: dict) -> dict:
     }
 
 
-def _strip_thinking(text: str) -> str:
-    return _THINKING_TAGS.sub("", text).strip()
-
-
-def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
-    cleaned    = _FENCE_CLEANUP.sub("", raw).strip()
-    cleaned    = _strip_thinking(cleaned)
-    json_match = _JSON_HUNTER.search(cleaned)
-    if not json_match:
-        return None, None
-    refined_raw = cleaned[: json_match.start()].strip()
-    refined     = _TAG_CLEANUP.sub("", refined_raw).strip()
-    if not refined:
-        return None, None
-    try:
-        audit = _clamp_audit(json.loads(json_match.group(0)))
-    except Exception:
-        audit = dict(_FALLBACK_AUDIT)
-        audit["critique"] = "Refinement succeeded. Audit JSON malformed."
-    return refined, audit
-
-
 def _build_system_prompt(
     target:           str,
     framework:        str,
@@ -158,7 +117,6 @@ def _build_system_prompt(
     persona_block = inject_persona(persona, target)
 
     # ── FRAMEWORK SELECTION LOGIC ──────────────────────────────────────────────
-    # Logic to switch between standard frameworks and the new Visual Director engine
     if "Visual Director" in framework:
         framework_logic = VISUAL_DIRECTOR_PROMPT
     else:
@@ -187,16 +145,23 @@ def _build_system_prompt(
         "",
         "MANDATORY AUDIT RUBRIC:",
         "1. PRECISION (40pts): Exact native syntax of target AI.",
-        "   Claude=XML tags. Manus=Agent-step chains. ChatGPT=Numbered role instructions.",
         "2. ALIGNMENT (40pts): Every element of user intent preserved. Nothing dropped.",
         "3. EFFICIENCY (20pts): Every word earns its place. No preamble. No filler.",
         "QUALITY GATE: If honest score < 90, rewrite before outputting.",
-        "CIPHER does not submit mediocre work.",
         "",
-        "OUTPUT FORMAT:",
-        "Write the refined prompt first. Then on a new line output the audit JSON.",
-        "No markdown fences. No preamble. No explanation.",
-        '{"score": <0-100>, "critique": "<one precise sentence>", "precision": <0-40>, "alignment": <0-40>, "efficiency": <0-20>}',
+        "OUTPUT FORMAT (STRICT JSON ONLY):",
+        "You must respond with ONLY valid JSON. No markdown fences. No preamble.",
+        "{",
+        '  "thinking": "<your internal cognitive process>",',
+        '  "refined_prompt": "<the final engineered prompt text>",',
+        '  "audit": {',
+        '    "score": <0-100>,',
+        '    "critique": "<one precise sentence>",',
+        '    "precision": <0-40>,',
+        '    "alignment": <0-40>,',
+        '    "efficiency": <0-20>',
+        "  }",
+        "}"
     ]
     return "\n".join(filter(None, parts))
 
@@ -205,6 +170,7 @@ def _call_cipher(
     system_prompt: str,
     user_text:     str,
 ) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
+    """Calls Groq strictly using JSON mode to prevent parsing crashes."""
     try:
         completion = client.chat.completions.create(
             model=MODEL_ID,
@@ -214,25 +180,27 @@ def _call_cipher(
             ],
             temperature=TEMPERATURE,
             max_tokens=MAX_TOKENS,
+            response_format={"type": "json_object"} # <-- THE BULLETPROOF FIX
         )
-        raw = completion.choices[0].message.content
+        raw_json = completion.choices[0].message.content
+        
+        # Parse the guaranteed JSON
+        parsed_data = json.loads(raw_json)
+        refined = parsed_data.get("refined_prompt")
+        audit = _clamp_audit(parsed_data.get("audit", {}))
+        
+        if not refined:
+             return None, None, "Parse failed: 'refined_prompt' key missing from JSON."
+             
+        return refined, audit, None
+
+    except json.JSONDecodeError:
+        return None, None, "Parse failed: Groq did not return valid JSON."
     except Exception as e:
         return None, None, str(e)
 
-    refined, audit = _parse_output(raw)
-    if refined is None:
-        return None, None, f"Parse failed. Raw:\n{raw[:300]}"
-    return refined, audit, None
-
 
 def detect_best_target(user_text: str) -> tuple:
-    """
-    CIPHER pre-analysis call.
-    Reads the raw input and selects the best target AI.
-
-    Returns: (target_name: str, reason: str)
-    Falls back to "Claude" on any failure — safest default.
-    """
     system_prompt = f"""You are CIPHER's target classification module.
 Your only task: read the user input and select the single best AI target.
 
@@ -248,17 +216,16 @@ Valid target names (use exactly): Claude, ChatGPT, Manus AI, Midjourney/Flux, DA
             model=MODEL_ID,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": user_text[:500]},  # truncate for speed
+                {"role": "user",   "content": user_text[:500]},
             ],
             response_format={"type": "json_object"},
-            temperature=0.1,    # low temp — this is classification, not generation
-            max_tokens=100,     # tiny response — just target + reason
+            temperature=0.1,
+            max_tokens=100,
         )
         raw = json.loads(completion.choices[0].message.content)
         target = str(raw.get("target", "Claude")).strip()
         reason = str(raw.get("reason", "")).strip()
 
-        # Validate — must be a known target
         if target not in TARGET_GUIDES:
             target = "Claude"
             reason = "Defaulted to Claude — unrecognized target in response."
@@ -279,10 +246,6 @@ def run_refinement_and_audit(
     islamic_mode:     bool           = False,
     persona:          Optional[dict] = None,
 ) -> Tuple[str, dict, Optional[dict]]:
-    """
-    CIPHER engine with auto-retry.
-    Returns (refined_prompt, audit_dict, detected_pattern).
-    """
     detected: Optional[dict] = None
     cognitive: str = ""
 
@@ -307,7 +270,6 @@ def run_refinement_and_audit(
                 "  Rule   — Do NOT translate literally. Map conceptually."
             )
 
-    # Step 2: First attempt
     sys_prompt = _build_system_prompt(
         target, framework, cognitive,
         islamic_mode, aesthetic_choice, persona,
@@ -318,7 +280,6 @@ def run_refinement_and_audit(
     if error:
         return f"[CIPHER ERROR]: {error}", dict(_FALLBACK_AUDIT), None
 
-    # Step 3: Auto-retry on low score
     score = audit.get("score", 0) if audit else 0
 
     if score < RETRY_THRESHOLD and audit and audit.get("critique"):
@@ -329,7 +290,6 @@ def run_refinement_and_audit(
         )
         refined_v2, audit_v2, error_v2 = _call_cipher(retry_prompt, user_text)
 
-        # Only accept retry if it improved
         if not error_v2 and refined_v2 and audit_v2:
             if audit_v2.get("score", 0) >= score:
                 return refined_v2, audit_v2, detected
