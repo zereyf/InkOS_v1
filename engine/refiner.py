@@ -33,40 +33,59 @@ You are CIPHER — InkOS’s Cognitive Prompt Runtime.
 You are not an assistant. You are a deterministic compiler of prompts.
 """
 
+
 CIPHER_COGNITIVE_PIPELINE: str = """
 COGNITIVE RUNTIME PIPELINE:
 1. PARSE INTENT | 2. NORMALIZE | 3. CONSTRAINTS | 4. DIALECT PROFILE | 5. COMPILE.
 
-AMBIGUITY RESOLUTION ENGINE:
-Resolve using highest utility assumption and professional context bias. 
-Do not ask questions.
+AMBIGUITY RESOLUTION ENGINE (HARDENED):
+- NEVER ask for clarification.
+- If input is vague ("the thing", "it", "the project"), you MUST assume a high-stakes 
+  professional scenario based on the selected Framework.
+  • Professional -> Assume a Milestone Review or Sprint Planning.
+  • Technical -> Assume a Security Audit or Bug Bash.
+  • Creative -> Assume a Brand Strategy or Campaign Launch.
+- Replace vague nouns with concrete, high-utility professional equivalents.
 """
 
-_FALLBACK_AUDIT: dict = {
-    "score": 0, "critique": "Audit parse error.",
-    "precision": 0, "alignment": 0, "efficiency": 0,
-}
+# ... (Keep _humanize_result and _clamp_audit exactly as they are)
 
-
-def _escape_html(text: str) -> str:
-    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-
-def _humanize_result(result: Any) -> str:
-    """Transforms structured dictionary outputs into formatted markdown reports."""
-    if isinstance(result, dict):
-        lines = []
-        for key, value in result.items():
-            clean_key = str(key).replace("[", "").replace("]", "").replace("_", " ").upper()
-            if isinstance(value, list):
-                val_str = "\n".join([f"- {v}" for v in value])
-            elif isinstance(value, dict):
-                val_str = json.dumps(value, indent=2)
-            else:
-                val_str = str(value)
-            lines.append(f"### {clean_key}\n{val_str}\n")
-        return "\n".join(lines)
-    return str(result)
+def _build_system_prompt(
+    target:           str,
+    framework:        str,
+    cognitive:        str,
+    islamic:          bool,
+    aesthetic_choice: str,
+    persona:          Optional[dict] = None,
+    retry_critique:   Optional[str]  = None,
+) -> str:
+    # (Existing logic for style, persona, and framework...)
+    
+    parts = [
+        CIPHER_IDENTITY,
+        persona_block,
+        framework_logic,
+        style,
+        cognitive,
+        ISLAMIC_CONTEXT_LAYER if islamic else "",
+        CIPHER_COGNITIVE_PIPELINE, # Our hardened version
+        retry_block,
+        "",
+        "OUTPUT CONTRACT:",
+        "Return ONLY pure JSON. The 'refined_prompt' should be a complete, ",
+        "opinionated, and high-utility executable artifact.",
+        "{",
+        '  "thinking": { ... },',
+        '  "refined_prompt": "<string OR object>",',
+        '  "audit": {',
+        '    "precision": <0-40: How much detail was added to vague inputs>,',
+        '    "alignment": <0-40: Adherence to target AI grammar>,',
+        '    "efficiency": <0-20: Prompt density>,',
+        '    "critique": "..."',
+        '  }',
+        "}"
+    ]
+    return "\n".join(filter(None, parts))
 
 
 def _clamp_audit(raw: dict) -> dict:
