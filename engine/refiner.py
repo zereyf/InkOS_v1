@@ -3,9 +3,10 @@ engine/refiner.py — CIPHER Intelligence Engine
 ================================================
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
 
-v13.5: The JSON Enforcement Patch.
-- Fixed Groq API rejection in detect_best_target by enforcing explicit JSON contract.
-- Upgraded error handling to pass real exception traces to the UI.
+v14.0: The Deterministic Intent Compiler.
+- Replaced keyword-based auto-routing with an elite LLM Semantic Profiler.
+- Uses pure Python deterministic logic for target selection to prevent hallucinations.
+- Fully integrated Visual Triad routing (Gemini, DALL-E 3, Midjourney).
 """
 
 import json
@@ -62,13 +63,11 @@ def _escape_html(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 def _format_value(val: Any) -> str:
-    """Recursively formats any value into a clean, human-readable string."""
     if isinstance(val, dict):
         return ", ".join([f"{str(k).replace('_', ' ').title()}: {v}" for k, v in val.items()])
     return str(val)
 
 def _humanize_result(result: Any) -> str:
-    """Transforms complex JSON structures into elegant, readable documents."""
     if isinstance(result, dict):
         lines = []
         for key, value in result.items():
@@ -89,7 +88,6 @@ def _humanize_result(result: Any) -> str:
     return str(result)
 
 def _clamp_audit(raw: dict) -> dict:
-    """Ensures deterministic math."""
     def safe_int(val: object, ceiling: int) -> int:
         try:
             clean_val = str(val).replace("%", "").split(".")[0]
@@ -101,7 +99,6 @@ def _clamp_audit(raw: dict) -> dict:
     a = safe_int(raw.get("alignment"),  40)
     e = safe_int(raw.get("efficiency"), 20)
     
-    # ── DETERMINISTIC SUMMATION ──────────────────────────────────────────
     total_score = p + a + e
     
     return {
@@ -154,7 +151,7 @@ def _build_system_prompt(
         '  "thinking": { "intent": "...", "logic": "..." },',
         '  "refined_prompt": "<The massive, highly detailed, ready-to-use prompt artifact. Must be comprehensive.>",',
         '  "audit": {',
-        '    "precision": <0-40: SCORE 40 IF YOU SUCCESSFULLY INVENTED A CONCRETE SCENARIO FOR A VAGUE INPUT. Do not penalize assumptions.>,',
+        '    "precision": <0-40: SCORE 40 IF YOU SUCCESSFULLY INVENTED A CONCRETE SCENARIO FOR A VAGUE INPUT.>,',
         '    "alignment": <0-40: Adherence to target AI dialect>,',
         '    "efficiency": <0-20: Prompt density and structure>,',
         '    "critique": "<One sentence. DO NOT state that the original input was vague. Praise the strategic assumption.>"',
@@ -192,24 +189,63 @@ def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Opt
         return None, None, str(e)
 
 def detect_best_target(user_text: str) -> tuple:
-    # BUG FIX: Enforcing strict JSON contract to prevent Groq API rejection
-    system_prompt = (
-        f"Select the best target AI.\n{TARGET_SELECTION_GUIDE}\n\n"
-        "OUTPUT CONTRACT: You MUST return ONLY valid JSON in this exact format:\n"
-        '{"target": "<Exact name of the AI from the list>", "reason": "<Short one-sentence explanation>"}'
-    )
+    # 1. LLM extracts the semantic profile deterministically
+    system_prompt = """
+    You are InkOS's Semantic Profiler. Analyze the user's request and classify its core intent.
+    
+    OUTPUT CONTRACT: Return ONLY valid JSON in this exact format:
+    {
+      "PRIMARY_DOMAIN": "<TYPOGRAPHY_LAYOUT | PHOTOREALISM | CINEMATIC_SCENE | CODE_ANALYSIS | AGENTIC_AUTOMATION | GENERAL_CONVERSATION>",
+      "requires_exact_text": <true/false>,
+      "requires_spatial_layout": <true/false>,
+      "requires_photorealism": <true/false>,
+      "is_multi_step_automation": <true/false>,
+      "is_arabic_scholarly": <true/false>
+    }
+    """
+    
     try:
         completion = client.chat.completions.create(
             model=MODEL_ID,
             messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_text[:500]}],
             response_format={"type": "json_object"},
-            temperature=0.1, max_tokens=100,
+            temperature=0.0, # Zero temperature for absolute determinism
+            max_tokens=150,
         )
-        raw = json.loads(completion.choices[0].message.content)
-        return str(raw.get("target", "Claude")), str(raw.get("reason", "Selected via intent analysis."))
+        profile = json.loads(completion.choices[0].message.content)
+        
+        # 2. PYTHON routes the target based on strict priority logic
+        domain     = profile.get("PRIMARY_DOMAIN", "GENERAL_CONVERSATION")
+        req_text   = profile.get("requires_exact_text", False)
+        req_layout = profile.get("requires_spatial_layout", False)
+        req_photo  = profile.get("requires_photorealism", False)
+        req_auto   = profile.get("is_multi_step_automation", False)
+        req_arabic = profile.get("is_arabic_scholarly", False)
+
+        # ── PRIORITY 1: AGENTIC WORKFLOWS ──
+        if req_auto or domain == "AGENTIC_AUTOMATION":
+            return "Manus AI", "Intent Profile: Multi-step automation / tool use detected."
+
+        # ── PRIORITY 2: THE VISUAL TRIAD ──
+        elif req_text or req_layout or domain == "TYPOGRAPHY_LAYOUT":
+            return "Gemini (Imagen 3)", "Intent Profile: Strict text/typography or layout requirements."
+            
+        elif req_photo or domain == "PHOTOREALISM":
+            return "DALL-E 3", "Intent Profile: Literal photorealism / product rendering required."
+            
+        elif domain == "CINEMATIC_SCENE":
+            return "Midjourney/Flux", "Intent Profile: Stylized, cinematic, or conceptual art."
+
+        # ── PRIORITY 3: TECHNICAL & SCHOLARLY ──
+        elif req_arabic or domain == "CODE_ANALYSIS":
+            return "Claude", "Intent Profile: Technical documentation, code, or strict structural needs."
+
+        # ── DEFAULT FALLBACK ──
+        else:
+            return "ChatGPT", "Intent Profile: Conversational / General creative intent."
+
     except Exception as e:
-        # Pass the actual API error back so it shows up in the UI instead of silently failing
-        return "Claude", f"Auto-selection failed: {str(e)}"
+        return "Claude", f"Semantic routing failed: {str(e)}"
 
 def run_refinement_and_audit(
     user_text:        str,
