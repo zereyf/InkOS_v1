@@ -3,7 +3,9 @@ engine/refiner.py — CIPHER Intelligence Engine
 ================================================
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
 
-v13.3: Fixed Import Typo.
+v13.4: The "Confidence" Patch.
+- Fixed the schizophrenic Auditor logic so it rewards (not punishes) strategic assumptions.
+- Forces the generation of comprehensive, ready-to-execute prompt payloads.
 """
 
 import json
@@ -44,14 +46,14 @@ CIPHER_REASONING_LAYER: str = """
 REASONING PROTOCOL:
 - Use internal <thinking> tags for all scratchpad logic.
 - Analyze the user's linguistic "Delta" (the gap between raw intent and executable prompt).
-- Fill the Delta with high-utility assumptions.
+- Fill the Delta with high-utility, concrete assumptions.
 """
 
 CIPHER_COGNITIVE_PIPELINE: str = """
 AMBIGUITY RESOLUTION ENGINE (HARDENED):
-- NEVER ask for clarification.
-- Assume high-stakes scenarios: Professional=Sprint/Kickoff, Technical=Audit, Creative=Strategy.
-- Replace vague nouns ("it", "the thing") with concrete professional terms.
+- NEVER ask for clarification or state that the input is vague.
+- If the user input is vague ("the thing", "it", "plan"), you MUST invent a high-stakes, highly detailed professional context.
+- Your output MUST NOT be a short summary. It MUST be a comprehensive, ready-to-execute prompt meant to be fed into another AI, complete with Role, Context, Task, and Constraints.
 """
 
 # ── HELPER UTILITIES ─────────────────────────────────────────────────────────
@@ -62,7 +64,7 @@ def _escape_html(text: str) -> str:
 def _format_value(val: Any) -> str:
     """Recursively formats any value into a clean, human-readable string."""
     if isinstance(val, dict):
-        return ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in val.items()])
+        return ", ".join([f"{str(k).replace('_', ' ').title()}: {v}" for k, v in val.items()])
     return str(val)
 
 def _humanize_result(result: Any) -> str:
@@ -73,14 +75,12 @@ def _humanize_result(result: Any) -> str:
             clean_key = str(key).replace("[", "").replace("]", "").replace("_", " ").upper()
             
             if isinstance(value, list):
-                # Handle lists of dictionaries (like Task lists)
                 list_lines = []
                 for item in value:
                     list_lines.append(f"- {_format_value(item)}")
                 val_str = "\n".join(list_lines)
             elif isinstance(value, dict):
-                # Handle nested dictionaries (like Resources)
-                val_str = "\n".join([f"**{k.replace('_', ' ').title()}**: {v}" for k, v in value.items()])
+                val_str = "\n".join([f"**{str(k).replace('_', ' ').title()}**: {v}" for k, v in value.items()])
             else:
                 val_str = str(value)
             
@@ -89,7 +89,7 @@ def _humanize_result(result: Any) -> str:
     return str(result)
 
 def _clamp_audit(raw: dict) -> dict:
-    """Ensures deterministic math and prevents 0% on valid artifacts."""
+    """Ensures deterministic math."""
     def safe_int(val: object, ceiling: int) -> int:
         try:
             clean_val = str(val).replace("%", "").split(".")[0]
@@ -101,13 +101,11 @@ def _clamp_audit(raw: dict) -> dict:
     a = safe_int(raw.get("alignment"),  40)
     e = safe_int(raw.get("efficiency"), 20)
     
-    # HEURISTIC: If the LLM returns all zeros but a critique exists, 
-    # it's a 'pessimistic hallucination'. We assign a base floor for valid logic.
-    if p + a + e == 0 and raw.get("critique"):
-        p, a, e = 15, 15, 10
+    # ── DETERMINISTIC SUMMATION ──────────────────────────────────────────
+    total_score = p + a + e
     
     return {
-        "score":      p + a + e,
+        "score":      total_score,
         "critique":   _escape_html(str(raw.get("critique", "")).strip()),
         "precision":  p,
         "alignment":  a,
@@ -151,12 +149,16 @@ def _build_system_prompt(
         retry_block,
         "",
         "OUTPUT CONTRACT:",
-        "Return ONLY pure JSON. The 'refined_prompt' MUST be a high-utility artifact.",
-        "Scoring Note: Filling in the 'Delta' (vague inputs) is PRECISE logic. Reward it.",
+        "Return ONLY pure JSON.",
         "{",
         '  "thinking": { "intent": "...", "logic": "..." },',
-        '  "refined_prompt": "<string OR object>",',
-        '  "audit": { "precision": 0, "alignment": 0, "efficiency": 0, "critique": "..." }',
+        '  "refined_prompt": "<The massive, highly detailed, ready-to-use prompt artifact. Must be comprehensive.>",',
+        '  "audit": {',
+        '    "precision": <0-40: SCORE 40 IF YOU SUCCESSFULLY INVENTED A CONCRETE SCENARIO FOR A VAGUE INPUT. Do not penalize assumptions.>,',
+        '    "alignment": <0-40: Adherence to target AI dialect>,',
+        '    "efficiency": <0-20: Prompt density and structure>,',
+        '    "critique": "<One sentence. DO NOT state that the original input was vague. Praise the strategic assumption.>"',
+        '  }',
         "}"
     ]
     return "\n".join(filter(None, parts))
