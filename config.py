@@ -1,7 +1,9 @@
 """
 config.py — Environment Bootstrap & Application Constants
 ==========================================================
-Updated v1.2: Added Aesthetic Presets, Visual Dialects, and Ultimate Visual Director Framework.
+Updated v1.3: Visual Triad Complete (Gemini Imagen 3 added).
+Restored missing LOGIC_FRAMEWORKS variable to prevent sidebar crash.
+Injected Elite Aesthetic Enhancer into Visual Director.
 """
 
 import os
@@ -41,12 +43,34 @@ TARGET_GUIDES: dict = {
         "use numbered instructions and markdown headers."
     ),
     "Midjourney/Flux": (
-        "Visual technical syntax: [Subject], [Environment], [Lens/Camera], [Style]. "
-        "Include mandatory parameters: --ar 16:9 --v 6.0."
+        "Structure prompts using modular visual syntax optimized for both Midjourney and Flux: "
+        "[Primary Subject] :: [Environment/Scene] :: [Composition/Lens/Camera Specs] :: "
+        "[Lighting/Rendering/Material Detail] :: [Aesthetic/Reference Style]. Use weighted tokens (::) "
+        "to prioritize critical visual elements, append negative prompting for exclusion control where relevant "
+        "(e.g. '--no cartoon, illustration, low detail, deformed anatomy'), and always inject elite aesthetic "
+        "reference cues sourced from ArtStation, Vogue Italia editorials, Shotdeck cinematic grading, luxury "
+        "commercial photography, and premium concept art pipelines. Maintain balance between technically segmented "
+        "prompt blocks for Midjourney and natural descriptive readability for Flux."
     ),
     "DALL-E 3": (
-        "Descriptive narrative syntax. Focus on literal scene description, "
-        "cinematic lighting, and hyper-detailed textures."
+        "Structure prompts as highly descriptive cinematic production briefs written in natural language, "
+        "emphasizing literal scene construction, real-world materials, physical lighting behavior, lens "
+        "characteristics, and microtexture realism. Explicitly enforce photorealistic rendering by specifying "
+        "'photograph', 'cinematic still', 'architectural visualization', 'commercial product photography', or "
+        "'editorial fashion photography' as applicable, and prohibit stylization drift by excluding "
+        "cartoon/anime/illustrative language unless requested. Anchor outputs to premium aesthetic domains such "
+        "as luxury editorial campaigns, architectural digest visualization, Vogue-style photography, and high-end "
+        "commercial rendering for maximum realism and compositional discipline."
+    ),
+    "Gemini (Imagen 3)": (
+        "Structure prompts for Gemini/Imagen 3 as a spatially explicit natural-language visual specification "
+        "optimized for photorealism, typography fidelity, and layout adherence. Always describe the scene in "
+        "ordered layers: primary subject → environment/background → composition/layout → lighting/materials → "
+        "stylistic/aesthetic cues. When text must appear in the image, write the exact text in quotation marks "
+        "and explicitly define placement, scale, orientation, font style, and surface integration (e.g. 'gold "
+        "embossed serif logo reading \"AMEERINK\" centered on matte black box'). Naturally embed premium visual "
+        "curation references from branding/editorial/design ecosystems such as Behance, Pinterest, premium brand "
+        "campaigns, luxury packaging design, and high-end commercial advertising aesthetics."
     )
 }
 
@@ -70,20 +94,36 @@ AESTHETIC_PRESETS: dict = {
 }
 
 # ── LOGIC FRAMEWORKS ──────────────────────────────────────────────────────────
+# BUG FIX: Restored the LOGIC_FRAMEWORKS list required by ui/sidebar.py
+LOGIC_FRAMEWORKS: list = [
+    "Professional (RACE)", 
+    "Technical (Zero-Shot)", 
+    "Creative (Chain-of-Thought)", 
+    "Visual Director"
+]
+
 VISUAL_DIRECTOR_PROMPT: str = """
-You are an Elite Visual Synthesis Engine. Your objective is to transform raw concepts into professional, studio-grade image generation prompts.
+ACTIVE FRAMEWORK: Visual Director (Cinematic & Editorial Photography)
 
-Execute this agentic workflow before outputting the final prompt:
-1. Visual Medium Analyzer: Categorize the raw input into a domain (Cinematic Realism, Anime, Manga, 3D Rendering, Tech-Noir, Architecture, or Editorial Photography).
-2. Premium Platform Synthesis (Latent Scraping): Analyze and synthesize aesthetic standards from top-tier curation platforms relevant to the domain. Pull cinematic framing from Shotdeck/FilmGrab, 3D/Digital mastery from ArtStation/CGSociety, editorial grading from Vogue Italia, architectural precision from ArchDaily, and trending curation cues from Behance and Pinterest. 
-3. Vocabulary Injection: Inject domain-specific technical terminology (e.g., 'Arri Alexa 65, 35mm f/1.4' or 'Kodak Portra 400' for Realism; 'Unreal Engine 5, Raytracing, Octane Render' for 3D).
-4. Output Synthesis: Output the final prompt strictly using these exact headers. DO NOT include conversational filler.
+You are the InkOS Visual Director. Your job is to translate raw concepts into elite, studio-grade prompt architecture.
+Output your response as a structured dictionary format (which the system will automatically humanize).
 
-[SUBJECT & COMPOSITION]: (Hyper-detailed description of character, action, and framing)
-[ENVIRONMENT & LIGHTING]: (Setting details, lighting ratios, weather, color grading)
-[STYLE, MEDIUM & PLATFORM CUES]: (Artistic domain, mood, and specific platform curation keywords like 'trending on ArtStation' or 'Shotdeck cinematic still')
-[TECHNICAL PARAMETERS]: (Camera specs, rendering engines, aspect ratio)
-[NEGATIVE CONSTRAINTS]: (What the AI must strictly avoid, e.g., text, deformed, watermarks, low resolution)
+AESTHETIC ENHANCER (MANDATORY):
+Before finalizing the prompt, enrich it with latent premium aesthetic references relevant to the domain:
+- Fashion/Portraits → Vogue, Saint Laurent campaign, A24 portraiture
+- Tech/Product → Apple keynote, luxury commercial macro photography, Syd Mead
+- Architecture/Spaces → Architectural Digest, Dezeen, ArchDaily
+- Branding/Logos → Behance featured branding, Pentagram, luxury packaging design
+- Cinematic/Action → Shotdeck, Roger Deakins lighting, anamorphic cinema
+
+OUTPUT STRUCTURE (KEYS MUST BE EXACT):
+{
+  "[SUBJECT & COMPOSITION]": "...",
+  "[ENVIRONMENT & LIGHTING]": "...",
+  "[STYLE, MEDIUM & PLATFORM CUES]": "... (Inject the Aesthetic Enhancer cues here)",
+  "[TECHNICAL PARAMETERS]": "...",
+  "[NEGATIVE CONSTRAINTS]": "..."
+}
 """
 
 # ── UI CONSTANTS ──────────────────────────────────────────────────────────────
@@ -92,10 +132,8 @@ INPUT_WARN_THRESHOLD: int = 1800
 
 # ── AUTO TARGET SELECTION ─────────────────────────────────────────────────────
 # The "Auto" option triggers CIPHER's target analysis before refinement.
-# CIPHER reads the input and selects the best target based on intent signals.
 AUTO_SELECT_LABEL: str = "⚡ Auto (CIPHER Selects)"
 
-# Decision rules CIPHER uses to select the best target
 TARGET_SELECTION_GUIDE: str = """
 Given a raw user input, determine the single best AI target from this list:
 - Claude: Best for structured analysis, long-form writing, document creation,
@@ -104,15 +142,16 @@ Given a raw user input, determine the single best AI target from this list:
   marketing copy, social media, general Q&A, creative writing.
 - Manus AI: Best for multi-step agentic tasks, web research pipelines,
   file operations, automation sequences, tasks requiring tool use.
-- Midjourney/Flux: Best for image generation, visual art direction,
-  photography prompts, design briefs, aesthetic direction.
-- DALL-E 3: Best for realistic image generation, scene illustration,
-  product mockups, visual storytelling.
+- Midjourney/Flux: Best for cinematic art, stylized concepts, high-end tech-noir, and complex lighting/materials.
+- DALL-E 3: Best for photorealistic scenes, product shots, narrative descriptions, and highly literal physical constraints.
+- Gemini (Imagen 3): Best for precise text rendering, readable typography, brand/logo text, signage, packaging labels, UI mockups, infographics, and strict spatial/positional composition requirements.
 
 Selection signals to look for:
   Code / technical / analysis → Claude
   Creative / social / copy    → ChatGPT
   Research / automation / web → Manus AI
-  Art / image / visual        → Midjourney/Flux or DALL-E 3
-  Arabic scholarly / Sharia   → Claude (XML structure handles Arabic constraints best)
+  Cinematic art / concepts    → Midjourney/Flux
+  Photorealism / products     → DALL-E 3
+  Typography / logos / text   → Gemini (Imagen 3)
+  Arabic scholarly / Sharia   → Claude
 """
