@@ -3,8 +3,9 @@ engine/refiner.py — CIPHER Intelligence Engine
 ================================================
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
 
-v12.6 Upgrade: Integrated Humanizer logic to transform structured JSON outputs
-into professional, human-readable documents.
+v12.7 Upgrade: Deterministic Scoring Logic.
+Forces total score calculation in Python to prevent LLM mathematical hallucinations.
+Reduced RETRY_THRESHOLD to 70 for optimized performance.
 """
 
 import json
@@ -19,11 +20,12 @@ from engine.cognitive_map import detect_arabic_pattern
 from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
 from forge.persona_engine import inject_persona
 
-RETRY_THRESHOLD: int = 80
+# Optimized for deterministic scoring
+RETRY_THRESHOLD: int = 70
 MAX_RETRIES:     int = 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CIPHER MASTER IDENTITY SYSTEM PROMPT
+# IDENTITY & LOGIC BLOCKS
 # ─────────────────────────────────────────────────────────────────────────────
 CIPHER_IDENTITY: str = """
 IDENTITY:
@@ -51,14 +53,10 @@ def _escape_html(text: str) -> str:
 
 
 def _humanize_result(result: Any) -> str:
-    """
-    Transforms structured dictionary outputs into professional, 
-    formatted markdown documents.
-    """
+    """Transforms structured dictionary outputs into formatted markdown reports."""
     if isinstance(result, dict):
         lines = []
         for key, value in result.items():
-            # Clean and embolden headers
             clean_key = str(key).replace("[", "").replace("]", "").replace("_", " ").upper()
             if isinstance(value, list):
                 val_str = "\n".join([f"- {v}" for v in value])
@@ -66,26 +64,39 @@ def _humanize_result(result: Any) -> str:
                 val_str = json.dumps(value, indent=2)
             else:
                 val_str = str(value)
-            
             lines.append(f"### {clean_key}\n{val_str}\n")
         return "\n".join(lines)
-    
-    # If it's already a string, return it as is
     return str(result)
 
 
 def _clamp_audit(raw: dict) -> dict:
+    """
+    Ensures the audit metrics are within bounds and 
+    deterministically calculates the total score in Python.
+    """
     def safe_int(val: object, ceiling: int) -> int:
         try:
-            return min(max(int(val), 0), ceiling)
+            # Strip % and handle floats/strings
+            clean_val = str(val).replace("%", "").split(".")[0]
+            return min(max(int(clean_val), 0), ceiling)
         except (TypeError, ValueError):
             return 0
+    
+    # Extract components
+    p = safe_int(raw.get("precision"),  40)
+    a = safe_int(raw.get("alignment"),  40)
+    e = safe_int(raw.get("efficiency"), 20)
+    
+    # ── DETERMINISTIC MATH ──────────────────────────────────────────────────
+    # Python handles the addition to prevent LLM hallucinations.
+    total_score = p + a + e
+    
     return {
-        "score":      safe_int(raw.get("score"),      100),
+        "score":      total_score,
         "critique":   _escape_html(str(raw.get("critique", "")).strip()),
-        "precision":  safe_int(raw.get("precision"),   40),
-        "alignment":  safe_int(raw.get("alignment"),   40),
-        "efficiency": safe_int(raw.get("efficiency"),  20),
+        "precision":  p,
+        "alignment":  a,
+        "efficiency": e,
     }
 
 
@@ -125,7 +136,12 @@ def _build_system_prompt(
         "{",
         '  "thinking": { ... },',
         '  "refined_prompt": "<string OR object>",',
-        '  "audit": { "score": 0, "critique": "...", "precision": 0, "alignment": 0, "efficiency": 0 }',
+        '  "audit": {',
+        '    "precision": <0-40: technical detail>,',
+        '    "alignment": <0-40: dialect adherence>,',
+        '    "efficiency": <0-20: token economy>,',
+        '    "critique": "<one brief sentence on optimization>"',
+        '  }',
         "}"
     ]
     return "\n".join(filter(None, parts))
@@ -150,15 +166,14 @@ def _call_cipher(
         parsed_data = json.loads(raw_json)
         
         refined_raw = parsed_data.get("refined_prompt")
+        
+        # Calculate score deterministically using our clamping function
         audit = _clamp_audit(parsed_data.get("audit", {}))
         
         if not refined_raw:
              return None, None, "Parse failed: 'refined_prompt' missing."
              
-        # ── APPLY HUMANIZER ──────────────────────────────────────────────────
-        # Transform dictionaries into professional markdown reports
         refined_final = _humanize_result(refined_raw)
-             
         return refined_final, audit, None
 
     except Exception as e:
@@ -166,7 +181,6 @@ def _call_cipher(
 
 
 def detect_best_target(user_text: str) -> tuple:
-    # (Existing auto-selection logic)
     system_prompt = f"Identify best target AI.\n{TARGET_SELECTION_GUIDE}"
     try:
         completion = client.chat.completions.create(
