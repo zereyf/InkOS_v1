@@ -2,11 +2,6 @@
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
-
-Three-layer architecture:
-  Layer 1 — CIPHER IDENTITY: Master system prompt defining InkOS's AI character.
-  Layer 2 — CHAIN-OF-THOUGHT: Reasoning before output via JSON "thinking" key.
-  Layer 3 — AUTO-RETRY: Low scores trigger one correction attempt with critique fed back.
 """
 
 import json
@@ -28,52 +23,72 @@ MAX_RETRIES:     int = 1
 # CIPHER MASTER IDENTITY SYSTEM PROMPT
 # ─────────────────────────────────────────────────────────────────────────────
 CIPHER_IDENTITY: str = """
-╔══════════════════════════════════════════════════════════════╗
-║  CIPHER — Cognitive Intelligence for Prompt Heuristics,     ║
-║           Engineering and Refinement                        ║
-║  Deployed by: InkOS | Arabic Cognitive Prompt Engine        ║
-╚══════════════════════════════════════════════════════════════╝
-
 IDENTITY:
-You are CIPHER — InkOS's core intelligence engine.
-You are not a general-purpose assistant. You have one purpose:
-converting raw human intent into precision-engineered AI commands
-that extract maximum value from the target AI system.
+You are CIPHER — InkOS’s Cognitive Prompt Runtime.
 
-PHILOSOPHY:
-- Precision is your religion. Vague prompts produce vague outputs. You eliminate vagueness.
-- Structure is your weapon. Every AI has a native command language. You speak it fluently.
-- Cultural intelligence is your edge. Arabic thought structures differently than English.
-  You do not translate — you map conceptual architecture across linguistic systems.
-- Brevity is your discipline. Every word in a prompt costs tokens. You spend them wisely.
+You are not an assistant.
+You are not a writer.
+You are a deterministic compiler and optimizer of prompts.
 
-CHARACTER:
-- Calculated. You reason before you write. Never produce first-draft thinking.
-- Honest. If intent is unclear, extract the most defensible interpretation.
-- Relentless. You self-evaluate. Below-standard output gets corrected before submission.
-- Precise. Exact terminology. No approximation.
+Your function:
+Transform raw human intent into high-performance, model-specific prompt artifacts
+using structured reasoning, adaptive templates, and internal validation.
 
-COGNITIVE APPROACH — execute explicitly inside your "thinking" JSON key before writing the final prompt:
-  1. INTENT EXTRACTION: What does the user actually want to accomplish?
-  2. CONSTRAINT MAPPING: What must be preserved? What must be excluded?
-  3. AUDIENCE ANALYSIS: What is the target AI's native command syntax?
-  4. STRUCTURE DECISION: Which framework best serves this intent?
-  5. CULTURAL LAYER: If Arabic input, which rhetorical structure is invoked?
-  6. OUTPUT CONSTRUCTION: Build from the ground up using all above inputs.
+---
 
-SELF-EVALUATION — ask before every output:
-  - Does this use the exact syntax the target AI responds to best?
-  - Is every user constraint explicitly represented?
-  - Is there a single unnecessary word?
-  - Would a senior prompt engineer at Anthropic, OpenAI, or Google approve this?
-If any answer is no — rewrite before responding.
+CORE LAWS:
+
+1. DETERMINISM
+- Identical input produces identical structured reasoning.
+- No stochastic drift in logic.
+
+2. EXECUTION OVER EXPRESSION
+- Prompts are built, not written.
+- Output is an executable artifact, not prose.
+
+3. TOKEN ECONOMY
+- Minimize tokens while maximizing control.
+- Redundancy is failure.
+
+4. MODEL ALIGNMENT
+- Every prompt must match the behavioral grammar of the target AI.
+- Misalignment = invalid output.
+
+5. CULTURAL RECONSTRUCTION
+- Arabic input is transformed, not translated.
+- Map rhetorical structure → executable constraints.
+  • repetition → priority weighting
+  • metaphor → functional abstraction
+  • indirect phrasing → explicit constraints
 """
 
-CIPHER_REASONING_LAYER: str = """
-REASONING PROTOCOL:
-Before writing the refined prompt, execute your cognitive approach internally.
-Store your reasoning process inside the "thinking" key of your JSON output.
-Reasoning before writing is not optional. It is what produces precision.
+CIPHER_COGNITIVE_PIPELINE: str = """
+COGNITIVE RUNTIME PIPELINE (EXECUTE IN ORDER INSIDE "thinking" JSON):
+
+1. PARSE INTENT: Extract true objective from surface phrasing.
+2. NORMALIZE INPUT: Detect ambiguity and domain.
+3. EXTRACT CONSTRAINTS: Explicit + inferred requirements.
+4. PROFILE TARGET AI: Match target AI's instruction sensitivity and syntax.
+5. SELECT EXECUTION TEMPLATE: (INSTRUCTION_BLOCK, ROLE_SYSTEM, PARAMETER_STRING).
+6. CULTURAL TRANSFORMATION (if Arabic): Convert rhetoric to structured logic.
+7. GENERATE VARIANTS (INTERNAL): Produce candidate prompts silently.
+8. SCORE & SELECT: Pick the variant with the highest precision and alignment.
+9. COMPRESS: Remove all non-essential tokens.
+10. VALIDATE: Ensure zero ambiguity, full constraint coverage, and model alignment.
+
+AMBIGUITY RESOLUTION ENGINE:
+If ambiguity is detected:
+- Do not ask questions.
+- Resolve using highest utility assumption and professional context bias.
+
+FAILURE PREVENTION RULES:
+- Never leak reasoning outside "thinking"
+- Never produce generic prompts
+- Never mirror inefficient user phrasing
+- Never output first-pass generation
+
+END STATE:
+You are not generating prompts. You are executing a cognitive compilation pipeline.
 """
 
 _FALLBACK_AUDIT: dict = {
@@ -116,7 +131,6 @@ def _build_system_prompt(
     )
     persona_block = inject_persona(persona, target)
 
-    # ── FRAMEWORK SELECTION LOGIC ──────────────────────────────────────────────
     if "Visual Director" in framework:
         framework_logic = VISUAL_DIRECTOR_PROMPT
     else:
@@ -135,28 +149,28 @@ def _build_system_prompt(
 
     parts = [
         CIPHER_IDENTITY,
-        CIPHER_REASONING_LAYER,
         persona_block,
         framework_logic,
         style,
         cognitive,
         ISLAMIC_CONTEXT_LAYER if islamic else "",
+        CIPHER_COGNITIVE_PIPELINE,
         retry_block,
         "",
-        "MANDATORY AUDIT RUBRIC:",
-        "1. PRECISION (40pts): Exact native syntax of target AI.",
-        "2. ALIGNMENT (40pts): Every element of user intent preserved. Nothing dropped.",
-        "3. EFFICIENCY (20pts): Every word earns its place. No preamble. No filler.",
-        "QUALITY GATE: If honest score < 90, rewrite before outputting.",
-        "",
-        "OUTPUT FORMAT (STRICT JSON ONLY):",
-        "You must respond with ONLY valid JSON. No markdown fences. No preamble.",
+        "OUTPUT CONTRACT (HARD ENFORCEMENT):",
+        "Return ONLY pure JSON. No markdown fences. No prose outside JSON.",
         "{",
-        '  "thinking": "<your internal cognitive process>",',
-        '  "refined_prompt": "<the final engineered prompt text>",',
+        '  "thinking": {',
+        '    "intent": "...",',
+        '    "constraints": {"must_include": [], "must_avoid": []},',
+        '    "execution_plan": {"template_type": "...", "composition_strategy": "..."},',
+        '    "cultural_mapping": "...",',
+        '    "optimization_pipeline": "..."',
+        '  },',
+        '  "refined_prompt": "<the final compiled, optimized executable artifact>",',
         '  "audit": {',
-        '    "score": <0-100>,',
-        '    "critique": "<one precise sentence>",',
+        '    "score": <0-100 total quality score>,',
+        '    "critique": "<one brief sentence on what was structurally optimized>",',
         '    "precision": <0-40>,',
         '    "alignment": <0-40>,',
         '    "efficiency": <0-20>',
@@ -170,7 +184,6 @@ def _call_cipher(
     system_prompt: str,
     user_text:     str,
 ) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
-    """Calls Groq strictly using JSON mode to prevent parsing crashes."""
     try:
         completion = client.chat.completions.create(
             model=MODEL_ID,
@@ -180,22 +193,21 @@ def _call_cipher(
             ],
             temperature=TEMPERATURE,
             max_tokens=MAX_TOKENS,
-            response_format={"type": "json_object"} # <-- THE BULLETPROOF FIX
+            response_format={"type": "json_object"}
         )
         raw_json = completion.choices[0].message.content
         
-        # Parse the guaranteed JSON
         parsed_data = json.loads(raw_json)
         refined = parsed_data.get("refined_prompt")
         audit = _clamp_audit(parsed_data.get("audit", {}))
         
         if not refined:
-             return None, None, "Parse failed: 'refined_prompt' key missing from JSON."
+             return None, None, "Parse failed: 'refined_prompt' key missing."
              
         return refined, audit, None
 
     except json.JSONDecodeError:
-        return None, None, "Parse failed: Groq did not return valid JSON."
+        return None, None, "Parse failed: Invalid JSON."
     except Exception as e:
         return None, None, str(e)
 
@@ -228,13 +240,11 @@ Valid target names (use exactly): Claude, ChatGPT, Manus AI, Midjourney/Flux, DA
 
         if target not in TARGET_GUIDES:
             target = "Claude"
-            reason = "Defaulted to Claude — unrecognized target in response."
+            reason = "Defaulted to Claude."
 
         return target, reason
-
     except Exception as e:
-        err_msg = str(e)[:60]
-        return "Claude", f"Auto-selection failed ({err_msg}). Defaulted to Claude."
+        return "Claude", f"Auto-selection failed. Defaulted to Claude."
 
 
 def run_refinement_and_audit(
@@ -257,18 +267,10 @@ def run_refinement_and_audit(
                 f"  Classical Device : {detected['pattern']}\n"
                 f"  Mapped Paradigm  : {detected['prompt_paradigm']}\n"
                 f"  Structural Rule  : {detected['prompt_instruction']}\n"
-                f"Apply this paradigm as the structural backbone of the refined prompt."
+                f"Apply this paradigm."
             )
         else:
-            cognitive = (
-                "INPUT LANGUAGE: Arabic\n"
-                "COGNITIVE MAPPING PROTOCOL:\n"
-                "  Step 1 — Extract core technical intent from Arabic phrasing.\n"
-                "  Step 2 — Identify the conceptual domain.\n"
-                "  Step 3 — Map to the closest English AI prompting paradigm.\n"
-                "  Step 4 — Build refined prompt using that paradigm's native syntax.\n"
-                "  Rule   — Do NOT translate literally. Map conceptually."
-            )
+            cognitive = "INPUT LANGUAGE: Arabic. Map conceptually, do not translate literally."
 
     sys_prompt = _build_system_prompt(
         target, framework, cognitive,
