@@ -1,4 +1,3 @@
-
 """
 i18n/translations.py — UI Translation System
 ==============================================
@@ -132,6 +131,7 @@ TRANSLATIONS: dict = {
         "vault_offline_msg":    "Supabase credentials not found. Add SUPABASE_URL and SUPABASE_KEY to your environment.",
         "vault_empty":          "No prompts found. Execute a refinement and save it to populate your vault.",
         "vault_saved":          "{count} PROMPT{plural} FOUND",
+        "search_label":         "Search Prompts",
         "search_ph":            "Search title, tags, or content...",
         "all_tags":             "All Tags",
         "all_targets":          "All",
@@ -186,7 +186,7 @@ TRANSLATIONS: dict = {
         "guide_detection":      "How Detection Works",
         "guide_patterns":       "Eight Rhetorical Devices → Eight Prompting Paradigms",
         "guide_engine_title":   "The Arabic Cognitive Engine",
-                "auto_analysing":       "🎯 CIPHER analysing best target...",
+        "auto_analysing":       "🎯 CIPHER analysing best target...",
         "auto_selected":        "CIPHER selected: {target} — {reason}",
         "auto_hint":            "CIPHER will analyse your input and select the best AI automatically.",
         "sidebar_controls":     "Sidebar Controls",
@@ -286,6 +286,7 @@ TRANSLATIONS: dict = {
         "vault_offline_msg":    "بيانات Supabase غير موجودة. أضف SUPABASE_URL و SUPABASE_KEY.",
         "vault_empty":          "لا أوامر محفوظة. نفّذ تحسيناً واحفظه.",
         "vault_saved":          "{count} أمر موجود",
+        "search_label":         "البحث في الأوامر",
         "search_ph":            "ابحث في العناوين والوسوم أو المحتوى...",
         "all_tags":             "كل الوسوم",
         "all_targets":          "الكل",
@@ -437,6 +438,7 @@ TRANSLATIONS: dict = {
         "vault_offline_msg":    "Identifiants Supabase introuvables. Ajoutez SUPABASE_URL et SUPABASE_KEY.",
         "vault_empty":          "Aucun prompt trouvé. Exécutez un refinement et sauvegardez-le.",
         "vault_saved":          "{count} PROMPT{plural} TROUVÉ{plural}",
+        "search_label":         "Rechercher des Prompts",
         "search_ph":            "Rechercher dans les titres, tags ou contenu...",
         "all_tags":             "Tous les Tags",
         "all_targets":          "Tous",
