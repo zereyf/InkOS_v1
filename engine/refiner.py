@@ -3,9 +3,9 @@ engine/refiner.py — CIPHER Intelligence Engine
 ================================================
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
 
-v13.4: The "Confidence" Patch.
-- Fixed the schizophrenic Auditor logic so it rewards (not punishes) strategic assumptions.
-- Forces the generation of comprehensive, ready-to-execute prompt payloads.
+v13.5: The JSON Enforcement Patch.
+- Fixed Groq API rejection in detect_best_target by enforcing explicit JSON contract.
+- Upgraded error handling to pass real exception traces to the UI.
 """
 
 import json
@@ -192,7 +192,12 @@ def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Opt
         return None, None, str(e)
 
 def detect_best_target(user_text: str) -> tuple:
-    system_prompt = f"Select the best target AI.\n{TARGET_SELECTION_GUIDE}"
+    # BUG FIX: Enforcing strict JSON contract to prevent Groq API rejection
+    system_prompt = (
+        f"Select the best target AI.\n{TARGET_SELECTION_GUIDE}\n\n"
+        "OUTPUT CONTRACT: You MUST return ONLY valid JSON in this exact format:\n"
+        '{"target": "<Exact name of the AI from the list>", "reason": "<Short one-sentence explanation>"}'
+    )
     try:
         completion = client.chat.completions.create(
             model=MODEL_ID,
@@ -201,9 +206,10 @@ def detect_best_target(user_text: str) -> tuple:
             temperature=0.1, max_tokens=100,
         )
         raw = json.loads(completion.choices[0].message.content)
-        return str(raw.get("target", "Claude")), str(raw.get("reason", ""))
-    except:
-        return "Claude", "Auto-selection failed."
+        return str(raw.get("target", "Claude")), str(raw.get("reason", "Selected via intent analysis."))
+    except Exception as e:
+        # Pass the actual API error back so it shows up in the UI instead of silently failing
+        return "Claude", f"Auto-selection failed: {str(e)}"
 
 def run_refinement_and_audit(
     user_text:        str,
