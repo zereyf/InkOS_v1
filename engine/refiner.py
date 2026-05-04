@@ -3,10 +3,7 @@ engine/refiner.py — CIPHER Intelligence Engine
 ================================================
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
 
-v1: Executive Humanizer & Audit Resilience.
-- Recursive humanizer for complex lists of objects (Tasks/Resources).
-- Audit Logic: Balanced scoring for strategic assumptions.
-- Deterministic Math: Prevents 0% hallucinations on high-utility artifacts.
+v13.3: Fixed Import Typo.
 """
 
 import json
@@ -16,7 +13,7 @@ from datetime import datetime
 from typing import Optional, Tuple, Any
 from config import (
     client, TARGET_GUIDES, MODEL_ID, TEMPERATURE,
-    MAX_TOKENS, AEST_PRESETS,
+    MAX_TOKENS, AESTHETIC_PRESETS,
     AUTO_SELECT_LABEL, TARGET_SELECTION_GUIDE,
     VISUAL_DIRECTOR_PROMPT
 )
@@ -157,7 +154,7 @@ def _build_system_prompt(
         "Return ONLY pure JSON. The 'refined_prompt' MUST be a high-utility artifact.",
         "Scoring Note: Filling in the 'Delta' (vague inputs) is PRECISE logic. Reward it.",
         "{",
-        '  "thinking": { ... },',
+        '  "thinking": { "intent": "...", "logic": "..." },',
         '  "refined_prompt": "<string OR object>",',
         '  "audit": { "precision": 0, "alignment": 0, "efficiency": 0, "critique": "..." }',
         "}"
