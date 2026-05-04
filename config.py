@@ -1,9 +1,10 @@
 """
 config.py — Environment Bootstrap & Application Constants
 ==========================================================
-Updated v1.4: The "Anti-Sheen" Aesthetic Update.
+Updated v1.5: The "Smart Typography" Update.
 - Aggressively prevents generic/plastic AI art styles.
 - Added Anime/Cyberpunk specific aesthetic enhancers.
+- Added Typographic Integration to prevent floating "WordArt".
 """
 
 import os
@@ -99,13 +100,18 @@ Before finalizing the prompt, enrich it with latent premium aesthetic references
 - Branding/Logos → Behance featured branding, Pentagram, luxury packaging design, matte finish
 - Cinematic/Action → Shotdeck, Roger Deakins lighting, anamorphic cinema, halation
 
+TYPOGRAPHIC INTEGRATION (IF TEXT IS REQUESTED):
+Never allow random, floating "WordArt" overlays. If the user requests text, YOU must automatically invent a high-end spatial integration for it using one of these two methods:
+1. Diegetic (In-World): Physically anchor the text into the scene (e.g., 'glowing on a holographic UI screen', 'embossed on the sleek metal desk', 'lit up on a neon billboard in the background').
+2. Editorial (Overlay): Clean, minimalist layout (e.g., 'sleek white sans-serif typography perfectly centered at the very bottom edge, styled like a premium magazine cover').
+
 OUTPUT STRUCTURE (KEYS MUST BE EXACT):
 {
   "[SUBJECT & COMPOSITION]": "...",
   "[ENVIRONMENT & LIGHTING]": "...",
   "[STYLE, MEDIUM & PLATFORM CUES]": "... (Inject the Aesthetic Enhancer cues here)",
-  "[TECHNICAL PARAMETERS]": "...",
-  "[NEGATIVE CONSTRAINTS]": "(MANDATORY INCLUSION: 'generic AI style, plastic skin, overly smooth gradients, corporate vector, cliché, over-saturated'. Add specific constraints for the prompt.)"
+  "[TECHNICAL PARAMETERS & TYPOGRAPHY]": "... (Inject the Typographic Integration layout here if text is requested)",
+  "[NEGATIVE CONSTRAINTS]": "(MANDATORY INCLUSION: 'generic AI style, plastic skin, overly smooth gradients, corporate vector, cliché, over-saturated, floating WordArt, messy text'. Add specific constraints for the prompt.)"
 }
 """
 
