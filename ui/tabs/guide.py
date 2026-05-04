@@ -11,56 +11,395 @@ import streamlit as st
 
 def _section(title: str, dot_color: str = "") -> None:
     dot = f'<span class="status-dot{" " + dot_color if dot_color else ""}"></span>' 
-        st.markdown(
-                f'<div class="vc-header">{dot}{title}</div>',
-                        unsafe_allow_html=True,
-                            )
+    st.markdown(
+        f'<div class="vc-header">{dot}{title}</div>',
+        unsafe_allow_html=True,
+    )
 
 
-                            def _card(content: str, accent: str = "var(--gold-border)") -> None:
-                                st.markdown(f"""
-                                    <div class="vc-card" style="border-color:{accent};margin-bottom:14px;">
-                                            <div style="font-family:var(--font-m);font-size:0.78rem;
-                                                                line-height:1.85;color:var(--text);">
-                                                                            {content}
-                                                                                    </div>
-                                                                                        </div>
-                                                                                            """, unsafe_allow_html=True)
+def _card(content: str, accent: str = "var(--gold-border)") -> None:
+    st.markdown(f"""
+    <div class="vc-card" style="border-color:{accent};margin-bottom:14px;">
+        <div style="font-family:var(--font-m);font-size:0.78rem;
+                    line-height:1.85;color:var(--text);">
+            {content}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
-                                                                                            def _step(number: str, title: str, body: str) -> None:
-                                                                                                st.markdown(f"""
-                                                                                                    <div style="display:flex;gap:16px;margin-bottom:16px;align-items:flex-start;">
-                                                                                                            <div style="
-                                                                                                                        font-family:var(--font-d);font-size:1.4rem;color:var(--gold);
-                                                                                                                                    min-width:36px;line-height:1;padding-top:2px;
-                                                                                                                                            ">{number}</div>
-                                                                                                                                                    <div>
-                                                                                                                                                                <div style="font-family:var(--font-m);font-size:0.75rem;
-                                                                                                                                                                                        font-weight:600;color:var(--text);letter-spacing:0.06em;
-                                                                                                                                                                                                                text-transform:uppercase;margin-bottom:4px;">{title}</div>
-                                                                                                                                                                                                                            <div style="font-family:var(--font-m);font-size:0.75rem;
-                                                                                                                                                                                                                                                    color:var(--text-muted);line-height:1.75;">{body}</div>
-                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                    """, unsafe_allow_html=True)
+def _step(number: str, title: str, body: str) -> None:
+    st.markdown(f"""
+    <div style="display:flex;gap:16px;margin-bottom:16px;align-items:flex-start;">
+        <div style="
+            font-family:var(--font-d);font-size:1.4rem;color:var(--gold);
+            min-width:36px;line-height:1;padding-top:2px;
+        ">{number}</div>
+        <div>
+            <div style="font-family:var(--font-m);font-size:0.75rem;
+                        font-weight:600;color:var(--text);letter-spacing:0.06em;
+                        text-transform:uppercase;margin-bottom:4px;">{title}</div>
+            <div style="font-family:var(--font-m);font-size:0.75rem;
+                        color:var(--text-muted);line-height:1.75;">{body}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
-                                                                                                                                                                                                                                                                    def _feature_card(
-                                                                                                                                                                                                                                                                        icon:     str,
-                                                                                                                                                                                                                                                                            name:     str,
-                                                                                                                                                                                                                                                                                tab:      str,
-                                                                                                                                                                                                                                                                                    what:     str,
-                                                                                                                                                                                                                                                                                        how:      str,
-                                                                                                                                                                                                                                                                                            tip:      str,
-                                                                                                                                                                                                                                                                                                color:    str = "var(--gold)",
-                                                                                                                                                                                                                                                                                                ) -> None:
-                                                                                                                                                                                                                                                                                                    st.markdown(f"""
-                                                                                                                                                                                                                                                                                                        <div class="vc-card" style="margin-bottom:14px;">
-                                                                                                                                                                                                                                                                                                                <div style="display:flex;justify-content:space-between;
-                                                                                                                                                                                                                                                                                                                                    align-items:center;margin-bottom:10px;">
-                                                                                                                                                                                                                                                                                                                                                <div style="font-family:var(--font-d);font-size:1rem;color:{color};">
-                                                                                                                                                                                                                                                                                                                                                                {icon} {name}
+def _feature_card(
+    icon:     str,
+    name:     str,
+    tab:      str,
+    what:     str,
+    how:      str,
+    tip:      str,
+    color:    str = "var(--gold)",
+) -> None:
+    st.markdown(f"""
+    <div class="vc-card" style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;
+                    align-items:center;margin-bottom:10px;">
+            <div style="font-family:var(--font-d);font-size:1rem;color:{color};">
+                {icon} {name}
+            </div>
+            <span style="font-family:var(--font-m);font-size:0.6rem;
+                         color:var(--text-muted);letter-spacing:0.1em;
+                         background:var(--bg-raised);padding:2px 10px;
+                         border-radius:2px;text-transform:uppercase;">
+                Tab: {tab}
+            </span>
+        </div>
+        <div style="font-family:var(--font-m);font-size:0.73rem;
+                    color:var(--text-muted);line-height:1.75;margin-bottom:8px;">
+            <strong style="color:var(--text);">What it does:</strong> {what}
+        </div>
+        <div style="font-family:var(--font-m);font-size:0.73rem;
+                    color:var(--text-muted);line-height:1.75;margin-bottom:8px;">
+            <strong style="color:var(--text);">How to use it:</strong> {how}
+        </div>
+        <div style="font-family:var(--font-m);font-size:0.68rem;
+                    color:var(--gold);border-left:2px solid var(--gold-border);
+                    padding-left:10px;line-height:1.6;font-style:italic;">
+            💡 {tip}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def _arabic_pattern_row(arabic: str, paradigm: str, example: str, color: str) -> None:
+    st.markdown(f"""
+    <div style="display:flex;gap:12px;align-items:flex-start;
+                margin-bottom:10px;padding:10px 14px;
+                background:var(--bg-raised);border-radius:3px;
+                border-left:2px solid {color};">
+        <div style="font-family:var(--font-a);font-size:1.2rem;
+                    color:{color};direction:rtl;min-width:120px;
+                    text-align:right;">{arabic}</div>
+        <div>
+            <div style="font-family:var(--font-m);font-size:0.68rem;
+                        color:{color};letter-spacing:0.08em;
+                        text-transform:uppercase;margin-bottom:3px;">
+                → {paradigm}
+            </div>
+            <div style="font-family:var(--font-m);font-size:0.68rem;
+                        color:var(--text-muted);line-height:1.6;">
+                {example}
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_guide() -> None:
+    """Renders Tab 7 — InkOS Guide."""
+
+    # ── HERO ──────────────────────────────────────────────────────────────────
+    st.markdown("""
+    <div style="text-align:center;padding:32px 0 24px 0;">
+        <div style="font-family:var(--font-d);font-size:2rem;
+                    color:var(--gold);letter-spacing:0.15em;
+                    text-transform:uppercase;margin-bottom:8px;">
+            ⚡ InkOS
+        </div>
+        <div style="font-family:var(--font-m);font-size:0.78rem;
+                    color:var(--text-muted);letter-spacing:0.12em;
+                    text-transform:uppercase;margin-bottom:6px;">
+            Arabic Cognitive Prompt Engine
+        </div>
+        <div style="font-family:var(--font-a);font-size:1rem;
+                    color:var(--text-muted);direction:rtl;">
+            حبر وفكرة. Ink & Ideas.
+        </div>
+    </div>
+    <hr>
+    """, unsafe_allow_html=True)
+
+    # ── GUIDE TABS ─────────────────────────────────────────────────────────────
+    g1, g2, g3 = st.tabs(["⚡ Quick Start", "📖 Feature Guide", "🗺️ Arabic Engine"])
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # QUICK START
+    # ══════════════════════════════════════════════════════════════════════════
+    with g1:
+        _section("Get Running in 2 Minutes")
+
+        _step("01", "Configure your target",
+              "Use the sidebar to select which AI you are prompting — "
+              "Claude, ChatGPT, Manus AI, Midjourney, or DALL-E 3. "
+              "InkOS adapts its output syntax for each one automatically.")
+
+        _step("02", "Choose a logic framework",
+              "Select how your prompt should be structured. "
+              "<strong style='color:var(--text);'>RACE</strong> (Role, Action, Context, Expectation) "
+              "is the default for professional work. "
+              "<strong style='color:var(--text);'>Debugger</strong> works best for technical tasks.")
+
+        _step("03", "Select your language",
+              "Switch between English and Arabic using the Linguistic Source toggle. "
+              "Arabic input is not translated — it is cognitively mapped. "
+              "The engine detects classical Arabic rhetorical patterns and converts "
+              "them to the correct AI instruction paradigm.")
+
+        _step("04", "Type your raw intent",
+              "Write what you actually want — rough, unstructured, even half-formed. "
+              "That is the point. InkOS converts raw intent into a precision prompt. "
+              "You do not need to know how to write prompts. That is what the engine does.")
+
+        _step("05", "Hit Execute Refinement",
+              "The engine maps your intent, applies the cognitive framework, "
+              "injects any active persona, and returns a refined prompt with "
+              "a quality score broken into Precision, Alignment, and Efficiency.")
+
+        _step("06", "Save what works",
+              "When a refined prompt scores well, save it to your Vault with a title "
+              "and tags. It persists across sessions. You are building a permanent "
+              "library of your highest-performing prompts.")
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+        _section("What Makes a Good Input")
+
+        st.markdown("""
+        <div class="vc-card" style="margin-bottom:14px;">
+        <div style="font-family:var(--font-m);font-size:0.78rem;line-height:1.85;color:var(--text);">
+        <strong style="color:var(--gold);">Be specific about the outcome, not the method.</strong><br>
+        Instead of: <em style="color:var(--steel);">"Write a prompt for ChatGPT"</em><br>
+        Write: <em style="color:#4CAF9A;">"I need ChatGPT to act as a senior financial analyst reviewing a startup pitch deck and flag every assumption that lacks evidence."</em><br><br>
+        InkOS handles the structure. You handle the intent.
+        </div></div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="vc-card" style="margin-bottom:14px;">
+        <div style="font-family:var(--font-m);font-size:0.78rem;line-height:1.85;color:var(--text);">
+        <strong style="color:var(--gold);">Arabic input: write naturally, not formally.</strong><br>
+        Do not translate your Arabic intent into English first. Write what you mean in Arabic the way you would say it. The engine reads the rhetorical structure behind your words — not just the vocabulary.
+        </div></div>
+        """, unsafe_allow_html=True)
+
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # FEATURE GUIDE
+    # ══════════════════════════════════════════════════════════════════════════
+    with g2:
+        _section("Every Feature Explained")
+
+        _feature_card(
+            icon  = "⚡",
+            name  = "Workspace",
+            tab   = "WORKSPACE",
+            what  = "The core refinement engine. Takes raw intent and returns a "
+                    "precision prompt calibrated for your target AI.",
+            how   = "Type your intent, configure sidebar settings, hit Execute. "
+                    "Results show the refined prompt, a quality score with three "
+                    "sub-metrics, and the Arabic pattern detected (if applicable).",
+            tip   = "The live pattern preview appears before you execute — "
+                    "you can see which Arabic rhetorical structure was detected "
+                    "the moment you stop typing.",
+            color = "var(--gold)",
+        )
+
+        _feature_card(
+            icon  = "📜",
+            name  = "Archive",
+            tab   = "ARCHIVE",
+            what  = "Session history of every refinement executed. "
+                    "Filterable by target AI and Arabic pattern.",
+            how   = "Browse past refinements, filter by target or pattern, "
+                    "download individual prompts or export the full archive as JSON.",
+            tip   = "Archive is session-only — it clears on refresh. "
+                    "Use the Vault to save prompts you want to keep permanently.",
+            color = "var(--steel)",
+        )
+
+        _feature_card(
+            icon  = "🔒",
+            name  = "Prompt Memory Vault",
+            tab   = "🔒 VAULT",
+            what  = "Permanent prompt library backed by Supabase. "
+                    "Survives sessions, browser clears, and redeployments.",
+            how   = "After a successful refinement, scroll below the result to find "
+                    "the Save to Vault panel. Add a title and tags, save. "
+                    "In the Vault tab, search by keyword, filter by tag, target, "
+                    "or minimum score. Deploy any saved prompt back to workspace "
+                    "with one click.",
+            tip   = "Tag your prompts consistently — 'client, analysis, arabic' — "
+                    "so you can filter your library as it grows.",
+            color = "#4CAF9A",
+        )
+
+        _feature_card(
+            icon  = "🎭",
+            name  = "Persona Forge",
+            tab   = "🎭 FORGE",
+            what  = "Reusable AI personas that inject into every refinement. "
+                    "Define a role, constraints, and communication style once. "
+                    "Activate from the sidebar and forget about it.",
+            how   = "Browse the four built-in starter personas or create your own "
+                    "in the Create New tab. Each persona is optimised for a specific "
+                    "target AI — the injection syntax adapts automatically: "
+                    "XML tags for Claude, numbered role statement for ChatGPT, "
+                    "agent declaration for Manus AI. "
+                    "Activate from the sidebar dropdown. A gold badge confirms it is active.",
+            tip   = "Use Preview Injection inside each persona card to see exactly "
+                    "what text gets added to your prompt before you run anything.",
+            color = "#B07C9E",
+        )
+
+        _feature_card(
+            icon  = "🗺️",
+            name  = "Cognitive Map",
+            tab   = "COGNITIVE MAP",
+            what  = "A reference library of all eight Arabic rhetorical devices "
+                    "and their AI prompting equivalents.",
+            how   = "Browse each pattern with its trigger words, paradigm mapping, "
+                    "and the exact prompt instruction applied when detected.",
+            tip   = "Screenshot this tab. It is a piece of content on its own — "
+                    "share it as an explanation of what makes InkOS different.",
+            color = "var(--gold)",
+        )
+
+        _feature_card(
+            icon  = "🔐",
+            name  = "Security Ledger",
+            tab   = "SECURITY",
+            what  = "A log of all blocked injection attempts this session.",
+            how   = "Any input containing prompt injection patterns — "
+                    "'ignore previous instructions', 'jailbreak', token boundary attacks — "
+                    "is blocked before reaching the API and logged here with a hash.",
+            tip   = "The security layer runs before every API call. "
+                    "It cannot be bypassed through the UI.",
+            color = "var(--danger)",
+        )
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+        _section("Sidebar Controls")
+
+        st.markdown("""
+        <div class="vc-card" style="margin-bottom:14px;">
+        <div style="font-family:var(--font-m);font-size:0.78rem;line-height:1.85;color:var(--text);">
+        <strong style="color:var(--gold);">Target Dialect</strong> — Which AI you are prompting. Each has a different command syntax. InkOS adapts its output structure accordingly.<br><br>
+        <strong style="color:var(--gold);">Logic Framework</strong> — How the prompt is structured internally. RACE is best for professional tasks. Debugger works for technical and code-related prompts.<br><br>
+        <strong style="color:var(--gold);">Linguistic Source</strong> — English or Arabic. Arabic triggers the cognitive mapping engine.<br><br>
+        <strong style="color:var(--gold);">Active Persona</strong> — Select a persona to inject into every refinement. None means no persona — clean prompt only.<br><br>
+        <strong style="color:var(--gold);">Aesthetic Preset</strong> — For visual AI targets (Midjourney, DALL-E). Adds style direction to the refined prompt.<br><br>
+        <strong style="color:var(--gold);">Islamic Professional Mode</strong> — Loads Sharia-aware framing, Islamic finance constraints, and Arabic scholarly citation conventions into every refinement.
+        </div></div>
+        """, unsafe_allow_html=True)
+
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # ARABIC ENGINE
+    # ══════════════════════════════════════════════════════════════════════════
+    with g3:
+        _section("The Arabic Cognitive Engine")
+
+        st.markdown("""
+        <div style="font-family:var(--font-m);font-size:0.75rem;
+                    color:var(--text-muted);line-height:1.85;margin-bottom:20px;">
+            Most AI tools treat Arabic as a language to translate <em>from</em>.<br>
+            InkOS treats Arabic as a rhetorical system with its own logical structures.<br><br>
+            When you write in Arabic, the engine does not translate your words.
+            It detects the classical Arabic rhetorical device behind your phrasing
+            and maps it to its equivalent AI prompting paradigm —
+            a fundamentally different and more precise operation.<br><br>
+            This engine is built on
+            <strong style="color:var(--gold);">علم البيان</strong> and
+            <strong style="color:var(--gold);">علم المعاني</strong> —
+            the classical Arabic sciences of expression and meaning.
+        </div>
+        """, unsafe_allow_html=True)
+
+        _section("Eight Rhetorical Devices → Eight Prompting Paradigms")
+
+        _arabic_pattern_row(
+            arabic   = "التدرج",
+            paradigm = "Chain-of-Thought Escalation",
+            example  = 'Trigger: "تدريجياً" or "خطوة بخطوة" — '
+                       'Structures output as a progressive chain from foundational to advanced.',
+            color    = "#C9A84C",
+        )
+        _arabic_pattern_row(
+            arabic   = "التفصيل بعد الإجمال",
+            paradigm = "Hierarchical Output",
+            example  = 'Trigger: "اشرح" or "فصّل" — '
+                       'Produces a one-sentence summary followed by structured breakdown.',
+            color    = "#7C9EBF",
+        )
+        _arabic_pattern_row(
+            arabic   = "الاستدراك",
+            paradigm = "Constraint-First Reasoning",
+            example  = 'Trigger: "لكن" or "بشرط" — '
+                       'States assumptions explicitly before output and flags violations.',
+            color    = "#B07C9E",
+        )
+        _arabic_pattern_row(
+            arabic   = "المقابلة",
+            paradigm = "Parallel Comparative Analysis",
+            example  = 'Trigger: "قارن" or "الفرق بين" — '
+                       'Structured comparison in parallel structure with decisive conclusion.',
+            color    = "#4CAF9A",
+        )
+        _arabic_pattern_row(
+            arabic   = "الالتفات",
+            paradigm = "Multi-Audience Layered Output",
+            example  = 'Trigger: "للمبتدئين" or "للمحترفين" — '
+                       'Generates two versions: accessible and technical.',
+            color    = "#E8855A",
+        )
+        _arabic_pattern_row(
+            arabic   = "الإيجاز",
+            paradigm = "Precision Compression",
+            example  = 'Trigger: "باختصار" or "بإيجاز" — '
+                       'Maximum information density. Under 100 words. No filler.',
+            color    = "#C9A84C",
+        )
+        _arabic_pattern_row(
+            arabic   = "التعليل",
+            paradigm = "Causal Reasoning Chain",
+            example  = 'Trigger: "لماذا" or "علل" — '
+                       'Every claim follows: [Claim] → [Because] → [Evidence] → [Implication].',
+            color    = "#7C9EBF",
+        )
+        _arabic_pattern_row(
+            arabic   = "الأمر والنهي",
+            paradigm = "Directive Execution Mode",
+            example  = 'Trigger: "اكتب" or "أنشئ" — '
+                       'Literal sequential execution. No embellishment. No additions.',
+            color    = "#B07C9E",
+        )
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+        _section("How Detection Works")
+
+        st.markdown("""
+        <div class="vc-card" style="margin-bottom:14px;">
+        <div style="font-family:var(--font-m);font-size:0.78rem;line-height:1.85;color:var(--text);">
+        <strong style="color:var(--gold);">Scoring, not first-match.</strong><br><br>
+        The engine scans your input for all eight patterns simultaneously. Each pattern is scored by how many trigger words appear in your text. The pattern with the highest score wins.<br><br>
+        If you write <span style="font-family:var(--font-a);font-size:0.9rem;direction:rtl;">"اشرح لي تدريجياً"</span> — the engine detects both <span style="color:var(--gold);">التفصيل</span> (one hit: اشرح) and <span style="color:var(--gold);">التدرج</span> (one hit: تدريجياً). On a tie, the pattern with more defined trigger words is preferred — التدرج wins because it is a more specific pattern.<br><br>
+        <strong style="color:var(--gold);">Unicode normalization is applied before every match.</strong> Arabic typed on different keyboards produces different Unicode codepoints for visually identical characters. The engine normalizes all input to NFC form before scanning — keyboard variant never causes a missed detection.
+        </div></div>
+        """, unsafe_allow_html=True)
                                                                                                                                                                                                                                                                                                                                                                             </div>
                                                                                                                                                                                                                                                                                                                                                                                         <span style="font-family:var(--font-m);font-size:0.6rem;
                                                                                                                                                                                                                                                                                                                                                                                                                  color:var(--text-muted);letter-spacing:0.1em;
