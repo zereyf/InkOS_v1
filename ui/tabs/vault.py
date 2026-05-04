@@ -1,19 +1,6 @@
 """
 ui/tabs/vault.py — Prompt Memory Vault Tab
 ============================================
-Tab 5: Persistent prompt library backed by Supabase.
-
-Features:
-  - Save refined prompts with title + tags
-  - Search by keyword, tag, target AI, minimum score
-  - One-click deploy: loads a saved prompt back into workspace
-  - Delete with confirmation
-  - Stats: count, avg score, top target, top tag
-
-Design:
-  - Vault unavailable state renders gracefully if Supabase not configured
-  - All operations scoped to session user_hash — no cross-user leaks
-  - Save button lives in workspace.py, not here — this tab is browse/manage only
 """
 
 import streamlit as st
@@ -39,16 +26,7 @@ def _score_color(score: int) -> str:
 
 def _render_unavailable() -> None:
     st.markdown("""
-    <div style="
-        background: rgba(169,50,38,0.08);
-        border: 1px solid rgba(169,50,38,0.3);
-        border-radius: 4px;
-        padding: 20px 24px;
-        font-family: var(--font-m);
-        font-size: 0.78rem;
-        color: #FC8181;
-        line-height: 1.8;
-    ">
+    <div style="background: rgba(169,50,38,0.08);border: 1px solid rgba(169,50,38,0.3);border-radius: 4px;padding: 20px 24px;font-family: var(--font-m);font-size: 0.78rem;color: #FC8181;line-height: 1.8;">
         <strong style="color:#FC8181;letter-spacing:0.1em;">{t("vault_offline")}</strong><br><br>
         Supabase credentials not found.<br>
         Add to your <code>.env</code> and Streamlit Cloud Secrets:<br><br>
@@ -80,22 +58,23 @@ def render_vault() -> None:
     stats, err = get_vault_stats(user_hash)
     if not err and stats.get("count", 0) > 0:
         s_color = _score_color(stats["avg_score"])
+        # DEV FIX: Added word-break and overflow wrapping to score-num classes to prevent mobile vertical stretching
         st.markdown(f"""
         <div style="display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
-            <div class="score-block" style="flex:1;min-width:100px;padding:12px 16px;margin:0;">
-                <div class="score-num" style="font-size:1.8rem;">{stats['count']}</div>
+            <div class="score-block" style="flex:1;min-width:100px;padding:12px 16px;margin:0;overflow:hidden;">
+                <div class="score-num" style="font-size:1.8rem;word-wrap:break-word;word-break:break-word;">{stats['count']}</div>
                 <div class="score-lbl">Saved Prompts</div>
             </div>
-            <div class="score-block" style="flex:1;min-width:100px;padding:12px 16px;margin:0;">
-                <div class="score-num" style="font-size:1.8rem;color:{s_color};">{stats['avg_score']}<span>%</span></div>
+            <div class="score-block" style="flex:1;min-width:100px;padding:12px 16px;margin:0;overflow:hidden;">
+                <div class="score-num" style="font-size:1.8rem;color:{s_color};word-wrap:break-word;word-break:break-word;">{stats['avg_score']}<span>%</span></div>
                 <div class="score-lbl">Avg Score</div>
             </div>
-            <div class="score-block" style="flex:1;min-width:100px;padding:12px 16px;margin:0;">
-                <div class="score-num" style="font-size:1rem;color:var(--steel);padding-top:6px;">{stats['top_target']}</div>
+            <div class="score-block" style="flex:1;min-width:100px;padding:12px 16px;margin:0;overflow:hidden;">
+                <div class="score-num" style="font-size:0.9rem;line-height:1.2;color:var(--steel);padding-top:6px;word-wrap:break-word;word-break:break-word;">{stats['top_target']}</div>
                 <div class="score-lbl">Top Target</div>
             </div>
-            <div class="score-block" style="flex:1;min-width:100px;padding:12px 16px;margin:0;">
-                <div class="score-num" style="font-size:1rem;color:var(--gold);padding-top:6px;">{stats['top_tag'] or '—'}</div>
+            <div class="score-block" style="flex:1;min-width:100px;padding:12px 16px;margin:0;overflow:hidden;">
+                <div class="score-num" style="font-size:1rem;color:var(--gold);padding-top:6px;word-wrap:break-word;word-break:break-word;">{stats['top_tag'] or '—'}</div>
                 <div class="score-lbl">Top Tag</div>
             </div>
         </div>
@@ -164,8 +143,7 @@ def render_vault() -> None:
         return
 
     st.markdown(
-        f'<p style="font-family:var(--font-m);font-size:0.62rem;'
-        f'color:var(--text-muted);letter-spacing:0.1em;margin-bottom:12px;">'
+        f'<p style="font-family:var(--font-m);font-size:0.62rem;color:var(--text-muted);letter-spacing:0.1em;margin-bottom:12px;">'
         f'{len(results)} PROMPT{"S" if len(results) != 1 else ""} FOUND</p>',
         unsafe_allow_html=True,
     )
@@ -176,14 +154,11 @@ def render_vault() -> None:
         s_color    = _score_color(score)
         tags_raw   = entry.get("tags", "")
         tag_chips  = " ".join(
-            f'<span style="font-family:var(--font-m);font-size:0.62rem;'
-            f'background:rgba(201,168,76,0.08);border:1px solid var(--gold-border);'
-            f'border-radius:2px;padding:1px 7px;color:var(--gold);margin:1px;">{t.strip()}</span>'
+            f'<span style="font-family:var(--font-m);font-size:0.62rem;background:rgba(201,168,76,0.08);border:1px solid var(--gold-border);border-radius:2px;padding:1px 7px;color:var(--gold);margin:1px;">{t.strip()}</span>'
             for t in tags_raw.split(",") if t.strip()
         )
         pattern_tag = (
-            f'<span style="font-family:var(--font-a);font-size:0.8rem;'
-            f'color:var(--steel);margin-left:8px;">{entry["pattern"]}</span>'
+            f'<span style="font-family:var(--font-a);font-size:0.8rem;color:var(--steel);margin-left:8px;">{entry["pattern"]}</span>'
             if entry.get("pattern") else ""
         )
         islamic_tag = ' <span style="color:#6ee7b7;font-size:0.7rem;">☪</span>' if entry.get("islamic") else ""
@@ -193,18 +168,14 @@ def render_vault() -> None:
         ):
             # Header row
             st.markdown(f"""
-            <div style="display:flex;justify-content:space-between;
-                        align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                 <div>
-                    <span style="font-family:var(--font-d);font-size:1.1rem;
-                                 color:{s_color};">{score}%</span>
+                    <span style="font-family:var(--font-d);font-size:1.1rem;color:{s_color};">{score}%</span>
                     {pattern_tag}{islamic_tag}
                 </div>
                 <div style="text-align:right;">
-                    <span style="font-family:var(--font-m);font-size:0.62rem;
-                                 color:var(--text-muted);">{entry['target']} · {entry['framework']}</span><br>
-                    <span style="font-family:var(--font-m);font-size:0.58rem;
-                                 color:var(--text-dim);">{entry.get('created_at','')[:10]}</span>
+                    <span style="font-family:var(--font-m);font-size:0.62rem;color:var(--text-muted);">{entry['target']} · {entry['framework']}</span><br>
+                    <span style="font-family:var(--font-m);font-size:0.58rem;color:var(--text-dim);">{entry.get('created_at','')[:10]}</span>
                 </div>
             </div>
             {f'<div style="margin-bottom:10px;">{tag_chips}</div>' if tag_chips else ''}
