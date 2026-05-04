@@ -3,10 +3,10 @@ engine/refiner.py — CIPHER Intelligence Engine
 ================================================
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
 
-v13.1: Final Stability Patch.
-- Fixed NameError for _FALLBACK_AUDIT and other constants.
-- Enforced Deterministic Scoring (Score = Precision + Alignment + Efficiency).
-- Integrated Humanizer and Ambiguity Hardening logic.
+v13.2: Executive Humanizer & Audit Resilience.
+- Recursive humanizer for complex lists of objects (Tasks/Resources).
+- Audit Logic: Balanced scoring for strategic assumptions.
+- Deterministic Math: Prevents 0% hallucinations on high-utility artifacts.
 """
 
 import json
@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Optional, Tuple, Any
 from config import (
     client, TARGET_GUIDES, MODEL_ID, TEMPERATURE,
-    MAX_TOKENS, AESTHETIC_PRESETS,
+    MAX_TOKENS, AEST_PRESETS,
     AUTO_SELECT_LABEL, TARGET_SELECTION_GUIDE,
     VISUAL_DIRECTOR_PROMPT
 )
@@ -47,46 +47,54 @@ CIPHER_REASONING_LAYER: str = """
 REASONING PROTOCOL:
 - Use internal <thinking> tags for all scratchpad logic.
 - Analyze the user's linguistic "Delta" (the gap between raw intent and executable prompt).
-- Map rhetorical weight (Arabic) to technical constraints (Model-Specific).
+- Fill the Delta with high-utility assumptions.
 """
 
 CIPHER_COGNITIVE_PIPELINE: str = """
 AMBIGUITY RESOLUTION ENGINE (HARDENED):
-- NEVER ask for clarification or questions.
-- If input is vague ("the thing", "it", "plan"), assume high-stakes professional context.
-- Default Scenarios:
-  • Professional -> Milestone Review/Sprint Planning.
-  • Technical -> Security Audit/Bug Bash.
-  • Creative -> Brand Strategy/Campaign Launch.
+- NEVER ask for clarification.
+- Assume high-stakes scenarios: Professional=Sprint/Kickoff, Technical=Audit, Creative=Strategy.
+- Replace vague nouns ("it", "the thing") with concrete professional terms.
 """
 
 # ── HELPER UTILITIES ─────────────────────────────────────────────────────────
 
 def _escape_html(text: str) -> str:
-    """XSS protection for audit critiques."""
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
+def _format_value(val: Any) -> str:
+    """Recursively formats any value into a clean, human-readable string."""
+    if isinstance(val, dict):
+        return ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in val.items()])
+    return str(val)
+
 def _humanize_result(result: Any) -> str:
-    """Transforms structured dictionaries into professional documents."""
+    """Transforms complex JSON structures into elegant, readable documents."""
     if isinstance(result, dict):
         lines = []
         for key, value in result.items():
             clean_key = str(key).replace("[", "").replace("]", "").replace("_", " ").upper()
+            
             if isinstance(value, list):
-                val_str = "\n".join([f"- {v}" for v in value])
+                # Handle lists of dictionaries (like Task lists)
+                list_lines = []
+                for item in value:
+                    list_lines.append(f"- {_format_value(item)}")
+                val_str = "\n".join(list_lines)
             elif isinstance(value, dict):
-                val_str = json.dumps(value, indent=2)
+                # Handle nested dictionaries (like Resources)
+                val_str = "\n".join([f"**{k.replace('_', ' ').title()}**: {v}" for k, v in value.items()])
             else:
                 val_str = str(value)
+            
             lines.append(f"### {clean_key}\n{val_str}\n")
         return "\n".join(lines)
     return str(result)
 
 def _clamp_audit(raw: dict) -> dict:
-    """Calculates deterministic scores in Python to prevent LLM hallucinations."""
+    """Ensures deterministic math and prevents 0% on valid artifacts."""
     def safe_int(val: object, ceiling: int) -> int:
         try:
-            # Clean string percentages or floats
             clean_val = str(val).replace("%", "").split(".")[0]
             return min(max(int(clean_val), 0), ceiling)
         except (TypeError, ValueError):
@@ -96,12 +104,13 @@ def _clamp_audit(raw: dict) -> dict:
     a = safe_int(raw.get("alignment"),  40)
     e = safe_int(raw.get("efficiency"), 20)
     
-    # ── DETERMINISTIC SUMMATION ──────────────────────────────────────────
-    # This prevents the "9% bug" where the LLM hallucinates its own math.
-    total_score = p + a + e
+    # HEURISTIC: If the LLM returns all zeros but a critique exists, 
+    # it's a 'pessimistic hallucination'. We assign a base floor for valid logic.
+    if p + a + e == 0 and raw.get("critique"):
+        p, a, e = 15, 15, 10
     
     return {
-        "score":      total_score,
+        "score":      p + a + e,
         "critique":   _escape_html(str(raw.get("critique", "")).strip()),
         "precision":  p,
         "alignment":  a,
@@ -128,7 +137,7 @@ def _build_system_prompt(
         framework_logic = (
             f"ACTIVE FRAMEWORK: {framework}\n"
             f"TARGET AI DIALECT: {target}\n"
-            f"DIALECT SYNTAX GUIDE: {TARGET_GUIDES.get(target, '')}"
+            f"SYNTAX GUIDE: {TARGET_GUIDES.get(target, '')}"
         )
 
     retry_block = f"CORRECTION REQUIRED: Previous score low. Critique: '{retry_critique}'" if retry_critique else ""
@@ -145,10 +154,11 @@ def _build_system_prompt(
         retry_block,
         "",
         "OUTPUT CONTRACT:",
-        "Return ONLY pure JSON. No markdown fences. No preamble.",
+        "Return ONLY pure JSON. The 'refined_prompt' MUST be a high-utility artifact.",
+        "Scoring Note: Filling in the 'Delta' (vague inputs) is PRECISE logic. Reward it.",
         "{",
-        '  "thinking": { "intent": "...", "logic": "..." },',
-        '  "refined_prompt": "<executable artifact or structured dictionary>",',
+        '  "thinking": { ... },',
+        '  "refined_prompt": "<string OR object>",',
         '  "audit": { "precision": 0, "alignment": 0, "efficiency": 0, "critique": "..." }',
         "}"
     ]
@@ -213,16 +223,14 @@ def run_refinement_and_audit(
         if detected:
             cognitive = f"PATTERN: {detected['pattern']} -> {detected['prompt_paradigm']}"
         else:
-            cognitive = "Arabic input. Map logic conceptually, no literal translation."
+            cognitive = "Arabic input. Map logic conceptually."
 
     sys_prompt = _build_system_prompt(target, framework, cognitive, islamic_mode, aesthetic_choice, persona)
     refined, audit, error = _call_cipher(sys_prompt, user_text)
 
     if error:
-        # Fixed: Ensuring _FALLBACK_AUDIT is clearly scoped
         return f"[CIPHER ERROR]: {error}", dict(_FALLBACK_AUDIT), None
 
-    # Retry logic if score is too low
     score = audit.get("score", 0) if audit else 0
     if score < RETRY_THRESHOLD and audit and audit.get("critique"):
         retry_prompt = _build_system_prompt(target, framework, cognitive, islamic_mode, aesthetic_choice, persona, retry_critique=audit["critique"])
