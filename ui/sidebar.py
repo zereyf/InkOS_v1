@@ -1,7 +1,7 @@
 """
 ui/sidebar.py — Sidebar Configuration
 =======================================
-Restored v12: Includes the beautiful InkOS Branding & Wordmark.
+Restored v1: Includes the beautiful InkOS Branding & Wordmark.
 """
 
 import streamlit as st
