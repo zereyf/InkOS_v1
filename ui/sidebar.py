@@ -1,20 +1,21 @@
 """
 ui/sidebar.py — Sidebar Configuration
 =======================================
-Restored v1: Includes the beautiful InkOS Branding & Wordmark.
+v1: Fixed absolute imports and restored InkOS Branding.
 """
 
 import streamlit as st
-from i18n.translations import t
+# We use absolute imports as the root is in sys.path
 from config import LOGIC_FRAMEWORKS, TARGET_GUIDES, AESTHETIC_PRESETS, AUTO_SELECT_LABEL
+from i18n.translations import t
 
 def render_sidebar() -> dict:
     """Renders the left sidebar with branding, flags, and logic config."""
     
     with st.sidebar:
-        # ── RESTORED BRANDING ────────────────────────────────────────────────
+        # ── RESTORED BRANDING (AS REQUESTED) ─────────────────────────────────
         st.markdown(f"""
-            <div style="margin-bottom: 25px;">
+            <div style="margin-bottom: 25px; margin-top: -30px;">
                 <div class="vc-wordmark">⚡ INKOS</div>
                 <div class="vc-wordmark-sub">ARABIC COGNITIVE PROMPT ENGINE</div>
             </div>
@@ -24,16 +25,16 @@ def render_sidebar() -> dict:
         st.markdown(f'<div class="vc-header" style="margin-bottom:10px;">{t("lang_select")}</div>', unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         with col1:
-            if st.button("🇬🇧 EN", use_container_width=True):
+            if st.button("🇬🇧 EN", key="btn_lang_en", use_container_width=True):
                 st.session_state["lang"] = "English"
         with col2:
-            if st.button("🇸🇦 AR", use_container_width=True):
+            if st.button("🇸🇦 AR", key="btn_lang_ar", use_container_width=True):
                 st.session_state["lang"] = "Arabic"
         with col3:
-            if st.button("🇫🇷 FR", use_container_width=True):
+            if st.button("🇫🇷 FR", key="btn_lang_fr", use_container_width=True):
                 st.session_state["lang"] = "French"
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
 
         # ── LOGIC CONFIGURATION ──────────────────────────────────────────────
         st.markdown(f'<div class="vc-header"><span class="status-dot"></span>{t("logic_config")}</div>', unsafe_allow_html=True)
@@ -41,41 +42,51 @@ def render_sidebar() -> dict:
         target_model = st.selectbox(
             t("target_dialect"),
             options=[AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys()),
-            help=t("target_help")
+            help=t("target_help"),
+            key="sb_target_model"
         )
 
         framework = st.selectbox(
             t("logic_framework"),
             options=LOGIC_FRAMEWORKS,
-            help=t("framework_help")
+            help=t("framework_help"),
+            key="sb_framework"
         )
 
         source_lang = st.radio(
             t("linguistic_source"),
             options=["English", "Arabic (العربية)"],
-            help=t("source_help")
+            help=t("source_help"),
+            key="sb_source_lang"
         )
 
         islamic_mode = st.toggle(
             "🌙 " + t("islamic_mode"),
             value=False,
-            help=t("islamic_help")
+            help=t("islamic_help"),
+            key="sb_islamic_toggle"
         )
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
 
         # ── PERSONA & AESTHETICS ─────────────────────────────────────────────
         st.markdown(f'<div class="vc-header">🎭 {t("active_persona")}</div>', unsafe_allow_html=True)
-        # Assuming you have a persona engine loader here
-        active_persona = st.selectbox("Persona", options=["None", "Analyst", "Poet", "Architect"], label_visibility="collapsed")
+        # Placeholder for persona selection - ensure this matches your session state logic
+        active_persona = st.selectbox(
+            "Persona", 
+            options=["None", "Analyst", "Poet", "Architect"], 
+            label_visibility="collapsed",
+            key="sb_persona_select"
+        )
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
         
         st.markdown(f'<div class="vc-header">🎨 {t("aesthetic_direction")}</div>', unsafe_allow_html=True)
         aesthetic_choice = st.selectbox(
             t("aesthetic_preset"),
             options=list(AESTHETIC_PRESETS.keys()),
-            help=t("aesthetic_help")
+            help=t("aesthetic_help"),
+            key="sb_aesthetic_select"
         )
 
         # Return the config for use in the workspace
