@@ -1,20 +1,36 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v1: UI Finalization & Branding Sync.
+v1: Language switcher — EN/AR/FR with RTL support.
+Mobile-Optimized Selectbox Navigation.
 """
 
 import sys
 import os
-# Ensure root is in path for all sub-modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 st.set_page_config(page_title="InkOS", page_icon="⚡", layout="wide")
 
+st.markdown("""
+    <style>
+        /* Sticky Header */
+        header[data-testid="stHeader"] {
+            position: fixed !important; top: 0 !important; z-index: 9999 !important;
+        }
+        .block-container { padding-top: 4rem !important; }
+        
+        /* Make the navigation selectbox look more premium */
+        div[data-testid="stSelectbox"] > div[data-baseweb="select"] {
+            border-color: rgba(201,168,76,0.3) !important;
+            background-color: var(--bg-raised) !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 from config import API_KEY_MISSING
 from state import init_session_state, K
-from ui.styles import load_css
+from ui.styles import STYLES
 from ui.sidebar import render_sidebar
 from ui.tabs.workspace import render_workspace
 from ui.tabs.archive import render_archive
@@ -30,35 +46,29 @@ if API_KEY_MISSING:
     st.stop()
 
 init_session_state()
-load_css()
-
-# ── UI STABILIZATION ─────────────────────────────────────────────────────────
-st.markdown("""
-    <style>
-        header[data-testid="stHeader"] { z-index: 1000 !important; }
-        .block-container { padding-top: 2rem !important; }
-        
-        /* Clean up the Navigation Selectbox UI */
-        .nav-safe-zone {
-            margin-bottom: 20px;
-            padding: 5px;
-            background: rgba(201, 168, 76, 0.02);
-            border: 1px solid rgba(201, 168, 76, 0.08);
-            border-radius: 4px;
-        }
-    </style>
-""", unsafe_allow_html=True)
+st.markdown(STYLES, unsafe_allow_html=True)
 
 # ── RTL MODE ──────────────────────────────────────────────────────────────────
+# When Arabic UI is active, inject a JS snippet that adds the
+# "rtl-mode" CSS class to the stApp element.
 if is_rtl():
-    st.markdown("<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.add('rtl-mode');</script>", unsafe_allow_html=True)
+    st.markdown("""
+    <script>
+        const app = window.parent.document.querySelector('.stApp');
+        if (app) app.classList.add('rtl-mode');
+    </script>
+    """, unsafe_allow_html=True)
 else:
-    st.markdown("<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.remove('rtl-mode');</script>", unsafe_allow_html=True)
+    st.markdown("""
+    <script>
+        const app = window.parent.document.querySelector('.stApp');
+        if (app) app.classList.remove('rtl-mode');
+    </script>
+    """, unsafe_allow_html=True)
 
-# ── RENDER SIDEBAR (Now includes branding) ────────────────────────────────────
 cfg = render_sidebar()
 
-# ── NAVIGATION ────────────────────────────────────────────────────────────────
+# ── MOBILE-OPTIMIZED NAVIGATION ───────────────────────────────────────────────
 nav_options = {
     t("tab_workspace"):     lambda: render_workspace(cfg),
     t("tab_archive"):       render_archive,
@@ -69,16 +79,15 @@ nav_options = {
     t("tab_guide"):         render_guide,
 }
 
-st.markdown('<div class="nav-safe-zone">', unsafe_allow_html=True)
+# The Dropdown Navigation Bar
 selected_nav = st.selectbox(
     "Navigation", 
     list(nav_options.keys()), 
-    label_visibility="collapsed",
-    key="main_nav_select"
+    label_visibility="collapsed"
 )
-st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown("<hr style='border: none; border-bottom: 1px solid rgba(201,168,76,0.12); margin: 0 0 20px 0;'>", unsafe_allow_html=True)
+# A subtle divider to separate navigation from the content
+st.markdown("<hr style='border: none; border-bottom: 1px solid rgba(201,168,76,0.15); margin-top: 0; margin-bottom: 15px;'>", unsafe_allow_html=True)
 
-# Execute page
+# Execute the selected page
 nav_options[selected_nav]()
