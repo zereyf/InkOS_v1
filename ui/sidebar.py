@@ -1,23 +1,34 @@
 """
 ui/sidebar.py — Sidebar Configuration
 =======================================
-v1: Fixed absolute imports and restored InkOS Branding.
+v1: Robust Path Imports & Branding Restoration.
 """
 
 import streamlit as st
-# We use absolute imports as the root is in sys.path
-from config import LOGIC_FRAMEWORKS, TARGET_GUIDES, AESTHETIC_PRESETS, AUTO_SELECT_LABEL
+import sys
+import os
+
+# ── ROBUST IMPORT LOGIC ──────────────────────────────────────────────────────
+# This ensures that even as a sub-module, sidebar.py can see the root config.py
+try:
+    from config import LOGIC_FRAMEWORKS, TARGET_GUIDES, AESTHETIC_PRESETS, AUTO_SELECT_LABEL
+except ImportError:
+    # Manual path injection fallback for specific cloud environments
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    from config import LOGIC_FRAMEWORKS, TARGET_GUIDES, AESTHETIC_PRESETS, AUTO_SELECT_LABEL
+
 from i18n.translations import t
 
 def render_sidebar() -> dict:
     """Renders the left sidebar with branding, flags, and logic config."""
     
     with st.sidebar:
-        # ── RESTORED BRANDING (AS REQUESTED) ─────────────────────────────────
+        # ── RESTORED BRANDING (SIDEBAR TOP) ──────────────────────────────────
+        # Negative margin-top helps it sit perfectly at the top of the sidebar
         st.markdown(f"""
-            <div style="margin-bottom: 25px; margin-top: -30px;">
-                <div class="vc-wordmark">⚡ INKOS</div>
-                <div class="vc-wordmark-sub">ARABIC COGNITIVE PROMPT ENGINE</div>
+            <div style="margin-bottom: 25px; margin-top: -15px; text-align: left;">
+                <div class="vc-wordmark" style="font-size: 1.4rem;">⚡ INKOS</div>
+                <div class="vc-wordmark-sub" style="font-size: 0.55rem;">ARABIC COGNITIVE PROMPT ENGINE</div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -25,13 +36,13 @@ def render_sidebar() -> dict:
         st.markdown(f'<div class="vc-header" style="margin-bottom:10px;">{t("lang_select")}</div>', unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         with col1:
-            if st.button("🇬🇧 EN", key="btn_lang_en", use_container_width=True):
+            if st.button("🇬🇧 EN", key="btn_en", use_container_width=True):
                 st.session_state["lang"] = "English"
         with col2:
-            if st.button("🇸🇦 AR", key="btn_lang_ar", use_container_width=True):
+            if st.button("🇸🇦 AR", key="btn_ar", use_container_width=True):
                 st.session_state["lang"] = "Arabic"
         with col3:
-            if st.button("🇫🇷 FR", key="btn_lang_fr", use_container_width=True):
+            if st.button("🇫🇷 FR", key="btn_fr", use_container_width=True):
                 st.session_state["lang"] = "French"
 
         st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
@@ -43,40 +54,39 @@ def render_sidebar() -> dict:
             t("target_dialect"),
             options=[AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys()),
             help=t("target_help"),
-            key="sb_target_model"
+            key="sb_target"
         )
 
         framework = st.selectbox(
             t("logic_framework"),
             options=LOGIC_FRAMEWORKS,
             help=t("framework_help"),
-            key="sb_framework"
+            key="sb_frame"
         )
 
         source_lang = st.radio(
             t("linguistic_source"),
             options=["English", "Arabic (العربية)"],
             help=t("source_help"),
-            key="sb_source_lang"
+            key="sb_lang"
         )
 
         islamic_mode = st.toggle(
             "🌙 " + t("islamic_mode"),
             value=False,
             help=t("islamic_help"),
-            key="sb_islamic_toggle"
+            key="sb_islamic"
         )
 
         st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
 
         # ── PERSONA & AESTHETICS ─────────────────────────────────────────────
         st.markdown(f'<div class="vc-header">🎭 {t("active_persona")}</div>', unsafe_allow_html=True)
-        # Placeholder for persona selection - ensure this matches your session state logic
         active_persona = st.selectbox(
             "Persona", 
             options=["None", "Analyst", "Poet", "Architect"], 
             label_visibility="collapsed",
-            key="sb_persona_select"
+            key="sb_pers"
         )
 
         st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
@@ -86,10 +96,9 @@ def render_sidebar() -> dict:
             t("aesthetic_preset"),
             options=list(AESTHETIC_PRESETS.keys()),
             help=t("aesthetic_help"),
-            key="sb_aesthetic_select"
+            key="sb_aest"
         )
 
-        # Return the config for use in the workspace
         return {
             "target_model": target_model,
             "framework": framework,
