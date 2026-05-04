@@ -15,7 +15,8 @@ from typing import Optional, Tuple
 from config import (
     client, TARGET_GUIDES, MODEL_ID, TEMPERATURE,
     MAX_TOKENS, AESTHETIC_PRESETS,
-    AUTO_SELECT_LABEL, TARGET_SELECTION_GUIDE
+    AUTO_SELECT_LABEL, TARGET_SELECTION_GUIDE,
+    VISUAL_DIRECTOR_PROMPT
 )
 from engine.cognitive_map import detect_arabic_pattern
 from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
@@ -88,7 +89,9 @@ _TAG_CLEANUP   = re.compile(
     r"\s*(?:===|>|\]|\*\*|###)?",
     flags=re.IGNORECASE,
 )
-_FENCE_CLEANUP = re.compile(r"```(?:markdown|json|text|xml)?", flags=re.IGNORECASE)
+
+# FIXED: Replaced literal backticks with string multiplication to prevent UI splitting
+_FENCE_CLEANUP = re.compile("`" * 3 + r"(?:markdown|json|text|xml)?", flags=re.IGNORECASE)
 _JSON_HUNTER   = re.compile(r"\{[^{}]*\"score\"[^{}]*\}", flags=re.IGNORECASE)
 _THINKING_TAGS = re.compile(r"<thinking>.*?</thinking>", flags=re.DOTALL | re.IGNORECASE)
 
@@ -153,6 +156,18 @@ def _build_system_prompt(
         if aesthetic_choice != "Raw (No Preset)" else ""
     )
     persona_block = inject_persona(persona, target)
+
+    # ── FRAMEWORK SELECTION LOGIC ──────────────────────────────────────────────
+    # Logic to switch between standard frameworks and the new Visual Director engine
+    if "Visual Director" in framework:
+        framework_logic = VISUAL_DIRECTOR_PROMPT
+    else:
+        framework_logic = (
+            f"ACTIVE FRAMEWORK: {framework}\n"
+            f"TARGET AI DIALECT: {target}\n"
+            f"DIALECT SYNTAX GUIDE: {TARGET_GUIDES.get(target, '')}"
+        )
+
     retry_block   = (
         f"CORRECTION REQUIRED:\n"
         f"Previous attempt scored below quality threshold.\n"
@@ -164,9 +179,7 @@ def _build_system_prompt(
         CIPHER_IDENTITY,
         CIPHER_REASONING_LAYER,
         persona_block,
-        f"ACTIVE FRAMEWORK: {framework}",
-        f"TARGET AI DIALECT: {target}",
-        f"DIALECT SYNTAX GUIDE: {TARGET_GUIDES.get(target, '')}",
+        framework_logic,
         style,
         cognitive,
         ISLAMIC_CONTEXT_LAYER if islamic else "",
@@ -212,7 +225,6 @@ def _call_cipher(
     return refined, audit, None
 
 
-
 def detect_best_target(user_text: str) -> tuple:
     """
     CIPHER pre-analysis call.
@@ -220,11 +232,6 @@ def detect_best_target(user_text: str) -> tuple:
 
     Returns: (target_name: str, reason: str)
     Falls back to "Claude" on any failure — safest default.
-
-    WHY a separate call:
-      This is a fast, cheap classification call (max 200 tokens).
-      It runs only when "Auto" is selected — not on every execution.
-      Keeping it separate means it never bloats the main refinement prompt.
     """
     system_prompt = f"""You are CIPHER's target classification module.
 Your only task: read the user input and select the single best AI target.
@@ -276,7 +283,6 @@ def run_refinement_and_audit(
     CIPHER engine with auto-retry.
     Returns (refined_prompt, audit_dict, detected_pattern).
     """
-    # Step 1: Arabic cognitive detection
     detected: Optional[dict] = None
     cognitive: str = ""
 
