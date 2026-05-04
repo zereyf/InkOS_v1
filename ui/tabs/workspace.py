@@ -211,7 +211,21 @@ def render_workspace(cfg: dict) -> None:
                 retry_msg = " (retry applied)" if score >= 80 else ""
                 st.write(t("status_compiling") + retry_msg)
 
-                if not result.startswith("[REFINEMENT ERROR]"):
+                # ── GRACEFUL DEGRADATION (ERROR HANDLING) ──────────────────
+                if result and result.startswith("[CIPHER ERROR]"):
+                    status.update(label="Engine Offline", state="error", expanded=False)
+                    
+                    # Log the actual scary error to the console for YOU to see
+                    print(f"Backend API Error: {result}")
+                    
+                    # Show a polite, professional message to the USER
+                    st.warning(
+                        "**The Cognitive Engine is currently busy.**\n\n"
+                        "We are experiencing high traffic or a temporary API disruption. "
+                        "Please wait a moment and try executing your prompt again.",
+                        icon="⚠️"
+                    )
+                else:
                     st.write(t("status_done"))
                     status.update(label=t("status_complete"), state="complete", expanded=False)
 
@@ -234,9 +248,6 @@ def render_workspace(cfg: dict) -> None:
                         "pattern":   pattern["pattern"] if pattern else None,
                         "islamic":   cfg["islamic_mode"],
                     })
-                else:
-                    status.update(label=t("status_error"), state="error", expanded=False)
-                    st.error(result)
 
     # ── RESULTS ────────────────────────────────────────────────────────────────
     last_result  = st.session_state.get(K.LAST_RESULT)
@@ -244,7 +255,8 @@ def render_workspace(cfg: dict) -> None:
     last_input   = st.session_state.get(K.LAST_INPUT) or ""
     last_pattern = st.session_state.get(K.LAST_PATTERN)
 
-    if last_result and not last_result.startswith("[REFINEMENT ERROR]"):
+    # UPDATED: Replaced [REFINEMENT ERROR] with [CIPHER ERROR]
+    if last_result and not last_result.startswith("[CIPHER ERROR]"):
         st.markdown("<hr>", unsafe_allow_html=True)
 
         # Show CIPHER auto-selection explanation if it was used
