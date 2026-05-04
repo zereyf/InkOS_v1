@@ -1,7 +1,8 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v1: Language switcher — EN/AR/FR with RTL support.
+v9: Language switcher — EN/AR/FR with RTL support.
+Mobile-Optimized Selectbox Navigation.
 """
 
 import sys
@@ -19,23 +20,10 @@ st.markdown("""
         }
         .block-container { padding-top: 4rem !important; }
         
-        /* Tab Fix 1: VelvetCodex Gold Underline */
-        .stTabs [data-baseweb="tab-highlight"] {
-            background-color: #C9A84C !important;
-        }
-
-        /* Tab Fix 2: Horizontal Swipe on Mobile (Prevents wrapping bug) */
-        .stTabs [data-baseweb="tab-list"] {
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch !important;
-            padding-bottom: 5px;
-            scrollbar-width: none; /* Hide scrollbar Firefox */
-        }
-        
-        /* Hide scrollbar Chrome/Safari */
-        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
-            display: none; 
+        /* Make the navigation selectbox look more premium */
+        div[data-testid="stSelectbox"] > div[data-baseweb="select"] {
+            border-color: rgba(201,168,76,0.3) !important;
+            background-color: var(--bg-raised) !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -63,7 +51,6 @@ st.markdown(STYLES, unsafe_allow_html=True)
 # ── RTL MODE ──────────────────────────────────────────────────────────────────
 # When Arabic UI is active, inject a JS snippet that adds the
 # "rtl-mode" CSS class to the stApp element.
-# This flips all text direction and font without touching any component code.
 if is_rtl():
     st.markdown("""
     <script>
@@ -81,20 +68,26 @@ else:
 
 cfg = render_sidebar()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    t("tab_workspace"),
-    t("tab_archive"),
-    t("tab_security"),
-    t("tab_cognitive_map"),
-    t("tab_vault"),
-    t("tab_forge"),
-    t("tab_guide"),
-])
+# ── MOBILE-OPTIMIZED NAVIGATION ───────────────────────────────────────────────
+nav_options = {
+    t("tab_workspace"):     lambda: render_workspace(cfg),
+    t("tab_archive"):       render_archive,
+    t("tab_security"):      render_security_log,
+    t("tab_cognitive_map"): render_cognitive_map,
+    t("tab_vault"):         render_vault,
+    t("tab_forge"):         render_forge,
+    t("tab_guide"):         render_guide,
+}
 
-with tab1: render_workspace(cfg)
-with tab2: render_archive()
-with tab3: render_security_log()
-with tab4: render_cognitive_map()
-with tab5: render_vault()
-with tab6: render_forge()
-with tab7: render_guide()
+# The Dropdown Navigation Bar
+selected_nav = st.selectbox(
+    "Navigation", 
+    list(nav_options.keys()), 
+    label_visibility="collapsed"
+)
+
+# A subtle divider to separate navigation from the content
+st.markdown("<hr style='border: none; border-bottom: 1px solid rgba(201,168,76,0.15); margin-top: 0; margin-bottom: 15px;'>", unsafe_allow_html=True)
+
+# Execute the selected page
+nav_options[selected_nav]()
