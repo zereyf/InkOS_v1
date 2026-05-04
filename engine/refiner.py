@@ -3,12 +3,16 @@ engine/refiner.py — CIPHER Intelligence Engine
 ================================================
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
 
-v1 Upgrade: Deterministic Scoring Logic.
-Forces total score calculation in Python to prevent LLM mathematical hallucinations.
-Reduced RETRY_THRESHOLD to 70 for optimized performance.
+v13.1: Final Stability Patch.
+- Fixed NameError for _FALLBACK_AUDIT and other constants.
+- Enforced Deterministic Scoring (Score = Precision + Alignment + Efficiency).
+- Integrated Humanizer and Ambiguity Hardening logic.
 """
 
 import json
+import re
+import hashlib
+from datetime import datetime
 from typing import Optional, Tuple, Any
 from config import (
     client, TARGET_GUIDES, MODEL_ID, TEMPERATURE,
@@ -20,94 +24,80 @@ from engine.cognitive_map import detect_arabic_pattern
 from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
 from forge.persona_engine import inject_persona
 
-# Optimized for deterministic scoring
+# ── GLOBAL CONSTANTS & FALLBACKS ─────────────────────────────────────────────
 RETRY_THRESHOLD: int = 70
 MAX_RETRIES:     int = 1
 
-# ─────────────────────────────────────────────────────────────────────────────
-# IDENTITY & LOGIC BLOCKS
-# ─────────────────────────────────────────────────────────────────────────────
+_FALLBACK_AUDIT: dict = {
+    "score": 0, 
+    "critique": "Audit parse error — fallback applied.",
+    "precision": 0, 
+    "alignment": 0, 
+    "efficiency": 0,
+}
+
+# ── IDENTITY & PIPELINE LAYERS ───────────────────────────────────────────────
 CIPHER_IDENTITY: str = """
 IDENTITY:
 You are CIPHER — InkOS’s Cognitive Prompt Runtime.
-You are not an assistant. You are a deterministic compiler of prompts.
+You are a deterministic compiler of prompts. You do not chat; you execute.
 """
 
+CIPHER_REASONING_LAYER: str = """
+REASONING PROTOCOL:
+- Use internal <thinking> tags for all scratchpad logic.
+- Analyze the user's linguistic "Delta" (the gap between raw intent and executable prompt).
+- Map rhetorical weight (Arabic) to technical constraints (Model-Specific).
+"""
 
 CIPHER_COGNITIVE_PIPELINE: str = """
-COGNITIVE RUNTIME PIPELINE:
-1. PARSE INTENT | 2. NORMALIZE | 3. CONSTRAINTS | 4. DIALECT PROFILE | 5. COMPILE.
-
 AMBIGUITY RESOLUTION ENGINE (HARDENED):
-- NEVER ask for clarification.
-- If input is vague ("the thing", "it", "the project"), you MUST assume a high-stakes 
-  professional scenario based on the selected Framework.
-  • Professional -> Assume a Milestone Review or Sprint Planning.
-  • Technical -> Assume a Security Audit or Bug Bash.
-  • Creative -> Assume a Brand Strategy or Campaign Launch.
-- Replace vague nouns with concrete, high-utility professional equivalents.
+- NEVER ask for clarification or questions.
+- If input is vague ("the thing", "it", "plan"), assume high-stakes professional context.
+- Default Scenarios:
+  • Professional -> Milestone Review/Sprint Planning.
+  • Technical -> Security Audit/Bug Bash.
+  • Creative -> Brand Strategy/Campaign Launch.
 """
 
-# ... (Keep _humanize_result and _clamp_audit exactly as they are)
+# ── HELPER UTILITIES ─────────────────────────────────────────────────────────
 
-def _build_system_prompt(
-    target:           str,
-    framework:        str,
-    cognitive:        str,
-    islamic:          bool,
-    aesthetic_choice: str,
-    persona:          Optional[dict] = None,
-    retry_critique:   Optional[str]  = None,
-) -> str:
-    # (Existing logic for style, persona, and framework...)
-    
-    parts = [
-        CIPHER_IDENTITY,
-        persona_block,
-        framework_logic,
-        style,
-        cognitive,
-        ISLAMIC_CONTEXT_LAYER if islamic else "",
-        CIPHER_COGNITIVE_PIPELINE, # Our hardened version
-        retry_block,
-        "",
-        "OUTPUT CONTRACT:",
-        "Return ONLY pure JSON. The 'refined_prompt' should be a complete, ",
-        "opinionated, and high-utility executable artifact.",
-        "{",
-        '  "thinking": { ... },',
-        '  "refined_prompt": "<string OR object>",',
-        '  "audit": {',
-        '    "precision": <0-40: How much detail was added to vague inputs>,',
-        '    "alignment": <0-40: Adherence to target AI grammar>,',
-        '    "efficiency": <0-20: Prompt density>,',
-        '    "critique": "..."',
-        '  }',
-        "}"
-    ]
-    return "\n".join(filter(None, parts))
+def _escape_html(text: str) -> str:
+    """XSS protection for audit critiques."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
+def _humanize_result(result: Any) -> str:
+    """Transforms structured dictionaries into professional documents."""
+    if isinstance(result, dict):
+        lines = []
+        for key, value in result.items():
+            clean_key = str(key).replace("[", "").replace("]", "").replace("_", " ").upper()
+            if isinstance(value, list):
+                val_str = "\n".join([f"- {v}" for v in value])
+            elif isinstance(value, dict):
+                val_str = json.dumps(value, indent=2)
+            else:
+                val_str = str(value)
+            lines.append(f"### {clean_key}\n{val_str}\n")
+        return "\n".join(lines)
+    return str(result)
 
 def _clamp_audit(raw: dict) -> dict:
-    """
-    Ensures the audit metrics are within bounds and 
-    deterministically calculates the total score in Python.
-    """
+    """Calculates deterministic scores in Python to prevent LLM hallucinations."""
     def safe_int(val: object, ceiling: int) -> int:
         try:
-            # Strip % and handle floats/strings
+            # Clean string percentages or floats
             clean_val = str(val).replace("%", "").split(".")[0]
             return min(max(int(clean_val), 0), ceiling)
         except (TypeError, ValueError):
             return 0
     
-    # Extract components
     p = safe_int(raw.get("precision"),  40)
     a = safe_int(raw.get("alignment"),  40)
     e = safe_int(raw.get("efficiency"), 20)
     
-    # ── DETERMINISTIC MATH ──────────────────────────────────────────────────
-    # Python handles the addition to prevent LLM hallucinations.
+    # ── DETERMINISTIC SUMMATION ──────────────────────────────────────────
+    # This prevents the "9% bug" where the LLM hallucinates its own math.
     total_score = p + a + e
     
     return {
@@ -118,6 +108,7 @@ def _clamp_audit(raw: dict) -> dict:
         "efficiency": e,
     }
 
+# ── SYSTEM PROMPT BUILDER ────────────────────────────────────────────────────
 
 def _build_system_prompt(
     target:           str,
@@ -128,7 +119,7 @@ def _build_system_prompt(
     persona:          Optional[dict] = None,
     retry_critique:   Optional[str]  = None,
 ) -> str:
-    style = f"STYLE: {AESTHETIC_PRESETS.get(aesthetic_choice, '')}" if aesthetic_choice != "Raw (No Preset)" else ""
+    style = f"STYLE DIRECTION: {AESTHETIC_PRESETS.get(aesthetic_choice, '')}" if aesthetic_choice != "Raw (No Preset)" else ""
     persona_block = inject_persona(persona, target)
 
     if "Visual Director" in framework:
@@ -136,14 +127,15 @@ def _build_system_prompt(
     else:
         framework_logic = (
             f"ACTIVE FRAMEWORK: {framework}\n"
-            f"TARGET DIALECT: {target}\n"
-            f"SYNTAX GUIDE: {TARGET_GUIDES.get(target, '')}"
+            f"TARGET AI DIALECT: {target}\n"
+            f"DIALECT SYNTAX GUIDE: {TARGET_GUIDES.get(target, '')}"
         )
 
-    retry_block = f"CORRECTION: Previous score low. Critique: '{retry_critique}'" if retry_critique else ""
+    retry_block = f"CORRECTION REQUIRED: Previous score low. Critique: '{retry_critique}'" if retry_critique else ""
 
     parts = [
         CIPHER_IDENTITY,
+        CIPHER_REASONING_LAYER,
         persona_block,
         framework_logic,
         style,
@@ -151,68 +143,58 @@ def _build_system_prompt(
         ISLAMIC_CONTEXT_LAYER if islamic else "",
         CIPHER_COGNITIVE_PIPELINE,
         retry_block,
-        "OUTPUT CONTRACT: Return ONLY pure JSON.",
+        "",
+        "OUTPUT CONTRACT:",
+        "Return ONLY pure JSON. No markdown fences. No preamble.",
         "{",
-        '  "thinking": { ... },',
-        '  "refined_prompt": "<string OR object>",',
-        '  "audit": {',
-        '    "precision": <0-40: technical detail>,',
-        '    "alignment": <0-40: dialect adherence>,',
-        '    "efficiency": <0-20: token economy>,',
-        '    "critique": "<one brief sentence on optimization>"',
-        '  }',
+        '  "thinking": { "intent": "...", "logic": "..." },',
+        '  "refined_prompt": "<executable artifact or structured dictionary>",',
+        '  "audit": { "precision": 0, "alignment": 0, "efficiency": 0, "critique": "..." }',
         "}"
     ]
     return "\n".join(filter(None, parts))
 
+# ── EXECUTION LOGIC ──────────────────────────────────────────────────────────
 
-def _call_cipher(
-    system_prompt: str,
-    user_text:     str,
-) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
+def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
     try:
         completion = client.chat.completions.create(
             model=MODEL_ID,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": f"[[INPUT]]\n{user_text}"},
+                {"role": "user",   "content": f"[[INPUT_START]]\n{user_text}\n[[INPUT_END]]"},
             ],
             temperature=TEMPERATURE,
             max_tokens=MAX_TOKENS,
             response_format={"type": "json_object"}
         )
         raw_json = completion.choices[0].message.content
-        parsed_data = json.loads(raw_json)
+        parsed = json.loads(raw_json)
         
-        refined_raw = parsed_data.get("refined_prompt")
+        refined_raw = parsed.get("refined_prompt")
+        audit = _clamp_audit(parsed.get("audit", {}))
         
-        # Calculate score deterministically using our clamping function
-        audit = _clamp_audit(parsed_data.get("audit", {}))
-        
-        if not refined_raw:
-             return None, None, "Parse failed: 'refined_prompt' missing."
-             
-        refined_final = _humanize_result(refined_raw)
-        return refined_final, audit, None
+        if refined_raw is None:
+            return None, None, "Missing 'refined_prompt' in JSON."
+            
+        return _humanize_result(refined_raw), audit, None
 
     except Exception as e:
         return None, None, str(e)
 
-
 def detect_best_target(user_text: str) -> tuple:
-    system_prompt = f"Identify best target AI.\n{TARGET_SELECTION_GUIDE}"
+    system_prompt = f"Select the best target AI.\n{TARGET_SELECTION_GUIDE}"
     try:
         completion = client.chat.completions.create(
             model=MODEL_ID,
             messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_text[:500]}],
             response_format={"type": "json_object"},
-            temperature=0.1, max_tokens=100
+            temperature=0.1, max_tokens=100,
         )
         raw = json.loads(completion.choices[0].message.content)
         return str(raw.get("target", "Claude")), str(raw.get("reason", ""))
     except:
         return "Claude", "Auto-selection failed."
-
 
 def run_refinement_and_audit(
     user_text:        str,
@@ -231,12 +213,21 @@ def run_refinement_and_audit(
         if detected:
             cognitive = f"PATTERN: {detected['pattern']} -> {detected['prompt_paradigm']}"
         else:
-            cognitive = "Arabic input. Map logic, do not translate."
+            cognitive = "Arabic input. Map logic conceptually, no literal translation."
 
     sys_prompt = _build_system_prompt(target, framework, cognitive, islamic_mode, aesthetic_choice, persona)
     refined, audit, error = _call_cipher(sys_prompt, user_text)
 
     if error:
+        # Fixed: Ensuring _FALLBACK_AUDIT is clearly scoped
         return f"[CIPHER ERROR]: {error}", dict(_FALLBACK_AUDIT), None
+
+    # Retry logic if score is too low
+    score = audit.get("score", 0) if audit else 0
+    if score < RETRY_THRESHOLD and audit and audit.get("critique"):
+        retry_prompt = _build_system_prompt(target, framework, cognitive, islamic_mode, aesthetic_choice, persona, retry_critique=audit["critique"])
+        r2, a2, e2 = _call_cipher(retry_prompt, user_text)
+        if not e2 and r2 and a2 and a2.get("score", 0) >= score:
+            return r2, a2, detected
 
     return refined, audit, detected
