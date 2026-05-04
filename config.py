@@ -1,7 +1,7 @@
 """
 config.py — Environment Bootstrap & Application Constants
 ==========================================================
-Updated v1: Added Aesthetic Presets, Visual Dialects, and Ultimate Visual Director Framework.
+Updated v1.0: Added Aesthetic Presets, Visual Dialects, and Ultimate Visual Director Framework.
 """
 
 import os
