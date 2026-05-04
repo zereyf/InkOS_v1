@@ -72,3 +72,30 @@ AESTHETIC_PRESETS: dict = {
 # ── UI CONSTANTS ──────────────────────────────────────────────────────────────
 INPUT_MAX_CHARS: int = 2000
 INPUT_WARN_THRESHOLD: int = 1800
+
+# ── AUTO TARGET SELECTION ─────────────────────────────────────────────────────
+# The "Auto" option triggers CIPHER's target analysis before refinement.
+# CIPHER reads the input and selects the best target based on intent signals.
+AUTO_SELECT_LABEL: str = "⚡ Auto (CIPHER Selects)"
+
+# Decision rules CIPHER uses to select the best target
+TARGET_SELECTION_GUIDE: str = """
+Given a raw user input, determine the single best AI target from this list:
+- Claude: Best for structured analysis, long-form writing, document creation,
+  coding tasks, research synthesis, XML-structured outputs, academic work.
+- ChatGPT: Best for conversational tasks, brainstorming, quick rewrites,
+  marketing copy, social media, general Q&A, creative writing.
+- Manus AI: Best for multi-step agentic tasks, web research pipelines,
+  file operations, automation sequences, tasks requiring tool use.
+- Midjourney/Flux: Best for image generation, visual art direction,
+  photography prompts, design briefs, aesthetic direction.
+- DALL-E 3: Best for realistic image generation, scene illustration,
+  product mockups, visual storytelling.
+
+Selection signals to look for:
+  Code / technical / analysis → Claude
+  Creative / social / copy    → ChatGPT
+  Research / automation / web → Manus AI
+  Art / image / visual        → Midjourney/Flux or DALL-E 3
+  Arabic scholarly / Sharia   → Claude (XML structure handles Arabic constraints best)
+"""
