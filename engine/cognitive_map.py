@@ -1,7 +1,7 @@
 """
 engine/cognitive_map.py — Arabic Cognitive Map Engine
 =======================================================
-The intellectual core of VelvetCodex. Isolated from UI and security concerns.
+The intellectual core of InkOS. Isolated from UI and security concerns.
 
 B-FIX APPLIED — Risk 2: Unicode Normalization
   Arabic text typed on different keyboards produces visually identical
@@ -28,6 +28,23 @@ from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER  # noqa: F401 — re-expo
 # prompt_instruction, and color. No other file needs to change.
 # ─────────────────────────────────────────────────────────────────────────────
 ARABIC_COGNITIVE_MAP: dict = {
+    "الأمثال والكنايات": {
+        "trigger_words":      [
+            "العين بصيرة واليد قصيرة", 
+            "فاقد الشيء لا يعطيه", 
+            "عادت حليمة", 
+            "سبق السيف العذل",
+            "بلغ السيل الزبى"
+        ],
+        "prompt_paradigm":    "Metaphorical Abstraction & Strategic Framing",
+        "prompt_instruction": (
+            "CRITICAL: Do not translate literal nouns from the input idiom (e.g., eye, hand, water). "
+            "Extract the underlying operational dilemma (e.g., resource asymmetry, "
+            "capability gaps, regression, point of no return) and frame the prompt "
+            "around solving or analyzing that specific strategic tension."
+        ),
+        "color": "#8E44AD", # Obsidian/Purple tech-noir accent
+    },
     "التدرج": {
         "trigger_words":      ["تدريجياً", "خطوة بخطوة", "ابدأ من", "من البسيط", "تدرج"],
         "prompt_paradigm":    "Chain-of-Thought Escalation",
