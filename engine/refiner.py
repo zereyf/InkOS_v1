@@ -3,7 +3,7 @@ engine/refiner.py — CIPHER Intelligence Engine
 ================================================
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
 
-v13.2: Executive Humanizer & Audit Resilience.
+v1: Executive Humanizer & Audit Resilience.
 - Recursive humanizer for complex lists of objects (Tasks/Resources).
 - Audit Logic: Balanced scoring for strategic assumptions.
 - Deterministic Math: Prevents 0% hallucinations on high-utility artifacts.
