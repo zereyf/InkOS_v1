@@ -3,12 +3,8 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
 
-Responsibilities:
-  - Render text input with char counter
-  - Run live pattern detection before execution (zero cost)
-  - Execute sanitize → rate_limit → refine pipeline
-  - Display pattern card, score block, and refined asset
-  - Write results to session state via K keys
+v12.4: Type-Safe Refinement Execution.
+Fixed AttributeError on result.startswith() by implementing res_str validation.
 """
 
 import hashlib
@@ -43,15 +39,17 @@ def _render_pattern_card(pattern: dict, label: str = None) -> None:
 
 
 def _render_score_block(audit: dict, pattern: Optional[dict]) -> None:
-    score      = int(audit.get("score",     0))
-    precision  = int(audit.get("precision",  0))
-    alignment  = int(audit.get("alignment",  0))
-    efficiency = int(audit.get("efficiency", 0))
-    critique   = str(audit.get("critique",  ""))
+    # Safe extraction of audit metrics
+    audit_data = audit or {}
+    score      = int(audit_data.get("score",     0))
+    precision  = int(audit_data.get("precision",  0))
+    alignment  = int(audit_data.get("alignment",  0))
+    efficiency = int(audit_data.get("efficiency", 0))
+    critique   = str(audit_data.get("critique",  ""))
 
-    p_pct = round((precision  / 40) * 100)
-    a_pct = round((alignment  / 40) * 100)
-    e_pct = round((efficiency / 20) * 100)
+    p_pct = round((precision  / 40) * 100) if precision else 0
+    a_pct = round((alignment  / 40) * 100) if alignment else 0
+    e_pct = round((efficiency / 20) * 100) if efficiency else 0
 
     # Pattern card inside results
     if pattern:
@@ -90,22 +88,19 @@ def _render_score_block(audit: dict, pattern: Optional[dict]) -> None:
 
 
 def render_workspace(cfg: dict) -> None:
-    """
-    Renders Tab 1 — Workspace.
-    cfg: SidebarConfig dict from ui/sidebar.py
-    """
+    """Renders the Workspace (Tab 1) logic and UI."""
     st.markdown(
         f'<div class="vc-header"><span class="status-dot"></span>{t("workspace_header")}</div>',
         unsafe_allow_html=True,
     )
 
-    # Active persona badge — shown when a persona is loaded
+    # Active persona badge
     active_persona = cfg.get("active_persona")
     if active_persona:
         from forge.persona_engine import get_persona_display_name
         pname = get_persona_display_name(active_persona)
         st.markdown(f"""
-        <div style="
+        <div class="persona-active-badge" style="
             display:inline-flex;align-items:center;gap:8px;
             background:rgba(201,168,76,0.07);
             border:1px solid rgba(201,168,76,0.25);
@@ -155,9 +150,8 @@ def render_workspace(cfg: dict) -> None:
 
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
-    # ── EXECUTE ────────────────────────────────────────────────────────────────
-    if st.button(t("execute_btn"), use_container_width=True, key="btn_execute",
-                 help=t("execute_help")):
+    # ── EXECUTION PIPELINE ───────────────────────────────────────────────────
+    if st.button(t("execute_btn"), use_container_width=True, key="btn_execute"):
         cleaned, violations = sanitize_input(raw_input or "")
 
         if not cleaned:
@@ -178,25 +172,20 @@ def render_workspace(cfg: dict) -> None:
             with st.status(t("status_processing"), expanded=True) as status:
                 st.write(t("status_mapping"))
 
-                # ── AUTO TARGET RESOLUTION ─────────────────────────────────
-                # If user left target on Auto, CIPHER analyses the input
-                # and selects the best target before refinement begins.
-                # If user manually selected a target, respect that choice.
                 resolved_target = cfg["target_model"]
 
                 if cfg["target_model"] == AUTO_SELECT_LABEL:
-                    st.write("🎯 CIPHER analysing best target for this input...")
+                    st.write("🎯 CIPHER analysing best target...")
                     auto_target, auto_reason = detect_best_target(cleaned)
                     resolved_target = auto_target
                     st.session_state[K.AUTO_TARGET] = auto_target
                     st.session_state[K.AUTO_REASON] = auto_reason
-                    st.write(f"✓ Target selected: **{auto_target}** — {auto_reason}")
+                    st.write(f"✓ Target selected: **{auto_target}**")
                 else:
-                    # Clear auto state when user manually selects
                     st.session_state[K.AUTO_TARGET] = None
                     st.session_state[K.AUTO_REASON] = None
 
-                # CIPHER may fire a retry if first score < 80
+                # Execute Refinement and Audit
                 result, audit, pattern = run_refinement_and_audit(
                     user_text        = cleaned,
                     target           = resolved_target,
@@ -207,24 +196,19 @@ def render_workspace(cfg: dict) -> None:
                     persona          = cfg.get("active_persona"),
                 )
                 
-                score = (audit or {}).get("score", 0)
+                # ── TYPE-SAFE VALIDATION ─────────────────────────────────────
+                # Defensive check: Ensure result is a string before calling startswith
+                res_str = str(result) if result is not None else ""
+                
+                audit_safe = audit or {}
+                score = audit_safe.get("score", 0)
                 retry_msg = " (retry applied)" if score >= 80 else ""
                 st.write(t("status_compiling") + retry_msg)
 
-                # ── GRACEFUL DEGRADATION (ERROR HANDLING) ──────────────────
-                if result and result.startswith("[CIPHER ERROR]"):
+                if res_str.startswith("[CIPHER ERROR]"):
                     status.update(label="Engine Offline", state="error", expanded=False)
-                    
-                    # Log the actual scary error to the console for YOU to see
-                    print(f"Backend API Error: {result}")
-                    
-                    # Show a polite, professional message to the USER
-                    st.warning(
-                        "**The Cognitive Engine is currently busy.**\n\n"
-                        "We are experiencing high traffic or a temporary API disruption. "
-                        "Please wait a moment and try executing your prompt again.",
-                        icon="⚠️"
-                    )
+                    st.warning("**The Cognitive Engine is currently busy.** Please try again.", icon="⚠️")
+                    print(f"Backend API Error: {res_str}")
                 else:
                     st.write(t("status_done"))
                     status.update(label=t("status_complete"), state="complete", expanded=False)
@@ -235,36 +219,35 @@ def render_workspace(cfg: dict) -> None:
                     st.session_state[K.LAST_PATTERN] = pattern
 
                     st.session_state[K.HISTORY].insert(0, {
-                        "id":        hashlib.md5(
-                                         f"{cleaned}{datetime.now().isoformat()}".encode()
-                                     ).hexdigest()[:8],
+                        "id":        hashlib.md5(f"{cleaned}{datetime.now()}".encode()).hexdigest()[:8],
                         "time":      datetime.now().strftime("%H:%M:%S"),
                         "target":    resolved_target,
                         "framework": cfg["framework"],
                         "aesthetic": cfg["aesthetic_choice"],
                         "input":     cleaned,
                         "output":    result,
-                        "score":     audit.get("score", 0),
+                        "score":     score,
                         "pattern":   pattern["pattern"] if pattern else None,
                         "islamic":   cfg["islamic_mode"],
                     })
 
-    # ── RESULTS ────────────────────────────────────────────────────────────────
+    # ── RESULTS RENDERING ─────────────────────────────────────────────────────
     last_result  = st.session_state.get(K.LAST_RESULT)
     last_audit   = st.session_state.get(K.LAST_AUDIT) or {}
     last_input   = st.session_state.get(K.LAST_INPUT) or ""
     last_pattern = st.session_state.get(K.LAST_PATTERN)
 
-    # UPDATED: Replaced [REFINEMENT ERROR] with [CIPHER ERROR]
-    if last_result and not last_result.startswith("[CIPHER ERROR]"):
+    # Safe string conversion for display check
+    last_res_str = str(last_result) if last_result is not None else ""
+
+    if last_result and not last_res_str.startswith("[CIPHER ERROR]"):
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # Show CIPHER auto-selection explanation if it was used
         auto_target = st.session_state.get(K.AUTO_TARGET)
         auto_reason = st.session_state.get(K.AUTO_REASON)
         if auto_target and auto_reason:
             st.markdown(f"""
-            <div style="
+            <div class="auto-target-pill" style="
                 display:inline-flex;align-items:center;gap:8px;
                 background:rgba(201,168,76,0.07);
                 border:1px solid rgba(201,168,76,0.25);
@@ -273,102 +256,66 @@ def render_workspace(cfg: dict) -> None:
                 color:var(--gold);margin-bottom:12px;
             ">
                 <span class="status-dot"></span>
-                CIPHER auto-selected: <strong>{auto_target}</strong>
+                CIPHER selected: <strong>{auto_target}</strong>
                 &nbsp;—&nbsp;
                 <span style="color:var(--text-muted);">{auto_reason}</span>
             </div>
             """, unsafe_allow_html=True)
 
-        left, right = st.columns([1, 2], gap="large")
+        l_col, r_col = st.columns([1, 2], gap="large")
 
-        with left:
+        with l_col:
             _render_score_block(last_audit, last_pattern)
 
-        with right:
-            st.markdown(
-                f'<div class="vc-header" style="font-size:0.6rem;">{t("original_intent")}</div>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f'<div class="vc-card" style="font-size:0.8rem;line-height:1.75;min-height:72px;">'
-                f'{_escape(last_input)}</div>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>',
-                unsafe_allow_html=True,
-            )
-            # WHY text_area over st.code:
-            # st.code renders in a fixed-height non-resizable box.
-            # Users cannot easily select, copy, or read long prompts.
-            # text_area is resizable, fully selectable, and copyable.
-            # disabled=True makes it read-only while keeping it interactive.
+        with r_col:
+            st.markdown(f'<div class="vc-header" style="font-size:0.6rem;">{t("original_intent")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="vc-card" style="font-size:0.8rem;line-height:1.75;">{_escape(last_input)}</div>', unsafe_allow_html=True)
+            
+            st.markdown(f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>', unsafe_allow_html=True)
             st.text_area(
                 "refined_output",
                 value=last_result,
                 height=220,
-                disabled=False,
-                label_visibility="collapsed",
                 key="refined_output_area",
-                help=t("refined_help"),
+                label_visibility="collapsed",
             )
             st.download_button(
                 t("download_prompt"),
                 data=last_result,
-                file_name=(
-                    f"vc_{cfg['target_model'].lower().replace(' ', '_')}"
-                    f"_{datetime.now().strftime('%H%M%S')}.txt"
-                ),
+                file_name=f"inkos_{datetime.now().strftime('%H%M%S')}.txt",
                 key="btn_dl_result",
             )
-            # ── SAVE TO VAULT ──────────────────────────────────────────────────
-            from vault.supabase_client import SUPABASE_MISSING as _SB_MISSING
-            if not _SB_MISSING:
+            
+            # Save to Vault Section
+            from vault.supabase_client import SUPABASE_MISSING
+            if not SUPABASE_MISSING:
                 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-                st.markdown(
-                    f'<div class="vc-header" style="font-size:0.6rem;margin-top:4px;">{t("save_to_vault")}</div>',
-                    unsafe_allow_html=True,
-                )
+                st.markdown(f'<div class="vc-header" style="font-size:0.6rem;margin-top:4px;">{t("save_to_vault")}</div>', unsafe_allow_html=True)
                 v1, v2 = st.columns([3, 2])
                 with v1:
-                    vault_title = st.text_input(
-                        "Title",
-                        placeholder=t("vault_title_ph"),
-                        key="vault_title_input",
-                        label_visibility="collapsed",
-                    )
+                    v_title = st.text_input("Title", placeholder=t("vault_title_ph"), label_visibility="collapsed", key="v_title")
                 with v2:
-                    vault_tags = st.text_input(
-                        "Tags",
-                        placeholder=t("vault_tags_ph"),
-                        key="vault_tags_input",
-                        label_visibility="collapsed",
-                    )
+                    v_tags = st.text_input("Tags", placeholder=t("vault_tags_ph"), label_visibility="collapsed", key="v_tags")
 
-                if st.button(t("save_vault_btn"), use_container_width=True, key="btn_save_vault"):
-                    if not vault_title.strip():
+                if st.button(t("save_vault_btn"), use_container_width=True, key="btn_save_v"):
+                    if not v_title.strip():
                         st.warning(t("save_vault_warning"))
                     else:
-                        # Spinner gives immediate feedback — user knows click registered
                         with st.spinner(t("saving_vault")):
                             from vault.vault_engine import save_prompt
-                            audit_data   = st.session_state.get(K.LAST_AUDIT) or {}
-                            pattern_data = st.session_state.get(K.LAST_PATTERN)
                             _, save_err = save_prompt(
                                 user_hash  = st.session_state.get(K.USER_HASH, ""),
-                                title      = vault_title,
-                                tags       = vault_tags,
+                                title      = v_title,
+                                tags       = v_tags,
                                 content    = last_result,
                                 target     = cfg.get("target_model", ""),
                                 framework  = cfg.get("framework", ""),
-                                score      = audit_data.get("score", 0),
-                                pattern    = pattern_data["pattern"] if pattern_data else "",
+                                score      = (last_audit or {}).get("score", 0),
+                                pattern    = last_pattern["pattern"] if last_pattern else "",
                                 islamic    = cfg.get("islamic_mode", False),
                                 aesthetic  = cfg.get("aesthetic_choice", ""),
                             )
-                        # Feedback always visible — success or failure, never silence
                         if save_err:
                             st.error(t('save_vault_error', error=save_err))
                         else:
-                            st.session_state[K.VAULT_STATS] = {}
-                            st.success(t('save_vault_success', title=vault_title))
+                            st.success(t('save_vault_success', title=v_title))
