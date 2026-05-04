@@ -1,41 +1,68 @@
 """
 InkOS | app.py — Entry Point
-v1: Sidebar Branding Restored.
+v1: Fixed Imports & Layout.
 """
 import sys
 import os
+
+# MANDATORY: This allows sub-folders like /ui to see config.py in the root
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 st.set_page_config(page_title="InkOS", page_icon="⚡", layout="wide")
 
-from state import init_session_state
+from config import API_KEY_MISSING
+from state import init_session_state, K
 from ui.styles import load_css
 from ui.sidebar import render_sidebar
 from ui.tabs.workspace import render_workspace
-# ... (rest of your imports)
+from ui.tabs.archive import render_archive
+from ui.tabs.security_log import render_security_log
+from ui.tabs.cognitive_map import render_cognitive_map
+from ui.tabs.vault import render_vault
+from ui.tabs.forge import render_forge
+from ui.tabs.guide import render_guide
+from i18n.translations import t, is_rtl
+
+if API_KEY_MISSING:
+    st.error("SYSTEM ERROR: GROQ_API_KEY not found in environment.")
+    st.stop()
 
 init_session_state()
 load_css()
 
-# ── RTL & SIDEBAR BRANDING FIX ───────────────────────────────────────────────
+# ── RTL MODE & GLOBAL UI TWEAKS ──────────────────────────────────────────────
 st.markdown("""
     <style>
         header[data-testid="stHeader"] { z-index: 1000 !important; }
         .block-container { padding-top: 2rem !important; }
-        
-        /* Make sure the sidebar wordmark looks elite */
-        [data-testid="stSidebar"] .vc-wordmark {
-            text-shadow: 0 0 10px rgba(201,168,76,0.3);
-            margin-top: 10px;
-        }
     </style>
 """, unsafe_allow_html=True)
 
-# (Insert your RTL/LTR Javascript here)
+if is_rtl():
+    st.markdown("<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.add('rtl-mode');</script>", unsafe_allow_html=True)
+else:
+    st.markdown("<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.remove('rtl-mode');</script>", unsafe_allow_html=True)
 
+# Render the sidebar and get config
 cfg = render_sidebar()
 
 # ── NAVIGATION ────────────────────────────────────────────────────────────────
-# (Insert your nav_options and selectbox logic here)
-# ...
+nav_options = {
+    t("tab_workspace"):     lambda: render_workspace(cfg),
+    t("tab_archive"):       render_archive,
+    t("tab_security"):      render_security_log,
+    t("tab_cognitive_map"): render_cognitive_map,
+    t("tab_vault"):         render_vault,
+    t("tab_forge"):         render_forge,
+    t("tab_guide"):         render_guide,
+}
+
+st.markdown('<div class="nav-safe-zone">', unsafe_allow_html=True)
+selected_nav = st.selectbox("Navigation", list(nav_options.keys()), label_visibility="collapsed")
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("<hr style='border: none; border-bottom: 1px solid rgba(201,168,76,0.15); margin: 0 0 20px 0;'>", unsafe_allow_html=True)
+
+# Run page
+nav_options[selected_nav]()
