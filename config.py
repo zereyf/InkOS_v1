@@ -1,7 +1,7 @@
 """
 config.py — Environment Bootstrap & Application Constants
 ==========================================================
-Updated v1.0: Added Aesthetic Presets, Visual Dialects, and Ultimate Visual Director Framework.
+Updated v1.2: Added Aesthetic Presets, Visual Dialects, and Ultimate Visual Director Framework.
 """
 
 import os
@@ -18,22 +18,12 @@ API_KEY_MISSING: bool = not bool(_api_key)
 # ── MODEL CONFIG ──────────────────────────────────────────────────────────────
 MODEL_ID:    str = "llama-3.3-70b-versatile"
 TEMPERATURE: float = 0.3
-MAX_TOKENS:  int   = 4096  # Increased for complex cognitive JSON outputs
+MAX_TOKENS:  int   = 1536
 
 # ── RATE LIMITING ─────────────────────────────────────────────────────────────
 # Required by security/rate_limiter.py
 RATE_WINDOW_SECONDS: int = 60
 RATE_MAX_CALLS:      int = 10
-
-# ── LOGIC FRAMEWORKS ──────────────────────────────────────────────────────────
-# Required by ui/sidebar.py
-LOGIC_FRAMEWORKS: list = [
-    "Professional (RACE)",
-    "Technical (Debugger)",
-    "Academic",
-    "Creative",
-    "Visual Director (Flux/MJ)"
-]
 
 # ── TARGET AI DIALECT GUIDES ──────────────────────────────────────────────────
 TARGET_GUIDES: dict = {
@@ -79,7 +69,7 @@ AESTHETIC_PRESETS: dict = {
     )
 }
 
-# ── VISUAL DIRECTOR ENGINE ────────────────────────────────────────────────────
+# ── LOGIC FRAMEWORKS ──────────────────────────────────────────────────────────
 VISUAL_DIRECTOR_PROMPT: str = """
 You are an Elite Visual Synthesis Engine. Your objective is to transform raw concepts into professional, studio-grade image generation prompts.
 
@@ -101,8 +91,11 @@ INPUT_MAX_CHARS: int = 2000
 INPUT_WARN_THRESHOLD: int = 1800
 
 # ── AUTO TARGET SELECTION ─────────────────────────────────────────────────────
+# The "Auto" option triggers CIPHER's target analysis before refinement.
+# CIPHER reads the input and selects the best target based on intent signals.
 AUTO_SELECT_LABEL: str = "⚡ Auto (CIPHER Selects)"
 
+# Decision rules CIPHER uses to select the best target
 TARGET_SELECTION_GUIDE: str = """
 Given a raw user input, determine the single best AI target from this list:
 - Claude: Best for structured analysis, long-form writing, document creation,
