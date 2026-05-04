@@ -1,12 +1,15 @@
 """
 InkOS | app.py — Entry Point
-v1: Collision-resistant Layout.
+v1: Final Production UI with Main Page Branding.
 """
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import hashlib
 import streamlit as st
+from datetime import datetime
+
 st.set_page_config(page_title="InkOS", page_icon="⚡", layout="wide")
 
 from config import API_KEY_MISSING
@@ -31,15 +34,21 @@ init_session_state()
 # ── LOAD EXTERNAL DESIGN ──────────────────────────────────────────────────────
 load_css()
 
-# ── RTL & HEADER PROTECTION ──────────────────────────────────────────────────
-# This pushes the content down to make room for the sticky logo
+# ── HEADER SPACING & Z-INDEX ──────────────────────────────────────────────────
 st.markdown("""
     <style>
         header[data-testid="stHeader"] { z-index: 1000 !important; }
-        .block-container { padding-top: 6.5rem !important; }
+        .block-container { padding-top: 2.5rem !important; }
+        
+        .main-header-container {
+            text-align: center;
+            margin-bottom: 25px;
+            animation: fadeUp 0.6s ease both;
+        }
     </style>
 """, unsafe_allow_html=True)
 
+# ── RTL MODE ──────────────────────────────────────────────────────────────────
 if is_rtl():
     st.markdown("<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.add('rtl-mode');</script>", unsafe_allow_html=True)
 else:
@@ -47,7 +56,15 @@ else:
 
 cfg = render_sidebar()
 
-# ── NAVIGATION ────────────────────────────────────────────────────────────────
+# ── MAIN PAGE BRANDING ────────────────────────────────────────────────────────
+st.markdown(f"""
+    <div class="main-header-container">
+        <div class="vc-wordmark">⚡ INKOS</div>
+        <div class="vc-wordmark-sub">ARABIC COGNITIVE PROMPT ENGINE</div>
+    </div>
+""", unsafe_allow_html=True)
+
+# ── NAVIGATION SYSTEM ─────────────────────────────────────────────────────────
 nav_options = {
     t("tab_workspace"):     lambda: render_workspace(cfg),
     t("tab_archive"):       render_archive,
@@ -67,8 +84,8 @@ selected_nav = st.selectbox(
 )
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Divider
+# Subtle Divider
 st.markdown("<hr style='border: none; border-bottom: 1px solid rgba(201,168,76,0.15); margin: 0 0 20px 0;'>", unsafe_allow_html=True)
 
-# Run Page
+# ── PAGE EXECUTION ────────────────────────────────────────────────────────────
 nav_options[selected_nav]()
