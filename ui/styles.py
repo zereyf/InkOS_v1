@@ -1,5 +1,5 @@
 """
-ui/styles.py — VelvetCodex Design System
+ui/styles.py — InkOS Design System
 ==========================================
 The full CSS string exported as a single constant.
 """
