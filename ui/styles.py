@@ -319,5 +319,45 @@ label[data-testid="stWidgetLabel"] p, .stSelectbox label, .stRadio label span { 
     left: auto !important;
 }
 
+/* ── UNIFIED LANGUAGE SEGMENTS (NEW) ── */
+/* Targets the horizontal grouping for language buttons in sidebar */
+[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:has(button) {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 4px !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    padding: 4px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--text-dim) !important;
+}
+
+/* Force buttons into slim segments */
+[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:has(button) button {
+    flex: 1 !important;
+    height: 32px !important;
+    background: transparent !important;
+    border: none !important;
+    font-size: 0.62rem !important;
+    color: var(--text-muted) !important;
+    border-radius: 6px !important;
+    text-transform: uppercase !important;
+    padding: 0 !important;
+    letter-spacing: 0.1em !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+/* Hover effect */
+[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:has(button) button:hover {
+    color: var(--gold) !important;
+    background: rgba(201, 168, 76, 0.08) !important;
+}
+
+/* Tip: Highlighting the active selection if using st.radio logic */
+[data-testid="stSidebar"] div[role="radiogroup"]:has(input:checked) label {
+    background: rgba(201, 168, 76, 0.12) !important;
+    color: var(--gold) !important;
+}
+
 </style>
 """
