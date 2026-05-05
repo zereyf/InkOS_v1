@@ -3,16 +3,16 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
 
-v15.0: THE DYNAMIC IDENTITY PATCH
-- Integrated 'brand_identity' payload into the compiler execution.
-- Added 1-Click "Send to AI" quick-launch buttons for ChatGPT and Claude.
-- Improved terminal-style loading states to prevent UI jitter.
-- Integrated CIPHER auto-target visual telemetry.
+Responsibilities:
+  - Render text input with char counter
+  - Run live pattern detection before execution (zero cost)
+  - Execute sanitize → rate_limit → refine pipeline
+  - Display pattern card, score block, and refined asset
+  - Write results to session state via K keys
 """
 
 import hashlib
 import streamlit as st
-import urllib.parse
 from datetime import datetime
 from typing import Optional
 
@@ -21,7 +21,7 @@ from security.sanitizer import sanitize_input
 from security.rate_limiter import check_rate_limit
 from engine.cognitive_map import detect_arabic_pattern
 from engine.refiner import run_refinement_and_audit, detect_best_target
-from config import INPUT_MAX_CHARS, INPUT_WARN_THRESHOLD, AUTO_SELECT_LABEL, client
+from config import INPUT_MAX_CHARS, INPUT_WARN_THRESHOLD, AUTO_SELECT_LABEL
 from i18n.translations import t
 
 
@@ -31,7 +31,6 @@ def _escape(text: str) -> str:
 
 
 def _render_pattern_card(pattern: dict, label: str = None) -> None:
-    """Renders the rhetorical pattern identification card."""
     color = pattern.get("color", "#C9A84C")
     lbl = label or t("pattern_identified")
     st.markdown(f"""
@@ -43,55 +42,70 @@ def _render_pattern_card(pattern: dict, label: str = None) -> None:
     """, unsafe_allow_html=True)
 
 
-def _render_telemetry_block(audit: dict, pattern: Optional[dict], output_text: str, target_model: str) -> None:
-    """Renders real system telemetry instead of fake progress bars."""
-    audit_data = audit or {}
-    critique   = str(audit_data.get("critique",  "Standard Text Compilation"))
-    
-    # Calculate real data
-    est_tokens = int(len(output_text.split()) * 1.3)
-    char_count = len(output_text)
-    
+def _render_score_block(audit: dict, pattern: Optional[dict]) -> None:
+    score      = int(audit.get("score",     0))
+    precision  = int(audit.get("precision",  0))
+    alignment  = int(audit.get("alignment",  0))
+    efficiency = int(audit.get("efficiency", 0))
+    critique   = str(audit.get("critique",  ""))
+
+    p_pct = round((precision  / 40) * 100)
+    a_pct = round((alignment  / 40) * 100)
+    e_pct = round((efficiency / 20) * 100)
+
+    # Pattern card inside results
     if pattern:
         color = pattern.get("color", "#C9A84C")
         st.markdown(f"""
         <div class="pattern-card" style="margin-bottom:12px;">
-            <span class="p-label">Linguistic Engine</span>
+            <span class="p-label">Engine Applied</span>
             <span class="p-arabic" style="color:{color};">{pattern['pattern']}</span>
             <span class="p-paradigm" style="color:{color};">→ {pattern['prompt_paradigm']}</span>
         </div>
         """, unsafe_allow_html=True)
 
+    critique_html = f'<div class="critique-line">{critique}</div>' if critique else ''
     st.markdown(f"""
-    <div class="score-block" style="padding: 16px;">
-        <div class="score-lbl" style="font-size: 0.75rem; letter-spacing: 2px; color: var(--gold); margin-bottom: 12px;">
-            [ SYSTEM TELEMETRY ]
+    <div class="score-block">
+        <div class="score-num">{score}<span>%</span></div>
+        <div class="score-lbl">{t("refinement_quality")}</div>
+        <div class="bar-row">
+            <span class="bar-lbl">{t("precision")}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:{p_pct}%;background:#C9A84C;"></div></div>
+            <span class="bar-val">{precision}/40</span>
         </div>
-        <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); line-height: 1.8;">
-            <span style="color:#7C9EBF;">></span> <b>TARGET:</b> {target_model}<br>
-            <span style="color:#7C9EBF;">></span> <b>ROUTING:</b> {critique}<br>
-            <span style="color:#4CAF9A;">></span> <b>EST. TOKENS:</b> {est_tokens}<br>
-            <span style="color:#4CAF9A;">></span> <b>CHARS:</b> {char_count}<br>
-            <span style="color:#C9A84C;">></span> <b>STATUS:</b> OPTIMIZED
+        <div class="bar-row">
+            <span class="bar-lbl">{t("alignment")}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:{a_pct}%;background:#7C9EBF;"></div></div>
+            <span class="bar-val">{alignment}/40</span>
         </div>
+        <div class="bar-row">
+            <span class="bar-lbl">{t("efficiency")}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:{e_pct}%;background:#4CAF9A;"></div></div>
+            <span class="bar-val">{efficiency}/20</span>
+        </div>
+        {critique_html}
     </div>
     """, unsafe_allow_html=True)
 
 
 def render_workspace(cfg: dict) -> None:
-    """Main Workspace Tab (Tab 1) logic."""
+    """
+    Renders Tab 1 — Workspace.
+    cfg: SidebarConfig dict from ui/sidebar.py
+    """
     st.markdown(
         f'<div class="vc-header"><span class="status-dot"></span>{t("workspace_header")}</div>',
         unsafe_allow_html=True,
     )
 
-    # Active persona badge
+    # Active persona badge — shown when a persona is loaded
     active_persona = cfg.get("active_persona")
     if active_persona:
         from forge.persona_engine import get_persona_display_name
         pname = get_persona_display_name(active_persona)
         st.markdown(f"""
-        <div class="persona-active-badge" style="
+        <div style="
             display:inline-flex;align-items:center;gap:8px;
             background:rgba(201,168,76,0.07);
             border:1px solid rgba(201,168,76,0.25);
@@ -109,48 +123,70 @@ def render_workspace(cfg: dict) -> None:
                 color:var(--text-muted);line-height:1.7;margin-bottom:8px;">
         Write or speak your raw intent in plain English or Arabic.
         InkOS restructures it into a precision prompt for your selected AI.
+        No format required — just say what you want.
     </div>
     """, unsafe_allow_html=True)
 
-    # ── VOICE ENGINE ───────────────────────────────────────────────────
-    st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;"> VOICE INPUT </div>', unsafe_allow_html=True)
+    # ── VOICE ENGINE ──────────────────────────────────────────────────────────
+    # FIX 1: Hash-based deduplication guard.
+    #   st.audio_input returns a BytesIO object on every rerun.
+    #   BytesIO equality compares by identity not content —
+    #   two objects with identical bytes are NOT equal.
+    #   We hash the bytes with MD5 and compare hashes instead.
+    #   This guarantees each unique recording is transcribed exactly once.
+    #
+    # FIX 2: WHISPER_CONTEXT_PROMPT passed to API.
+    #   Without it Whisper auto-translates Arabic → English.
+    #   The context prompt forces transcription in the spoken language.
+    #
+    # FIX 3: Read bytes once, reuse for both hash and API call.
+    #   audio_value.read() consumes the stream — calling it twice returns
+    #   an empty bytes object on the second call.
+    from config import WHISPER_CONTEXT_PROMPT, client as _audio_client
+
+    st.markdown(
+        '<div style="font-size:0.7rem;color:var(--gold);'
+        'margin-bottom:4px;letter-spacing:1px;font-family:var(--font-m);">'
+        '⎙ VOICE INPUT</div>',
+        unsafe_allow_html=True,
+    )
     audio_value = st.audio_input("Record your intent", label_visibility="collapsed")
-    
+
     if audio_value is not None:
-        # Check if we already processed this exact audio snippet to prevent loop rendering
-        if st.session_state.get("last_processed_audio") != audio_value:
+        # Read bytes once — stream is consumed on first read
+        audio_bytes = audio_value.read()
+        audio_hash  = hashlib.md5(audio_bytes).hexdigest()
+
+        if st.session_state.get("last_audio_hash") != audio_hash:
             with st.spinner("Transcribing via Groq Whisper..."):
                 try:
-                    # Send audio bytes to Groq Whisper API
-                    transcription = client.audio.transcriptions.create(
-                        file=("audio.wav", audio_value.read()),
+                    transcription = _audio_client.audio.transcriptions.create(
+                        file=("audio.wav", audio_bytes),
                         model="whisper-large-v3-turbo",
-                        response_format="text"
+                        prompt=WHISPER_CONTEXT_PROMPT,   # FIX 2: language guard
+                        response_format="text",
                     )
-                    
-                    # Append the transcription to whatever is already in the text area
                     current_text = st.session_state.get("ta_input", "")
                     new_text = f"{current_text} {transcription}".strip() if current_text else transcription
-                    
-                    # Update session state and refresh
-                    st.session_state["ta_input"] = new_text
-                    st.session_state["last_processed_audio"] = audio_value
+                    st.session_state["ta_input"]        = new_text
+                    st.session_state["last_audio_hash"] = audio_hash  # FIX 1: store hash
                     st.rerun()
                 except Exception as e:
                     st.error(f"Voice Engine Error: {str(e)}")
 
-    # ── TEXT AREA ─────────────────────────────────────────────────────────────
     raw_input: str = st.text_area(
         "intent",
         height=145,
         placeholder=(
-            "English: Act as a senior analyst. Review this pitch deck...\n"
+            "English: Act as a senior analyst. Review this pitch deck and flag every "
+            "assumption that lacks supporting evidence.\n\n"
             "عربي: اشرح لي هذا المفهوم تدريجياً بأسلوب تقني للمحترفين"
         ),
         label_visibility="collapsed",
         key="ta_input",
     )
 
+    # ── CHAR COUNTER + LIVE PATTERN PREVIEW ───────────────────────────────────
     if raw_input:
         char = len(raw_input)
         c_color = "#A93226" if char > INPUT_WARN_THRESHOLD else "#3A4455"
@@ -166,35 +202,48 @@ def render_workspace(cfg: dict) -> None:
 
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
-    # ── EXECUTION ─────────────────────────────────────────────────────────────
-    if st.button(t("execute_btn"), use_container_width=True, key="btn_execute"):
+    # ── EXECUTE ────────────────────────────────────────────────────────────────
+    if st.button(t("execute_btn"), use_container_width=True, key="btn_execute",
+                 help=t("execute_help")):
         cleaned, violations = sanitize_input(raw_input or "")
 
         if not cleaned:
             st.warning(t("empty_input"))
+
         elif violations:
             st.error(t("injection_blocked"))
+            st.session_state[K.SECURITY_LOG].append({
+                "time":     datetime.now().strftime("%H:%M:%S"),
+                "hash":     hashlib.md5((raw_input or "").encode()).hexdigest()[:10],
+                "patterns": violations,
+            })
+
         elif not check_rate_limit(consume=1):
             st.warning(t("rate_limit"))
-        else:
-            # Sleek terminal-style loading state
-            with st.status("Initializing MARCEL Compiler...", expanded=True) as status:
-                st.write("> Connecting to Groq Engine...")
 
+        else:
+            with st.status(t("status_processing"), expanded=True) as status:
+                st.write(t("status_mapping"))
+
+                # ── AUTO TARGET RESOLUTION ─────────────────────────────────
+                # If user left target on Auto, CIPHER analyses the input
+                # and selects the best target before refinement begins.
+                # If user manually selected a target, respect that choice.
                 resolved_target = cfg["target_model"]
+
                 if cfg["target_model"] == AUTO_SELECT_LABEL:
-                    st.write("> Analyzing semantic intent for auto-routing...")
+                    st.write("🎯 CIPHER analysing best target for this input...")
                     auto_target, auto_reason = detect_best_target(cleaned)
                     resolved_target = auto_target
                     st.session_state[K.AUTO_TARGET] = auto_target
                     st.session_state[K.AUTO_REASON] = auto_reason
+                    st.write(f"✓ Target selected: **{auto_target}** — {auto_reason}")
                 else:
+                    # Clear auto state when user manually selects
                     st.session_state[K.AUTO_TARGET] = None
                     st.session_state[K.AUTO_REASON] = None
 
-                st.write(f"> Target locked: {resolved_target}. Compiling Expert Blueprint...")
-                
-                # INJECTED BRAND IDENTITY HERE
+                # CIPHER may fire a retry if first score < 80
                 result, audit, pattern = run_refinement_and_audit(
                     user_text        = cleaned,
                     target           = resolved_target,
@@ -203,54 +252,54 @@ def render_workspace(cfg: dict) -> None:
                     aesthetic_choice = cfg["aesthetic_choice"],
                     islamic_mode     = cfg["islamic_mode"],
                     persona          = cfg.get("active_persona"),
-                    brand_identity   = cfg.get("brand_identity"),
                 )
                 
-                # Defensive type-check
-                res_str = str(result) if result is not None else ""
-                
-                if res_str.startswith("[CIPHER ERROR]"):
-                    status.update(label="Engine Error", state="error", expanded=False)
-                    st.error(res_str)
-                else:
-                    status.update(label="Compilation Complete", state="complete", expanded=False)
+                score = (audit or {}).get("score", 0)
+                retry_msg = " (retry applied)" if score >= 80 else ""
+                st.write(t("status_compiling") + retry_msg)
+
+                if not result.startswith("[REFINEMENT ERROR]"):
+                    st.write(t("status_done"))
+                    status.update(label=t("status_complete"), state="complete", expanded=False)
+
                     st.session_state[K.LAST_RESULT]  = result
                     st.session_state[K.LAST_AUDIT]   = audit
                     st.session_state[K.LAST_INPUT]   = cleaned
                     st.session_state[K.LAST_PATTERN] = pattern
+
                     st.session_state[K.HISTORY].insert(0, {
-                        "id": hashlib.md5(f"{cleaned}{datetime.now()}".encode()).hexdigest()[:8],
-                        "time": datetime.now().strftime("%H:%M:%S"),
-                        "target": resolved_target,
+                        "id":        hashlib.md5(
+                                         f"{cleaned}{datetime.now().isoformat()}".encode()
+                                     ).hexdigest()[:8],
+                        "time":      datetime.now().strftime("%H:%M:%S"),
+                        "target":    resolved_target,
                         "framework": cfg["framework"],
                         "aesthetic": cfg["aesthetic_choice"],
-                        "input": cleaned,
-                        "output": result,
-                        "score": (audit or {}).get("score", 0),
-                        "pattern": pattern["pattern"] if pattern else None,
-                        "islamic": cfg["islamic_mode"],
+                        "input":     cleaned,
+                        "output":    result,
+                        "score":     audit.get("score", 0),
+                        "pattern":   pattern["pattern"] if pattern else None,
+                        "islamic":   cfg["islamic_mode"],
                     })
+                else:
+                    status.update(label=t("status_error"), state="error", expanded=False)
+                    st.error(result)
 
-    # ── RESULTS RENDERING ─────────────────────────────────────────────────────
+    # ── RESULTS ────────────────────────────────────────────────────────────────
     last_result  = st.session_state.get(K.LAST_RESULT)
     last_audit   = st.session_state.get(K.LAST_AUDIT) or {}
     last_input   = st.session_state.get(K.LAST_INPUT) or ""
     last_pattern = st.session_state.get(K.LAST_PATTERN)
 
-    last_res_str = str(last_result) if last_result else ""
-
-    if last_res_str and not last_res_str.startswith("[CIPHER ERROR]"):
+    if last_result and not last_result.startswith("[REFINEMENT ERROR]"):
         st.markdown("<hr>", unsafe_allow_html=True)
-        
+
+        # Show CIPHER auto-selection explanation if it was used
         auto_target = st.session_state.get(K.AUTO_TARGET)
         auto_reason = st.session_state.get(K.AUTO_REASON)
-        
-        # We need to know the final resolved target for Telemetry and Buttons
-        final_target_display = auto_target if auto_target else cfg.get("target_model", "ChatGPT")
-
         if auto_target and auto_reason:
             st.markdown(f"""
-            <div class="auto-target-pill" style="
+            <div style="
                 display:inline-flex;align-items:center;gap:8px;
                 background:rgba(201,168,76,0.07);
                 border:1px solid rgba(201,168,76,0.25);
@@ -259,51 +308,102 @@ def render_workspace(cfg: dict) -> None:
                 color:var(--gold);margin-bottom:12px;
             ">
                 <span class="status-dot"></span>
-                CIPHER selected: <strong>{auto_target}</strong> — {auto_reason}
+                CIPHER auto-selected: <strong>{auto_target}</strong>
+                &nbsp;—&nbsp;
+                <span style="color:var(--text-muted);">{auto_reason}</span>
             </div>
             """, unsafe_allow_html=True)
 
         left, right = st.columns([1, 2], gap="large")
-        with left:
-            # Replaced Fake metrics with Real Telemetry
-            _render_telemetry_block(last_audit, last_pattern, last_res_str, final_target_display)
-            
-        with right:
-            st.markdown(f'<div class="vc-header" style="font-size:0.6rem;">{t("original_intent")}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="vc-card" style="font-size:0.8rem;line-height:1.75;">{_escape(last_input)}</div>', unsafe_allow_html=True)
-            
-            st.markdown(f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>', unsafe_allow_html=True)
-            st.text_area("output", value=last_res_str, height=220, label_visibility="collapsed", key="out_area")
 
-            # ── 1-CLICK ACTION BUTTONS ────────────────────────────────────────
-            dl_ts = datetime.now().strftime("%H%M%S")
-            b1, b2, b3 = st.columns(3)
-            
-            with b1:
-                st.download_button(
-                    "💾 Download",
-                    data=last_res_str,
-                    file_name=f"inkos_{dl_ts}.txt",
-                    key=f"dl_btn_{dl_ts}",
-                    use_container_width=True
-                )
-            with b2:
-                # ChatGPT supports prompt injection via URL param for Search/Chat
-                gpt_url = f"https://chatgpt.com/?q={urllib.parse.quote(last_res_str)}"
-                st.link_button("↗ Open in ChatGPT", gpt_url, use_container_width=True)
-            with b3:
-                # Claude URL (Anthropic doesn't support direct URL prompt injection yet, so it goes to new chat)
-                st.link_button("↗ Open in Claude", "https://claude.ai/new", use_container_width=True)
-            
-            # Vault Saving Logic
-            from vault.supabase_client import SUPABASE_MISSING
-            if not SUPABASE_MISSING:
+        with left:
+            _render_score_block(last_audit, last_pattern)
+
+        with right:
+            st.markdown(
+                f'<div class="vc-header" style="font-size:0.6rem;">{t("original_intent")}</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<div class="vc-card" style="font-size:0.8rem;line-height:1.75;min-height:72px;">'
+                f'{_escape(last_input)}</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>',
+                unsafe_allow_html=True,
+            )
+            # WHY text_area over st.code:
+            # st.code renders in a fixed-height non-resizable box.
+            # Users cannot easily select, copy, or read long prompts.
+            # text_area is resizable, fully selectable, and copyable.
+            # disabled=True makes it read-only while keeping it interactive.
+            st.text_area(
+                "refined_output",
+                value=last_result,
+                height=220,
+                disabled=False,
+                label_visibility="collapsed",
+                key="refined_output_area",
+                help=t("refined_help"),
+            )
+            st.download_button(
+                t("download_prompt"),
+                data=last_result,
+                file_name=(
+                    f"vc_{cfg['target_model'].lower().replace(' ', '_')}"
+                    f"_{datetime.now().strftime('%H%M%S')}.txt"
+                ),
+                key="btn_dl_result",
+            )
+            # ── SAVE TO VAULT ──────────────────────────────────────────────────
+            from vault.supabase_client import SUPABASE_MISSING as _SB_MISSING
+            if not _SB_MISSING:
                 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-                v1, v2 = st.columns(2)
-                with v1: v_title = st.text_input("Title", key="v_t", label_visibility="collapsed", placeholder="Title")
-                with v2: v_tags = st.text_input("Tags", key="v_tg", label_visibility="collapsed", placeholder="Tags")
-                if st.button(t("save_vault_btn"), key="v_save", use_container_width=True):
-                    if v_title.strip():
-                        from vault.vault_engine import save_prompt
-                        save_prompt(user_hash=st.session_state.get(K.USER_HASH, ""), title=v_title, tags=v_tags, content=last_res_str, target=final_target_display, framework=cfg.get("framework", ""), score=(last_audit or {}).get("score", 0), pattern=last_pattern["pattern"] if last_pattern else "", islamic=cfg.get("islamic_mode", False), aesthetic=cfg.get("aesthetic_choice", ""))
-                        st.success("Saved to Vault.")
+                st.markdown(
+                    f'<div class="vc-header" style="font-size:0.6rem;margin-top:4px;">{t("save_to_vault")}</div>',
+                    unsafe_allow_html=True,
+                )
+                v1, v2 = st.columns([3, 2])
+                with v1:
+                    vault_title = st.text_input(
+                        "Title",
+                        placeholder=t("vault_title_ph"),
+                        key="vault_title_input",
+                        label_visibility="collapsed",
+                    )
+                with v2:
+                    vault_tags = st.text_input(
+                        "Tags",
+                        placeholder=t("vault_tags_ph"),
+                        key="vault_tags_input",
+                        label_visibility="collapsed",
+                    )
+
+                if st.button(t("save_vault_btn"), use_container_width=True, key="btn_save_vault"):
+                    if not vault_title.strip():
+                        st.warning(t("save_vault_warning"))
+                    else:
+                        # Spinner gives immediate feedback — user knows click registered
+                        with st.spinner(t("saving_vault")):
+                            from vault.vault_engine import save_prompt
+                            audit_data   = st.session_state.get(K.LAST_AUDIT) or {}
+                            pattern_data = st.session_state.get(K.LAST_PATTERN)
+                            _, save_err = save_prompt(
+                                user_hash  = st.session_state.get(K.USER_HASH, ""),
+                                title      = vault_title,
+                                tags       = vault_tags,
+                                content    = last_result,
+                                target     = cfg.get("target_model", ""),
+                                framework  = cfg.get("framework", ""),
+                                score      = audit_data.get("score", 0),
+                                pattern    = pattern_data["pattern"] if pattern_data else "",
+                                islamic    = cfg.get("islamic_mode", False),
+                                aesthetic  = cfg.get("aesthetic_choice", ""),
+                            )
+                        # Feedback always visible — success or failure, never silence
+                        if save_err:
+                            st.error(t('save_vault_error', error=save_err))
+                        else:
+                            st.session_state[K.VAULT_STATS] = {}
+                            st.success(t('save_vault_success', title=vault_title))
