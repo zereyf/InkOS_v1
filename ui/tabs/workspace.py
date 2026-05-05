@@ -3,10 +3,9 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
 
-v16.1: THE UNBREAKABLE PILL FIX
-- Moved command-pill-marker INSIDE the column so CSS :has() selector works.
-- Preserved Top-Gate Voice Processing.
-- Preserved Contextual UI (Mic ↔ Execute Bolt swap).
+v16.2: THE PURE PILL
+- Removed legacy "Execute Refinement" button entirely.
+- Solely relies on the dynamic Command Pill (Mic ↔ Bolt).
 """
 
 import hashlib
@@ -25,12 +24,9 @@ from i18n.translations import t
 
 
 def _escape(text: str) -> str:
-    """XSS-safe HTML rendering of user-supplied strings."""
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-
 def _render_pattern_card(pattern: dict, label: str = None) -> None:
-    """Renders the rhetorical pattern identification card."""
     color = pattern.get("color", "#C9A84C")
     lbl = label or t("pattern_identified")
     st.markdown(f"""
@@ -41,13 +37,9 @@ def _render_pattern_card(pattern: dict, label: str = None) -> None:
     </div>
     """, unsafe_allow_html=True)
 
-
 def _render_telemetry_block(audit: dict, pattern: Optional[dict], output_text: str, target_model: str) -> None:
-    """Renders real system telemetry instead of fake progress bars."""
     audit_data = audit or {}
     critique   = str(audit_data.get("critique",  "Standard Text Compilation"))
-    
-    # Calculate real data
     est_tokens = int(len(output_text.split()) * 1.3)
     char_count = len(output_text)
     
@@ -78,8 +70,6 @@ def _render_telemetry_block(audit: dict, pattern: Optional[dict], output_text: s
 
 
 def render_workspace(cfg: dict) -> None:
-    """Main Workspace Tab (Tab 1) logic."""
-
     # ── 1. TOP-GATE VOICE PROCESSING ──────────────────────────────────────────
     if "voice_pill" in st.session_state and st.session_state.voice_pill is not None:
         audio_val = st.session_state.voice_pill
@@ -100,47 +90,25 @@ def render_workspace(cfg: dict) -> None:
                     st.error(f"Voice Engine Error: {str(e)}")
 
     # ── 2. HEADERS & BADGES ───────────────────────────────────────────────────
-    st.markdown(
-        f'<div class="vc-header"><span class="status-dot"></span>{t("workspace_header")}</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f'<div class="vc-header"><span class="status-dot"></span>{t("workspace_header")}</div>', unsafe_allow_html=True)
 
     active_persona = cfg.get("active_persona")
     if active_persona:
         from forge.persona_engine import get_persona_display_name
         pname = get_persona_display_name(active_persona)
         st.markdown(f"""
-        <div class="persona-active-badge" style="
-            display:inline-flex;align-items:center;gap:8px;
-            background:rgba(201,168,76,0.07);
-            border:1px solid rgba(201,168,76,0.25);
-            border-radius:3px;padding:5px 12px;
-            font-family:var(--font-m);font-size:0.65rem;
-            color:var(--gold);margin-bottom:10px;
-        ">
-            <span class="status-dot"></span>
-            PERSONA ACTIVE: {pname}
+        <div class="persona-active-badge" style="display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.25);border-radius:3px;padding:5px 12px;font-family:var(--font-m);font-size:0.65rem;color:var(--gold);margin-bottom:10px;">
+            <span class="status-dot"></span>PERSONA ACTIVE: {pname}
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div style="font-family:var(--font-m);font-size:0.68rem;
-                color:var(--text-muted);line-height:1.7;margin-bottom:8px;">
-        Write your raw intent in plain English or Arabic.
-        InkOS restructures it into a precision prompt for your selected AI.
-    </div>
-    """, unsafe_allow_html=True)
-
-     # ── 3. DYNAMIC COMMAND PILL ───────────────────────────────────────────────
+    # ── 3. DYNAMIC COMMAND PILL ───────────────────────────────────────────────
     st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;">⚡ COMMAND CENTER</div>', unsafe_allow_html=True)
     
-    # Use tightly packed columns
     col_input, col_action = st.columns([85, 15], gap="small", vertical_alignment="bottom")
 
     with col_input:
-        # 🚨 THE FIX: Marker is now INSIDE the column!
         st.markdown('<div class="command-pill-marker" style="display:none;"></div>', unsafe_allow_html=True)
-        
         raw_input: str = st.text_area(
             "intent",
             height=None, 
@@ -151,23 +119,17 @@ def render_workspace(cfg: dict) -> None:
 
     with col_action:
         execute_pill_triggered = False
-        # CONTEXTUAL SWAP: If text exists, show Bolt. Else, show Mic.
         if len(raw_input.strip()) > 0:
             if st.button("⚡", key="btn_exec_pill", use_container_width=True, help="Compile Blueprint"):
                 execute_pill_triggered = True
         else:
-            # Key must match the Top-Gate check
             st.audio_input("Record", label_visibility="collapsed", key="voice_pill")
 
-    # ── 4. METADATA (Counters & Patterns) ─────────────────────────────────────
+    # ── 4. METADATA ───────────────────────────────────────────────────────────
     if raw_input:
         char = len(raw_input)
         c_color = "#A93226" if char > INPUT_WARN_THRESHOLD else "#3A4455"
-        # Adjusted counter layout for the Pill
-        st.markdown(
-            f'<div class="char-counter" style="color:{c_color}; text-align: right; margin-top: -6px;">{char} / {INPUT_MAX_CHARS}</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown(f'<div class="char-counter" style="color:{c_color}; text-align: right; margin-top: -6px;">{char} / {INPUT_MAX_CHARS}</div>', unsafe_allow_html=True)
 
         if cfg["source_lang"] == "Arabic (العربية)":
             preview = detect_arabic_pattern(raw_input)
@@ -177,10 +139,8 @@ def render_workspace(cfg: dict) -> None:
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
     # ── 5. EXECUTION LOGIC ────────────────────────────────────────────────────
-    # Triggered by either the new Pill Bolt OR the legacy main button
-    should_execute = execute_pill_triggered or st.button(t("execute_btn"), use_container_width=True, key="btn_execute")
-    
-    if should_execute:
+    # 🚨 ONLY THE PILL BUTTON TRIGGERS EXECUTION NOW
+    if execute_pill_triggered:
         cleaned, violations = sanitize_input(raw_input or "")
 
         if not cleaned:
@@ -246,29 +206,18 @@ def render_workspace(cfg: dict) -> None:
     last_audit   = st.session_state.get(K.LAST_AUDIT) or {}
     last_input   = st.session_state.get(K.LAST_INPUT) or ""
     last_pattern = st.session_state.get(K.LAST_PATTERN)
-
     last_res_str = str(last_result) if last_result else ""
 
     if last_res_str and not last_res_str.startswith("[CIPHER ERROR]"):
         st.markdown("<hr>", unsafe_allow_html=True)
-        
         auto_target = st.session_state.get(K.AUTO_TARGET)
         auto_reason = st.session_state.get(K.AUTO_REASON)
-        
         final_target_display = auto_target if auto_target else cfg.get("target_model", "ChatGPT")
 
         if auto_target and auto_reason:
             st.markdown(f"""
-            <div class="auto-target-pill" style="
-                display:inline-flex;align-items:center;gap:8px;
-                background:rgba(201,168,76,0.07);
-                border:1px solid rgba(201,168,76,0.25);
-                border-radius:3px;padding:5px 14px;
-                font-family:var(--font-m);font-size:0.65rem;
-                color:var(--gold);margin-bottom:12px;
-            ">
-                <span class="status-dot"></span>
-                CIPHER selected: <strong>{auto_target}</strong> — {auto_reason}
+            <div class="auto-target-pill" style="display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.25);border-radius:3px;padding:5px 14px;font-family:var(--font-m);font-size:0.65rem;color:var(--gold);margin-bottom:12px;">
+                <span class="status-dot"></span>CIPHER selected: <strong>{auto_target}</strong> — {auto_reason}
             </div>
             """, unsafe_allow_html=True)
 
