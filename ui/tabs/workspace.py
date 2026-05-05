@@ -1,4 +1,4 @@
- """
+"""
 ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
