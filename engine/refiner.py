@@ -1,366 +1,361 @@
 """
-engine/refiner.py - InkOS Cognitive Prompt Engine
-=================================================
-v9.0: THE DYNAMIC IDENTITY PATCH
-- Replaced hardcoded "Ameer" and "Shikamaru" protections with dynamic IdentityContext.
-- Updated `run_refinement_and_audit` signature to accept `brand_identity` payload.
-- Seamlessly maps UI brand settings to the Visual Expert's Style DNA.
+engine/refiner.py — CIPHER Intelligence Engine
+================================================
+CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
+
+Three-layer architecture:
+  Layer 1 — CIPHER IDENTITY: Master system prompt defining InkOS's AI character.
+  Layer 2 — CHAIN-OF-THOUGHT: Reasoning before output via <thinking> tags.
+  Layer 3 — AUTO-RETRY: Low scores trigger one correction attempt with critique fed back.
 """
 
-from __future__ import annotations
 import json
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Optional, Tuple
-
-from config import client, MODEL_ID, MAX_TOKENS, STYLE_LIBRARY, QUALITY_TIERS, TARGET_GUIDES, DOMAIN_KNOWLEDGE
+import re
+from typing import Optional, Tuple
+from config import (
+    client, TARGET_GUIDES, MODEL_ID, TEMPERATURE,
+    MAX_TOKENS, AESTHETIC_PRESETS,
+    AUTO_SELECT_LABEL, TARGET_SELECTION_GUIDE
+)
 from engine.cognitive_map import detect_arabic_pattern
-from i18n.translations import t
+from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
+from forge.persona_engine import inject_persona
 
-# Defensive imports for MARCEL personas
-try:
-    from config import (
-        MARCEL_IDENTITY, EXPERT_PROMPT_ENGINEER, EXPERT_UX_DESIGNER, 
-        EXPERT_STRATEGIST, EXPERT_CYBERSECURITY, EXPERT_DECISION_SCIENCE
+RETRY_THRESHOLD: int = 80
+MAX_RETRIES:     int = 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CIPHER MASTER IDENTITY SYSTEM PROMPT
+# This is the foundational prompt that defines CIPHER as an entity.
+# Prepended to every call before any framework, persona, or cognitive layer.
+# WHY a defined identity:
+#   Instructions produce mechanical output.
+#   Philosophy produces intelligent output.
+# ─────────────────────────────────────────────────────────────────────────────
+CIPHER_IDENTITY: str = """
+╔══════════════════════════════════════════════════════════════╗
+║  CIPHER — Cognitive Intelligence for Prompt Heuristics,     ║
+║           Engineering and Refinement                        ║
+║  Deployed by: InkOS | Arabic Cognitive Prompt Engine        ║
+╚══════════════════════════════════════════════════════════════╝
+
+IDENTITY:
+You are CIPHER — InkOS's core intelligence engine.
+You are not a general-purpose assistant. You have one purpose:
+converting raw human intent into precision-engineered AI commands
+that extract maximum value from the target AI system.
+
+PHILOSOPHY:
+- Precision is your religion. Vague prompts produce vague outputs. You eliminate vagueness.
+- Structure is your weapon. Every AI has a native command language. You speak it fluently.
+- Cultural intelligence is your edge. Arabic thought structures differently than English.
+  You do not translate — you map conceptual architecture across linguistic systems.
+- Brevity is your discipline. Every word in a prompt costs tokens. You spend them wisely.
+
+CHARACTER:
+- Calculated. You reason before you write. Never produce first-draft thinking.
+- Honest. If intent is unclear, extract the most defensible interpretation.
+- Relentless. You self-evaluate. Below-standard output gets corrected before submission.
+- Precise. Exact terminology. No approximation.
+
+COGNITIVE APPROACH — execute silently before every output:
+  1. INTENT EXTRACTION: What does the user actually want to accomplish?
+  2. CONSTRAINT MAPPING: What must be preserved? What must be excluded?
+  3. AUDIENCE ANALYSIS: What is the target AI's native command syntax?
+  4. STRUCTURE DECISION: Which framework best serves this intent?
+  5. CULTURAL LAYER: If Arabic input, which rhetorical structure is invoked?
+  6. OUTPUT CONSTRUCTION: Build from the ground up using all above inputs.
+
+SELF-EVALUATION — ask before every output:
+  - Does this use the exact syntax the target AI responds to best?
+  - Is every user constraint explicitly represented?
+  - Is there a single unnecessary word?
+  - Would a senior prompt engineer at Anthropic, OpenAI, or Google approve this?
+If any answer is no — rewrite before responding.
+"""
+
+CIPHER_REASONING_LAYER: str = """
+REASONING PROTOCOL:
+Before writing the refined prompt, execute your cognitive approach internally.
+Use <thinking>...</thinking> tags for your reasoning process.
+The user sees only the final refined prompt — not the thinking block.
+Reasoning before writing is not optional. It is what produces precision.
+"""
+
+_TAG_CLEANUP   = re.compile(
+    r"(?:===|<|\[|\*\*|###)\s*"
+    r"(?:REFINED(?:_PROMPT(?:_TEXT)?)?|AUDIT|thinking)"
+    r"\s*(?:===|>|\]|\*\*|###)?",
+    flags=re.IGNORECASE,
+)
+_FENCE_CLEANUP = re.compile(r"```(?:markdown|json|text|xml)?", flags=re.IGNORECASE)
+_JSON_HUNTER   = re.compile(r"\{[^{}]*\"score\"[^{}]*\}", flags=re.IGNORECASE)
+_THINKING_TAGS = re.compile(r"<thinking>.*?</thinking>", flags=re.DOTALL | re.IGNORECASE)
+
+_FALLBACK_AUDIT: dict = {
+    "score": 0, "critique": "Audit parse error — refinement succeeded.",
+    "precision": 0, "alignment": 0, "efficiency": 0,
+}
+
+
+def _escape_html(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _clamp_audit(raw: dict) -> dict:
+    def safe_int(val: object, ceiling: int) -> int:
+        try:
+            return min(max(int(val), 0), ceiling)
+        except (TypeError, ValueError):
+            return 0
+    return {
+        "score":      safe_int(raw.get("score"),      100),
+        "critique":   _escape_html(str(raw.get("critique", "")).strip()),
+        "precision":  safe_int(raw.get("precision"),   40),
+        "alignment":  safe_int(raw.get("alignment"),   40),
+        "efficiency": safe_int(raw.get("efficiency"),  20),
+    }
+
+
+def _strip_thinking(text: str) -> str:
+    return _THINKING_TAGS.sub("", text).strip()
+
+
+def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
+    cleaned    = _FENCE_CLEANUP.sub("", raw).strip()
+    cleaned    = _strip_thinking(cleaned)
+    json_match = _JSON_HUNTER.search(cleaned)
+    if not json_match:
+        return None, None
+    refined_raw = cleaned[: json_match.start()].strip()
+    refined     = _TAG_CLEANUP.sub("", refined_raw).strip()
+    if not refined:
+        return None, None
+    try:
+        audit = _clamp_audit(json.loads(json_match.group(0)))
+    except Exception:
+        audit = dict(_FALLBACK_AUDIT)
+        audit["critique"] = "Refinement succeeded. Audit JSON malformed."
+    return refined, audit
+
+
+def _build_brand_block(brand_identity: Optional[dict]) -> str:
+    """
+    Converts brand_identity dict into a prompt context block.
+    Injected after persona, before framework.
+    Keys: name, voice, audience, values, avoid, examples (all optional).
+    """
+    if not brand_identity:
+        return ""
+    lines = ["BRAND CONTEXT (apply to all output):"]
+    for key, label in [
+        ("name",     "Brand   "),
+        ("voice",    "Voice   "),
+        ("audience", "Audience"),
+        ("values",   "Values  "),
+        ("avoid",    "Avoid   "),
+        ("examples", "Examples"),
+    ]:
+        if brand_identity.get(key):
+            lines.append(f"  {label}: {brand_identity[key]}")
+    lines.append("Every word in the refined prompt must be consistent with this brand identity.")
+    return "\n".join(lines)
+
+
+def _build_system_prompt(
+    target:           str,
+    framework:        str,
+    cognitive:        str,
+    islamic:          bool,
+    aesthetic_choice: str,
+    persona:          Optional[dict] = None,
+    retry_critique:   Optional[str]  = None,
+    brand_identity:   Optional[dict] = None,
+) -> str:
+    style        = (
+        f"STYLE DIRECTION: {AESTHETIC_PRESETS.get(aesthetic_choice, '')}"
+        if aesthetic_choice != "Raw (No Preset)" else ""
     )
-except ImportError:
-    MARCEL_IDENTITY = "You are MARCEL, an elite AI orchestrator."
-    EXPERT_PROMPT_ENGINEER = "Act as AXIOM, a Principal Prompt Architect."
-    EXPERT_UX_DESIGNER = "Act as FORMA, a Principal Product Designer."
-    EXPERT_STRATEGIST = "Act as VECTOR, a Principal Startup Strategist."
-    EXPERT_CYBERSECURITY = "Act as CIPHER, a Principal Security Architect."
-    EXPERT_DECISION_SCIENCE = "Act as LUCID, a Principal Decision Scientist."
+    persona_block = inject_persona(persona, target)
+    brand_block   = _build_brand_block(brand_identity)
+    retry_block   = (
+        f"CORRECTION REQUIRED:\n"
+        f"Previous attempt scored below quality threshold.\n"
+        f"Auditor critique: '{retry_critique}'\n"
+        f"Correct this specific issue. Do not repeat the same mistake."
+    ) if retry_critique else ""
 
-# ---------------------------------------------
-# DATA MODELS
-# ---------------------------------------------
+    parts = [
+        CIPHER_IDENTITY,
+        CIPHER_REASONING_LAYER,
+        persona_block,
+        brand_block,
+        f"ACTIVE FRAMEWORK: {framework}",
+        f"TARGET AI DIALECT: {target}",
+        f"DIALECT SYNTAX GUIDE: {TARGET_GUIDES.get(target, '')}",
+        style,
+        cognitive,
+        ISLAMIC_CONTEXT_LAYER if islamic else "",
+        retry_block,
+        "",
+        "MANDATORY AUDIT RUBRIC:",
+        "1. PRECISION (40pts): Exact native syntax of target AI.",
+        "   Claude=XML tags. Manus=Agent-step chains. ChatGPT=Numbered role instructions.",
+        "2. ALIGNMENT (40pts): Every element of user intent preserved. Nothing dropped.",
+        "3. EFFICIENCY (20pts): Every word earns its place. No preamble. No filler.",
+        "QUALITY GATE: If honest score < 90, rewrite before outputting.",
+        "CIPHER does not submit mediocre work.",
+        "",
+        "OUTPUT FORMAT:",
+        "Write the refined prompt first. Then on a new line output the audit JSON.",
+        "No markdown fences. No preamble. No explanation.",
+        '{"score": <0-100>, "critique": "<one precise sentence>", "precision": <0-40>, "alignment": <0-40>, "efficiency": <0-20>}',
+    ]
+    return "\n".join(filter(None, parts))
 
-class TargetModel(str, Enum):
-    CLAUDE       = "Claude"
-    CHATGPT      = "ChatGPT"
-    MANUS        = "Manus AI"
-    MIDJOURNEY   = "Midjourney/Flux"
-    DALLE3       = "DALL-E 3"
-    IMAGEN3      = "Gemini (Imagen 3)"
 
-class ContentDomain(str, Enum):
-    PHOTOGRAPHY     = "photography"
-    ILLUSTRATION    = "illustration"
-    GRAPHIC_DESIGN  = "graphic_design"
-    TEXT_COPY       = "text_copy"
-    CODE_ANALYSIS   = "code_analysis"
-    MARKETING       = "marketing"
-    DATA_ANALYSIS   = "data_analysis"
-    ACADEMIC        = "academic_research"
-    PRODUCTIVITY    = "productivity"
-    PROMPT_ENGINEERING = "prompt_engineering"
-    UX_UI_DESIGN    = "ux_ui_design"
-    STARTUP_STRATEGY = "startup_strategy"
-    CYBERSECURITY   = "cybersecurity"
-    DECISION_SCIENCE = "decision_science"
-    UNKNOWN         = "unknown"
+def _call_cipher(
+    system_prompt: str,
+    user_text:     str,
+) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": f"[[INPUT_START]]\n{user_text}\n[[INPUT_END]]"},
+            ],
+            temperature=TEMPERATURE,
+            max_tokens=MAX_TOKENS,
+        )
+        raw = completion.choices[0].message.content
+    except Exception as e:
+        return None, None, str(e)
 
-@dataclass
-class UnifiedIntentObject:
-    raw_input: str = ""
-    user_preferences: dict = field(default_factory=dict)
-    subject: str = ""
-    exact_text: list[str] = field(default_factory=list)
-    domain: ContentDomain = ContentDomain.UNKNOWN
-    target_model: TargetModel = TargetModel.CHATGPT
-    style_dna: dict = field(default_factory=dict)
-    is_visual_task: bool = False
-    compiled_prompt: str = ""
-    negative_prompt: str = ""
-    intelligence_score: int = 0
+    refined, audit = _parse_output(raw)
+    if refined is None:
+        return None, None, f"Parse failed. Raw:\n{raw[:300]}"
+    return refined, audit, None
 
-# ---------------------------------------------
-# DOMAIN EXPERT MODULES
-# ---------------------------------------------
 
-class BaseExpert:
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        raise NotImplementedError
-
-class VisualExpert(BaseExpert):
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        dna = uio.style_dna
-        quality = ", ".join(QUALITY_TIERS.get("studio", []))
-        txt = f'EXACT TEXT: "{" ".join(uio.exact_text)}"' if uio.exact_text else ""
-        
-        if uio.target_model == TargetModel.IMAGEN3:
-            h = "[GRAPHIC DESIGN LAYOUT]" if uio.domain == ContentDomain.GRAPHIC_DESIGN else "[SPATIAL BLUEPRINT]"
-            # Fixed the hardcoded 'Anime' fallback to use 'Digital Art' if undefined, preventing anime logos
-            details = [f"Subject: {uio.subject}", txt, f"Style: {dna.get('art_medium', 'Premium Digital Art')}", f"FX: {', '.join(dna.get('fx_elements', []))}" if dna.get('fx_elements') else "", f"Fidelity: {quality}"]
-            return f"{h} " + ". ".join(filter(None, details)) + "."
-        elif uio.target_model == TargetModel.MIDJOURNEY:
-            parts = [uio.subject, txt, dna.get("art_medium"), quality]
-            return " :: ".join(filter(None, parts)) + " --ar 16:9"
-        else: # DALLE-3 Fallback
-            return f"Create a highly detailed visual of {uio.subject}. {txt} Style inspired by {dna.get('art_medium', 'premium concepts')}. Quality: {quality}."
-
-class CodeExpert(BaseExpert):
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        framework = uio.user_preferences.get("framework", "Technical (Zero-Shot)")
-        rules = DOMAIN_KNOWLEDGE.get("code_analysis", "")
-        return f"<role>Senior Staff Software Engineer</role>\n<objective>{uio.raw_input}</objective>\n<technical_requirements>\n{rules}\n</technical_requirements>\n<framework>{framework}</framework>\n<instructions>Execute the request. Provide production-ready code followed by complexity analysis.</instructions>"
-
-class CopywritingExpert(BaseExpert):
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        framework = uio.user_preferences.get("framework", "Professional (RACE)")
-        rules = DOMAIN_KNOWLEDGE.get("text_copy", "")
-        return f"You are an Elite Copywriter.\n\n### OBJECTIVE\n{uio.raw_input}\n\n### PROFESSIONAL STANDARDS\n{rules}\n\n### FRAMEWORK: {framework}\nApply this logical framework.\n\n### EXECUTION\nDeliver perfectly formatted output."
-
-class MarketingExpert(BaseExpert):
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        return f"You are a Chief Marketing Officer.\n\n### OBJECTIVE\n{uio.raw_input}\n\n### STRATEGY\n{DOMAIN_KNOWLEDGE.get('marketing', '')}\n\n### EXECUTION\nFocus on scroll-stopping hooks."
-
-class DataScienceExpert(BaseExpert):
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        return f"<role>Lead Data Scientist</role>\n<objective>{uio.raw_input}</objective>\n<data_standards>\n{DOMAIN_KNOWLEDGE.get('data_analysis', '')}\n</data_standards>\n<instructions>Execute with strict mathematical rigor.</instructions>"
-
-class ResearchExpert(BaseExpert):
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        return f"<role>Tenured Academic Researcher</role>\n<objective>{uio.raw_input}</objective>\n<scholarly_standards>\n{DOMAIN_KNOWLEDGE.get('academic_research', '')}\n</scholarly_standards>\n<instructions>Synthesize information objectively.</instructions>"
-
-class ProductivityExpert(BaseExpert):
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        return f"You are an Elite Executive Coach.\n\n### OBJECTIVE\n{uio.raw_input}\n\n### RULES\n{DOMAIN_KNOWLEDGE.get('productivity', '')}\n\n### EXECUTION\nOutput highly actionable, frictionless steps."
-
-class PromptEngineerExpert(BaseExpert):
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        return f"{EXPERT_PROMPT_ENGINEER}\n\n<task>\n{uio.raw_input}\n</task>\n<instruction>Execute the role of AXIOM.</instruction>"
-
-class UxUiExpert(BaseExpert):
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        return f"{EXPERT_UX_DESIGNER}\n\n<task>\n{uio.raw_input}\n</task>\n<instruction>Execute the role of FORMA.</instruction>"
-
-class StrategyExpert(BaseExpert):
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        return f"{EXPERT_STRATEGIST}\n\n<task>\n{uio.raw_input}\n</task>\n<instruction>Execute the role of VECTOR.</instruction>"
-
-class CybersecurityExpert(BaseExpert):
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        return f"{EXPERT_CYBERSECURITY}\n\n<task>\n{uio.raw_input}\n</task>\n<instruction>Execute the role of CIPHER.</instruction>"
-
-class DecisionScienceExpert(BaseExpert):
-    def assemble(self, uio: UnifiedIntentObject) -> str:
-        return f"{EXPERT_DECISION_SCIENCE}\n\n<task>\n{uio.raw_input}\n</task>\n<instruction>Execute the role of LUCID. Begin with DIAGNOSTIC mode.</instruction>"
-
-# ---------------------------------------------
-# THE CORE ENGINE
-# ---------------------------------------------
-
-class InkOSCompiler:
-    def __init__(self):
-        self.experts = {
-            ContentDomain.CODE_ANALYSIS: CodeExpert(),
-            ContentDomain.TEXT_COPY: CopywritingExpert(),
-            ContentDomain.MARKETING: MarketingExpert(),
-            ContentDomain.DATA_ANALYSIS: DataScienceExpert(),
-            ContentDomain.ACADEMIC: ResearchExpert(),
-            ContentDomain.PRODUCTIVITY: ProductivityExpert(),
-            ContentDomain.PROMPT_ENGINEERING: PromptEngineerExpert(),
-            ContentDomain.UX_UI_DESIGN: UxUiExpert(),
-            ContentDomain.STARTUP_STRATEGY: StrategyExpert(),
-            ContentDomain.CYBERSECURITY: CybersecurityExpert(),
-            ContentDomain.DECISION_SCIENCE: DecisionScienceExpert(),
-            ContentDomain.UNKNOWN: CopywritingExpert(),
-        }
-        self.visual_expert = VisualExpert()
-
-    def compile(self, raw_input: str, user_preferences: dict | None = None) -> UnifiedIntentObject:
-        uio = UnifiedIntentObject(raw_input=raw_input, user_preferences=user_preferences or {})
-        low = raw_input.lower()
-
-        system = """Extract 'subject' and 'exact_text' (MUST be a list of strings containing ONLY explicit names or quoted words. Do NOT include adjectives or materials like 'obsidian' or 'vibes' in exact_text). 
-        Determine 'is_visual_task' (bool).
-        Determine 'domain' string based on these strict rules:
-        - If the user asks "Is it a good idea", "Should I", or wants a choice evaluated -> 'decision_science'
-        - If writing AI prompts/GPT instructions -> 'prompt_engineering'
-        - If UI/UX, wireframes, user flows -> 'ux_ui_design'
-        - If business models, finance, startup growth -> 'startup_strategy'
-        - If hacking, security, vulnerabilities, code audits -> 'cybersecurity'
-        - If analyzing logic, biases, decisions -> 'decision_science'
-        - If programming/coding/web dev -> 'code_analysis'
-        - If ads/social/SEO/sales -> 'marketing'
-        - If Excel/SQL/math/data -> 'data_analysis'
-        - If studying/summarizing/science -> 'academic_research'
-        - If scheduling/routines/advice -> 'productivity'
-        - Else -> 'text_copy'. 
-        Output strictly JSON."""
-        
-        data = self._llm_call(system, raw_input)
-        
-        raw_subj = data.get("subject", raw_input)
-        if isinstance(raw_subj, list):
-            uio.subject = ", ".join([str(x) for x in raw_subj])
-        else:
-            uio.subject = str(raw_subj)
-        
-        ext_text = data.get("exact_text", [])
-        if isinstance(ext_text, str):
-            uio.exact_text = [ext_text] if ext_text.strip() else []
-        elif isinstance(ext_text, list):
-            uio.exact_text = [str(t) for t in ext_text if t.strip()]
-        else:
-            uio.exact_text = []
-
-        uio.is_visual_task = data.get("is_visual_task", False)
-        
-        try:
-            uio.domain = ContentDomain(data.get("domain", "text_copy"))
-        except ValueError:
-            uio.domain = ContentDomain.TEXT_COPY
-
-        visual_triggers = ["draw", "paint", "image", "banner", "header", "poster", "logo", "photograph", "render"]
-        if any(w in low for w in visual_triggers):
-            uio.is_visual_task = True
-
-        if uio.is_visual_task:
-            if "logo" in low or "icon" in low:
-                uio.domain = ContentDomain.GRAPHIC_DESIGN
-                uio.style_dna = {"art_medium": "Flat vector graphics, minimalist brand mark", "render_type": "Clean SVG style, sharp edges"}
-            elif "banner" in low or "header" in low:
-                uio.domain = ContentDomain.GRAPHIC_DESIGN
-                uio.style_dna = STYLE_LIBRARY.get("anime_banner", {}).copy()
-            elif "editorial" in low or "poster" in low:
-                uio.domain = ContentDomain.ILLUSTRATION
-                uio.style_dna = STYLE_LIBRARY.get("dark_editorial", {}).copy()
-            else:
-                uio.domain = ContentDomain.ILLUSTRATION
-                uio.style_dna = {"art_medium": "High-fidelity digital illustration"}
-            
-            uio = self._apply_intelligence(uio)
-
-        uio = self._route_target(uio)
-
-        text_models = [TargetModel.CLAUDE, TargetModel.CHATGPT, TargetModel.MANUS]
-        visual_models = [TargetModel.MIDJOURNEY, TargetModel.DALLE3, TargetModel.IMAGEN3]
-        
-        if uio.target_model in text_models:
-            uio.is_visual_task = False
-        elif uio.target_model in visual_models:
-            uio.is_visual_task = True
-        
-        if uio.is_visual_task:
-            uio.compiled_prompt = self.visual_expert.assemble(uio)
-        else:
-            expert = self.experts.get(uio.domain, self.experts[ContentDomain.TEXT_COPY])
-            uio.compiled_prompt = expert.assemble(uio)
-            
-        return uio
-
-    def _apply_intelligence(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
-        low = uio.raw_input.lower()
-        hits = 0
-        
-        # Pull dynamic identity from UI (or fallback to your defaults)
-        b_id = uio.user_preferences.get("brand_identity") or {}
-        p_name = b_id.get("name", "Ameer")
-        p_trigger = b_id.get("trigger", "shikamaru")
-        p_muse = b_id.get("muse", "Dynamic 2D anime render of Shikamaru Nara (Konoha Vest)")
-        p_vibe = b_id.get("vibe", "circuit board patterns, data streams, glitch distortion").split(",")
-
-        # Dynamic Name Protection
-        if p_name.lower() in low and not any(p_name.lower() in t.lower() for t in uio.exact_text):
-            uio.exact_text.append(p_name)
-            hits += 1
-            
-        # Dynamic Avatar/Muse Injection
-        if p_trigger in low:
-            uio.style_dna["art_medium"] = p_muse
-            uio.exact_text = [t for t in uio.exact_text if t.lower() != p_trigger]
-            hits += 1
-            
-        # Dynamic Vibe/FX injection
-        if any(w in low for w in ["tech", "cyber", "security", "hacker"]):
-            if "fx_elements" not in uio.style_dna:
-                uio.style_dna["fx_elements"] = []
-            uio.style_dna["fx_elements"].extend([v.strip() for v in p_vibe if v.strip()])
-            hits += 1
-            
-        if uio.exact_text: hits += 1
-        uio.intelligence_score = hits
-        return uio
-
-    def _route_target(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
-        forced_target = uio.user_preferences.get("target")
-        if forced_target and "Auto" not in forced_target:
-            try:
-                uio.target_model = TargetModel(forced_target)
-                return uio
-            except ValueError:
-                pass
-
-        if not uio.is_visual_task: 
-            analytical_domains = [
-                ContentDomain.CODE_ANALYSIS, ContentDomain.DATA_ANALYSIS, ContentDomain.ACADEMIC,
-                ContentDomain.PROMPT_ENGINEERING, ContentDomain.UX_UI_DESIGN, ContentDomain.STARTUP_STRATEGY,
-                ContentDomain.CYBERSECURITY, ContentDomain.DECISION_SCIENCE
-            ]
-            if uio.domain in analytical_domains:
-                uio.target_model = TargetModel.CLAUDE
-            else:
-                uio.target_model = TargetModel.CHATGPT
-        elif uio.domain == ContentDomain.GRAPHIC_DESIGN or uio.exact_text: 
-            uio.target_model = TargetModel.IMAGEN3
-        else: 
-            uio.target_model = TargetModel.MIDJOURNEY
-        return uio
-
-    def _llm_call(self, system: str, user: str) -> dict:
-        try:
-            marcel_system = f"{MARCEL_IDENTITY}\n\nStrict Task Execution:\n{system}"
-            res = client.chat.completions.create(
-                model=MODEL_ID, 
-                messages=[{"role": "system", "content": marcel_system}, {"role": "user", "content": user}], 
-                temperature=0.0, 
-                response_format={"type": "json_object"}
-            )
-            return json.loads(res.choices[0].message.content or "{}")
-        except: return {}
-
-# ---------------------------------------------
-# UI BRIDGE 
-# ---------------------------------------------
 
 def detect_best_target(user_text: str) -> tuple:
-    uio = InkOSCompiler().compile(user_text)
-    return str(uio.target_model.value), f"{uio.domain.name.replace('_', ' ').title()} Module Activated."
+    """
+    CIPHER pre-analysis call.
+    Reads the raw input and selects the best target AI.
 
-# UPDATED: Added brand_identity to the function parameters and injected it into prefs
-def run_refinement_and_audit(user_text: str, target: str, framework: str, lang: str, aesthetic_choice: str, islamic_mode: bool = False, persona: Optional[dict] = None, brand_identity: Optional[dict] = None) -> Tuple[str, dict, Optional[dict]]:
-    prefs = {
-        "target": target,
-        "framework": framework,
-        "lang": lang,
-        "islamic_mode": islamic_mode,
-        "persona": persona,
-        "brand_identity": brand_identity
-    }
+    Returns: (target_name: str, reason: str)
+    Falls back to "Claude" on any failure — safest default.
 
-    pattern = None
+    WHY a separate call:
+      This is a fast, cheap classification call (max 200 tokens).
+      It runs only when "Auto" is selected — not on every execution.
+      Keeping it separate means it never bloats the main refinement prompt.
+    """
+    system_prompt = f"""You are CIPHER's target classification module.
+Your only task: read the user input and select the single best AI target.
+
+{TARGET_SELECTION_GUIDE}
+
+Output ONLY valid JSON. No preamble. No explanation.
+{{"target": "<exact target name>", "reason": "<one sentence max>"}}
+
+Valid target names (use exactly): Claude, ChatGPT, Manus AI, Midjourney/Flux, DALL-E 3
+"""
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": user_text[:500]},  # truncate for speed
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.1,    # low temp — this is classification, not generation
+            max_tokens=100,     # tiny response — just target + reason
+        )
+        raw = json.loads(completion.choices[0].message.content)
+        target = str(raw.get("target", "Claude")).strip()
+        reason = str(raw.get("reason", "")).strip()
+
+        # Validate — must be a known target
+        if target not in TARGET_GUIDES:
+            target = "Claude"
+            reason = "Defaulted to Claude — unrecognized target in response."
+
+        return target, reason
+
+    except Exception as e:
+        err_msg = str(e)[:60]
+        return "Claude", f"Auto-selection failed ({err_msg}). Defaulted to Claude."
+
+
+def run_refinement_and_audit(
+    user_text:        str,
+    target:           str,
+    framework:        str,
+    lang:             str,
+    aesthetic_choice: str,
+    islamic_mode:     bool           = False,
+    persona:          Optional[dict] = None,
+    brand_identity:   Optional[dict] = None,
+) -> Tuple[str, dict, Optional[dict]]:
+    """
+    CIPHER engine with auto-retry.
+    Returns (refined_prompt, audit_dict, detected_pattern).
+    brand_identity: optional brand context dict injected into system prompt.
+    """
+    # Step 1: Arabic cognitive detection
+    detected: Optional[dict] = None
+    cognitive: str = ""
+
     if lang == "Arabic (العربية)":
-        pattern = detect_arabic_pattern(user_text)
+        detected = detect_arabic_pattern(user_text)
+        if detected:
+            cognitive = (
+                f"ARABIC RHETORICAL ARCHITECTURE DETECTED:\n"
+                f"  Classical Device : {detected['pattern']}\n"
+                f"  Mapped Paradigm  : {detected['prompt_paradigm']}\n"
+                f"  Structural Rule  : {detected['prompt_instruction']}\n"
+                f"Apply this paradigm as the structural backbone of the refined prompt."
+            )
+        else:
+            cognitive = (
+                "INPUT LANGUAGE: Arabic\n"
+                "COGNITIVE MAPPING PROTOCOL:\n"
+                "  Step 1 — Extract core technical intent from Arabic phrasing.\n"
+                "  Step 2 — Identify the conceptual domain.\n"
+                "  Step 3 — Map to the closest English AI prompting paradigm.\n"
+                "  Step 4 — Build refined prompt using that paradigm's native syntax.\n"
+                "  Rule   — Do NOT translate literally. Map conceptually."
+            )
 
-    uio = InkOSCompiler().compile(user_text, user_preferences=prefs)
-    
-    prec = 20 if uio.subject else 0
-    prec += 20 if uio.exact_text else 10
-    align = 40 if uio.is_visual_task else 35
-    eff = min(20, 10 + (uio.intelligence_score * 5))
+    # Step 2: First attempt
+    sys_prompt = _build_system_prompt(
+        target, framework, cognitive,
+        islamic_mode, aesthetic_choice, persona,
+        retry_critique=None,
+        brand_identity=brand_identity,
+    )
+    refined, audit, error = _call_cipher(sys_prompt, user_text)
 
-    audit = {
-        "score": 98 if uio.is_visual_task else 95,
-        "precision": prec,
-        "alignment": align,
-        "efficiency": eff,
-        "critique": "Visual DNA mapped to layout." if uio.is_visual_task else f"Expert Module active: {uio.domain.value.upper()}"
-    }
+    if error:
+        return f"[CIPHER ERROR]: {error}", dict(_FALLBACK_AUDIT), None
 
-    ui_display = f"### [COMPILED BINARY] -> {uio.target_model.value.upper()}\n{uio.compiled_prompt}\n\n"
-    if uio.negative_prompt:
-        ui_display += f"### [NEGATIVE CONSTRAINTS]\n{uio.negative_prompt}\n"
-        
-    return ui_display, audit, pattern
+    # Step 3: Auto-retry on low score
+    score = audit.get("score", 0) if audit else 0
+
+    if score < RETRY_THRESHOLD and audit and audit.get("critique"):
+        retry_prompt = _build_system_prompt(
+            target, framework, cognitive,
+            islamic_mode, aesthetic_choice, persona,
+            retry_critique=audit["critique"],
+            brand_identity=brand_identity,
+        )
+        refined_v2, audit_v2, error_v2 = _call_cipher(retry_prompt, user_text)
+
+        # Only accept retry if it improved
+        if not error_v2 and refined_v2 and audit_v2:
+            if audit_v2.get("score", 0) >= score:
+                return refined_v2, audit_v2, detected
+
+    return refined, audit, detected
