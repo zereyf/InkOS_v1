@@ -1,10 +1,11 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v2: THE UX OVERHAUL
+v2.1: THE DYNAMIC IDENTITY PATCH
 - Promoted 'Islamic Mode' out of Aesthetic and into Logic Configuration.
 - Language switcher remains at the top. 
 - Cleaned up visual hierarchy.
+- Injected 'brand_identity' into the SidebarConfig payload for dynamic routing.
 """
 
 import streamlit as st
@@ -26,6 +27,7 @@ class SidebarConfig(TypedDict):
     islamic_mode:     bool
     aesthetic_choice: str
     active_persona:   Optional[dict]
+    brand_identity:   Optional[dict] # <--- DYNAMIC IDENTITY INJECTION
 
 
 def _load_user_personas(user_hash: str) -> list:
@@ -259,4 +261,5 @@ def render_sidebar() -> SidebarConfig:
         islamic_mode     = islamic_mode,
         aesthetic_choice = aesthetic_choice,
         active_persona   = active_persona,
+        brand_identity   = st.session_state.get("brand_identity") # <--- DYNAMIC IDENTITY INJECTION
     )
