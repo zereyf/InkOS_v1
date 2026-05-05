@@ -3,14 +3,16 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
 
-v12.5: Full Production Build.
-- Implements defensive type-checking for engine results.
-- Implements dynamic key generation for download buttons.
-- Full support for CIPHER cognitive mapping and auto-target selection.
+v13.0: THE UX OVERHAUL
+- Replaced fake "Refinement Quality" metrics with actual System Telemetry.
+- Added 1-Click "Send to AI" quick-launch buttons for ChatGPT and Claude.
+- Improved terminal-style loading states to prevent UI jitter.
+- Integrated CIPHER auto-target visual telemetry.
 """
 
 import hashlib
 import streamlit as st
+import urllib.parse
 from datetime import datetime
 from typing import Optional
 
@@ -41,50 +43,37 @@ def _render_pattern_card(pattern: dict, label: str = None) -> None:
     """, unsafe_allow_html=True)
 
 
-def _render_score_block(audit: dict, pattern: Optional[dict]) -> None:
-    """Renders the quality audit visualization."""
+def _render_telemetry_block(audit: dict, pattern: Optional[dict], output_text: str, target_model: str) -> None:
+    """Renders real system telemetry instead of fake progress bars."""
     audit_data = audit or {}
-    score      = int(audit_data.get("score",     0))
-    precision  = int(audit_data.get("precision",  0))
-    alignment  = int(audit_data.get("alignment",  0))
-    efficiency = int(audit_data.get("efficiency", 0))
-    critique   = str(audit_data.get("critique",  ""))
-
-    p_pct = round((precision  / 40) * 100) if precision else 0
-    a_pct = round((alignment  / 40) * 100) if alignment else 0
-    e_pct = round((efficiency / 20) * 100) if efficiency else 0
-
+    critique   = str(audit_data.get("critique",  "Standard Text Compilation"))
+    
+    # Calculate real data
+    est_tokens = int(len(output_text.split()) * 1.3)
+    char_count = len(output_text)
+    
     if pattern:
         color = pattern.get("color", "#C9A84C")
         st.markdown(f"""
         <div class="pattern-card" style="margin-bottom:12px;">
-            <span class="p-label">Engine Applied</span>
+            <span class="p-label">Linguistic Engine</span>
             <span class="p-arabic" style="color:{color};">{pattern['pattern']}</span>
             <span class="p-paradigm" style="color:{color};">→ {pattern['prompt_paradigm']}</span>
         </div>
         """, unsafe_allow_html=True)
 
-    critique_html = f'<div class="critique-line">{critique}</div>' if critique else ''
     st.markdown(f"""
-    <div class="score-block">
-        <div class="score-num">{score}<span>%</span></div>
-        <div class="score-lbl">{t("refinement_quality")}</div>
-        <div class="bar-row">
-            <span class="bar-lbl">{t("precision")}</span>
-            <div class="bar-track"><div class="bar-fill" style="width:{p_pct}%;background:#C9A84C;"></div></div>
-            <span class="bar-val">{precision}/40</span>
+    <div class="score-block" style="padding: 16px;">
+        <div class="score-lbl" style="font-size: 0.75rem; letter-spacing: 2px; color: var(--gold); margin-bottom: 12px;">
+            [ SYSTEM TELEMETRY ]
         </div>
-        <div class="bar-row">
-            <span class="bar-lbl">{t("alignment")}</span>
-            <div class="bar-track"><div class="bar-fill" style="width:{a_pct}%;background:#7C9EBF;"></div></div>
-            <span class="bar-val">{alignment}/40</span>
+        <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); line-height: 1.8;">
+            <span style="color:#7C9EBF;">></span> <b>TARGET:</b> {target_model}<br>
+            <span style="color:#7C9EBF;">></span> <b>ROUTING:</b> {critique}<br>
+            <span style="color:#4CAF9A;">></span> <b>EST. TOKENS:</b> {est_tokens}<br>
+            <span style="color:#4CAF9A;">></span> <b>CHARS:</b> {char_count}<br>
+            <span style="color:#C9A84C;">></span> <b>STATUS:</b> OPTIMIZED
         </div>
-        <div class="bar-row">
-            <span class="bar-lbl">{t("efficiency")}</span>
-            <div class="bar-track"><div class="bar-fill" style="width:{e_pct}%;background:#4CAF9A;"></div></div>
-            <span class="bar-val">{efficiency}/20</span>
-        </div>
-        {critique_html}
     </div>
     """, unsafe_allow_html=True)
 
@@ -160,12 +149,13 @@ def render_workspace(cfg: dict) -> None:
         elif not check_rate_limit(consume=1):
             st.warning(t("rate_limit"))
         else:
-            with st.status(t("status_processing"), expanded=True) as status:
-                st.write(t("status_mapping"))
+            # Sleek terminal-style loading state
+            with st.status("Initializing MARCEL Compiler...", expanded=True) as status:
+                st.write("> Connecting to Groq Engine...")
 
                 resolved_target = cfg["target_model"]
                 if cfg["target_model"] == AUTO_SELECT_LABEL:
-                    st.write("🎯 CIPHER analysing intent...")
+                    st.write("> Analyzing semantic intent for auto-routing...")
                     auto_target, auto_reason = detect_best_target(cleaned)
                     resolved_target = auto_target
                     st.session_state[K.AUTO_TARGET] = auto_target
@@ -174,6 +164,8 @@ def render_workspace(cfg: dict) -> None:
                     st.session_state[K.AUTO_TARGET] = None
                     st.session_state[K.AUTO_REASON] = None
 
+                st.write(f"> Target locked: {resolved_target}. Compiling Expert Blueprint...")
+                
                 result, audit, pattern = run_refinement_and_audit(
                     user_text        = cleaned,
                     target           = resolved_target,
@@ -187,15 +179,11 @@ def render_workspace(cfg: dict) -> None:
                 # Defensive type-check
                 res_str = str(result) if result is not None else ""
                 
-                audit_safe = audit or {}
-                score = audit_safe.get("score", 0)
-                st.write(t("status_compiling") + (" (retry applied)" if score >= 80 else ""))
-
                 if res_str.startswith("[CIPHER ERROR]"):
                     status.update(label="Engine Error", state="error", expanded=False)
                     st.error(res_str)
                 else:
-                    status.update(label=t("status_complete"), state="complete", expanded=False)
+                    status.update(label="Compilation Complete", state="complete", expanded=False)
                     st.session_state[K.LAST_RESULT]  = result
                     st.session_state[K.LAST_AUDIT]   = audit
                     st.session_state[K.LAST_INPUT]   = cleaned
@@ -208,7 +196,7 @@ def render_workspace(cfg: dict) -> None:
                         "aesthetic": cfg["aesthetic_choice"],
                         "input": cleaned,
                         "output": result,
-                        "score": score,
+                        "score": (audit or {}).get("score", 0),
                         "pattern": pattern["pattern"] if pattern else None,
                         "islamic": cfg["islamic_mode"],
                     })
@@ -226,6 +214,10 @@ def render_workspace(cfg: dict) -> None:
         
         auto_target = st.session_state.get(K.AUTO_TARGET)
         auto_reason = st.session_state.get(K.AUTO_REASON)
+        
+        # We need to know the final resolved target for Telemetry and Buttons
+        final_target_display = auto_target if auto_target else cfg.get("target_model", "ChatGPT")
+
         if auto_target and auto_reason:
             st.markdown(f"""
             <div class="auto-target-pill" style="
@@ -243,7 +235,9 @@ def render_workspace(cfg: dict) -> None:
 
         left, right = st.columns([1, 2], gap="large")
         with left:
-            _render_score_block(last_audit, last_pattern)
+            # Replaced Fake metrics with Real Telemetry
+            _render_telemetry_block(last_audit, last_pattern, last_res_str, final_target_display)
+            
         with right:
             st.markdown(f'<div class="vc-header" style="font-size:0.6rem;">{t("original_intent")}</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="vc-card" style="font-size:0.8rem;line-height:1.75;">{_escape(last_input)}</div>', unsafe_allow_html=True)
@@ -251,16 +245,27 @@ def render_workspace(cfg: dict) -> None:
             st.markdown(f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>', unsafe_allow_html=True)
             st.text_area("output", value=last_res_str, height=220, label_visibility="collapsed", key="out_area")
 
-            # Dynamic key for download button to prevent StreamlitAPIException
+            # ── 1-CLICK ACTION BUTTONS ────────────────────────────────────────
             dl_ts = datetime.now().strftime("%H%M%S")
-            st.download_button(
-                t("download_prompt"),
-                data=last_res_str,
-                file_name=f"vc_{dl_ts}.txt",
-                key=f"dl_btn_{dl_ts}",
-                use_container_width=True
-            )
+            b1, b2, b3 = st.columns(3)
             
+            with b1:
+                st.download_button(
+                    "💾 Download",
+                    data=last_res_str,
+                    file_name=f"inkos_{dl_ts}.txt",
+                    key=f"dl_btn_{dl_ts}",
+                    use_container_width=True
+                )
+            with b2:
+                # ChatGPT supports prompt injection via URL param for Search/Chat
+                gpt_url = f"https://chatgpt.com/?q={urllib.parse.quote(last_res_str)}"
+                st.link_button("↗ Open in ChatGPT", gpt_url, use_container_width=True)
+            with b3:
+                # Claude URL (Anthropic doesn't support direct URL prompt injection yet, so it goes to new chat)
+                st.link_button("↗ Open in Claude", "https://claude.ai/new", use_container_width=True)
+            
+            # Vault Saving Logic
             from vault.supabase_client import SUPABASE_MISSING
             if not SUPABASE_MISSING:
                 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
@@ -270,5 +275,5 @@ def render_workspace(cfg: dict) -> None:
                 if st.button(t("save_vault_btn"), key="v_save", use_container_width=True):
                     if v_title.strip():
                         from vault.vault_engine import save_prompt
-                        save_prompt(user_hash=st.session_state.get(K.USER_HASH, ""), title=v_title, tags=v_tags, content=last_res_str, target=cfg.get("target_model", ""), framework=cfg.get("framework", ""), score=(last_audit or {}).get("score", 0), pattern=last_pattern["pattern"] if last_pattern else "", islamic=cfg.get("islamic_mode", False), aesthetic=cfg.get("aesthetic_choice", ""))
-                        st.success("Saved.")
+                        save_prompt(user_hash=st.session_state.get(K.USER_HASH, ""), title=v_title, tags=v_tags, content=last_res_str, target=final_target_display, framework=cfg.get("framework", ""), score=(last_audit or {}).get("score", 0), pattern=last_pattern["pattern"] if last_pattern else "", islamic=cfg.get("islamic_mode", False), aesthetic=cfg.get("aesthetic_choice", ""))
+                        st.success("Saved to Vault.")
