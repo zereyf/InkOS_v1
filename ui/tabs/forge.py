@@ -3,13 +3,10 @@ ui/tabs/forge.py — Persona Forge Tab
 ======================================
 Tab 6: Create, browse, and manage AI personas.
 
-Features:
-  - Four built-in starter personas available immediately
-  - Create custom personas with role, constraints, style, target
-  - Save to Supabase — persists across sessions
-  - Activate directly from this tab (sets K.ACTIVE_PERSONA)
-  - Delete with confirmation
-  - Preview shows exactly how the persona injects per target dialect
+v15.0: THE DYNAMIC IDENTITY ENGINE
+- Added a 3rd tab: "Brand Identity 🧬" to configure Visual DNA dynamically.
+- Removed hardcoded reliance on specific user names or avatars.
+- State management for user's specific trigger words and visual elements.
 """
 
 import streamlit as st
@@ -82,7 +79,6 @@ def _render_persona_card(
                 st.rerun()
 
         with a2:
-            # Injection preview — shows exactly what gets added to the prompt
             preview_target = st.session_state.get("sb_target", "Claude")
             if st.button(t("preview_injection"), key=f"preview_{pid}", use_container_width=True):
                 st.session_state[f"show_preview_{pid}"] = not st.session_state.get(f"show_preview_{pid}", False)
@@ -106,7 +102,6 @@ def _render_persona_card(
                         st.session_state[confirm_key] = True
                         st.rerun()
 
-        # Injection preview panel
         if st.session_state.get(f"show_preview_{pid}"):
             preview_target = st.session_state.get("sb_target", "Claude")
             injected = inject_persona(persona, preview_target)
@@ -130,7 +125,7 @@ def render_forge() -> None:
     st.markdown(
         '<p style="font-family:var(--font-m);font-size:0.72rem;color:var(--text-muted);'
         'line-height:1.8;margin-bottom:20px;">'
-        'Build reusable AI personas. Activate one from the sidebar and it injects '
+        'Build reusable AI personas and configure your Visual Brand DNA. Activate one from the sidebar and it injects '
         'into every refinement automatically.</p>',
         unsafe_allow_html=True,
     )
@@ -156,13 +151,11 @@ def render_forge() -> None:
         </div>
         """, unsafe_allow_html=True)
 
-    # ── TABS: BROWSE | CREATE ──────────────────────────────────────────────────
-    forge_tab1, forge_tab2 = st.tabs([t("browse_personas"), t("create_new")])
+    # ── TABS: BROWSE | CREATE | BRAND IDENTITY ─────────────────────────────────
+    forge_tab1, forge_tab2, forge_tab3 = st.tabs([t("browse_personas"), t("create_new"), "Brand Identity 🧬"])
 
     # ── BROWSE ─────────────────────────────────────────────────────────────────
     with forge_tab1:
-
-        # Starter personas
         st.markdown(
             f'<div class="vc-header" style="font-size:0.62rem;margin-top:8px;">{t("builtin_starters")}</div>',
             unsafe_allow_html=True,
@@ -177,7 +170,6 @@ def render_forge() -> None:
                 is_starter = True,
             )
 
-        # User-saved personas
         if not SUPABASE_MISSING:
             st.markdown(
                 f'<div class="vc-header" style="font-size:0.62rem;margin-top:16px;">{t("your_personas")}</div>',
@@ -217,11 +209,7 @@ def render_forge() -> None:
 
         c1, c2 = st.columns([2, 1])
         with c1:
-            p_name = st.text_input(
-                "Persona Name",
-                placeholder="e.g. Islamic Finance Consultant",
-                key="forge_name",
-            )
+            p_name = st.text_input("Persona Name", placeholder="e.g. Islamic Finance Consultant", key="forge_name")
         with c2:
             p_target = st.selectbox(
                 "Optimised For",
@@ -230,31 +218,11 @@ def render_forge() -> None:
                 help="'All' works across every AI. Pick a specific AI for dialect-aware injection.",
             )
 
-        p_role = st.text_area(
-            "Role Definition",
-            height=90,
-            placeholder="Describe who this persona is and their expertise...",
-            key="forge_role",
-        )
-        p_constraints = st.text_area(
-            "Constraints",
-            height=70,
-            placeholder="What must this persona never do? What must it always consider?",
-            key="forge_constraints",
-        )
-        p_style = st.text_area(
-            "Communication Style",
-            height=60,
-            placeholder="How should this persona write and speak?",
-            key="forge_style",
-        )
-        p_tags = st.text_input(
-            "Tags",
-            placeholder="finance, arabic, technical...",
-            key="forge_tags",
-        )
+        p_role = st.text_area("Role Definition", height=90, placeholder="Describe who this persona is and their expertise...", key="forge_role")
+        p_constraints = st.text_area("Constraints", height=70, placeholder="What must this persona never do? What must it always consider?", key="forge_constraints")
+        p_style = st.text_area("Communication Style", height=60, placeholder="How should this persona write and speak?", key="forge_style")
+        p_tags = st.text_input("Tags", placeholder="finance, arabic, technical...", key="forge_tags")
 
-        # Live injection preview
         if p_role:
             preview_persona = {
                 "name": p_name or "Preview",
@@ -275,7 +243,6 @@ def render_forge() -> None:
             elif not p_role.strip():
                 st.warning(t("persona_role_warn"))
             elif SUPABASE_MISSING:
-                # Still activate in-session even without Supabase
                 new_persona = {
                     "id":          p_name.strip().lower().replace(" ", "_"),
                     "name":        p_name.strip(),
@@ -303,3 +270,39 @@ def render_forge() -> None:
                     st.session_state[K.ACTIVE_PERSONA] = saved
                     st.success(t('persona_saved_ok', name=p_name))
                     st.rerun()
+
+    # ── BRAND IDENTITY (DYNAMIC ENGINE) ────────────────────────────────────────
+    with forge_tab3:
+        st.markdown(
+            f'<div class="vc-header" style="font-size:0.62rem;margin-top:8px;">Dynamic Brand Identity</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<p style="font-family:var(--font-m);font-size:0.7rem;color:var(--text-muted);">'
+            'Configure the visual elements MARCEL automatically injects and protects '
+            'during Graphic Design and Illustration tasks.</p>',
+            unsafe_allow_html=True,
+        )
+        
+        # Load existing config or set defaults
+        current_id = st.session_state.get("brand_identity", {
+            "name": "Ameer",
+            "muse": "Dynamic 2D anime render of Shikamaru Nara (Konoha Vest)",
+            "trigger": "shikamaru",
+            "vibe": "circuit board patterns, data streams, glitch distortion"
+        })
+        
+        b_name = st.text_input("Creator / Brand Name (Protected Typography)", value=current_id.get("name"), help="MARCEL will isolate this name so AI image generators spell it correctly.")
+        b_trigger = st.text_input("Avatar Trigger Word", value=current_id.get("trigger"), help="The specific word in your intent that activates your Muse.")
+        b_muse = st.text_input("Avatar / Muse Rendering", value=current_id.get("muse"), help="The detailed visual description injected when the trigger word is used.")
+        b_vibe = st.text_input("Core Vibe / FX (Comma separated)", value=current_id.get("vibe"), help="Elements automatically added to Tech/Cyber prompts.")
+        
+        if st.button("💾 Lock Visual Identity", use_container_width=True):
+            st.session_state["brand_identity"] = {
+                "name": b_name,
+                "muse": b_muse,
+                "trigger": b_trigger.lower(),
+                "vibe": b_vibe
+            }
+            st.success("Identity Locked! MARCEL's visual routing has been updated.")
+            st.rerun()
