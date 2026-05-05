@@ -1,10 +1,12 @@
 """
 engine/refiner.py - InkOS Cognitive Prompt Engine
 =================================================
-v5.4: THE TEXT OPTIMIZATION RESTORATION
-- Fixed: Text Engine Lobotomy (ChatGPT/Claude/Manus now receive highly structured prompts).
-- Restored: Integrates TARGET_GUIDES, frameworks, and personas from UI preferences.
-- Preserved: All flawless Visual DNA, Ameer/Shikamaru logic, and dynamic UI metrics.
+v7.0: THE OMNI-EXPERT ARCHITECTURE
+- Added: MarketingExpert (SEO, Hooks, CTAs).
+- Added: DataScienceExpert (Excel, SQL, Logic).
+- Added: ResearchExpert (Academic, Summaries).
+- Added: ProductivityExpert (Schedules, Habits).
+- Preserved: All flawless Visual DNA, Code/Copy experts, and Arabic/UI bridges.
 """
 
 from __future__ import annotations
@@ -13,8 +15,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional, Tuple
 
-# Restored TARGET_GUIDES import to power the text engine
-from config import client, MODEL_ID, MAX_TOKENS, STYLE_LIBRARY, QUALITY_TIERS, TARGET_GUIDES
+from config import client, MODEL_ID, MAX_TOKENS, STYLE_LIBRARY, QUALITY_TIERS, TARGET_GUIDES, DOMAIN_KNOWLEDGE
 from engine.cognitive_map import detect_arabic_pattern
 from i18n.translations import t
 
@@ -36,6 +37,10 @@ class ContentDomain(str, Enum):
     GRAPHIC_DESIGN  = "graphic_design"
     TEXT_COPY       = "text_copy"
     CODE_ANALYSIS   = "code_analysis"
+    MARKETING       = "marketing"
+    DATA_ANALYSIS   = "data_analysis"
+    ACADEMIC        = "academic_research"
+    PRODUCTIVITY    = "productivity"
     UNKNOWN         = "unknown"
 
 @dataclass
@@ -53,25 +58,144 @@ class UnifiedIntentObject:
     intelligence_score: int = 0
 
 # ---------------------------------------------
-# THE ENGINE
+# DOMAIN EXPERT MODULES (Strategy Pattern)
+# ---------------------------------------------
+
+class BaseExpert:
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        raise NotImplementedError
+
+class VisualExpert(BaseExpert):
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        dna = uio.style_dna
+        quality = ", ".join(QUALITY_TIERS.get("studio", []))
+        txt = f'EXACT TEXT: "{" ".join(uio.exact_text)}"' if uio.exact_text else ""
+        
+        if uio.target_model == TargetModel.IMAGEN3:
+            h = "[GRAPHIC DESIGN LAYOUT]" if uio.domain == ContentDomain.GRAPHIC_DESIGN else "[SPATIAL BLUEPRINT]"
+            details = [f"Subject: {uio.subject}", txt, f"Style: {dna.get('art_medium', 'Anime')}", f"FX: {', '.join(dna.get('fx_elements', []))}" if dna.get('fx_elements') else "", f"Fidelity: {quality}"]
+            return f"{h} " + ". ".join(filter(None, details)) + "."
+        
+        elif uio.target_model == TargetModel.MIDJOURNEY:
+            parts = [uio.subject, txt, dna.get("art_medium"), quality]
+            return " :: ".join(filter(None, parts)) + " --ar 16:9"
+        
+        else: # DALLE-3
+            return f"Create a highly detailed visual of {uio.subject}. {txt} Style inspired by {dna.get('art_medium', 'premium concepts')}. Quality: {quality}."
+
+class CodeExpert(BaseExpert):
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        framework = uio.user_preferences.get("framework", "Technical (Zero-Shot)")
+        rules = DOMAIN_KNOWLEDGE["code_analysis"]
+        return (
+            f"<role>Senior Staff Software Engineer</role>\n"
+            f"<objective>{uio.raw_input}</objective>\n"
+            f"<technical_requirements>\n{rules}\n</technical_requirements>\n"
+            f"<framework>{framework}</framework>\n"
+            f"<instructions>Execute the request. Provide production-ready code followed by complexity analysis.</instructions>"
+        )
+
+class CopywritingExpert(BaseExpert):
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        framework = uio.user_preferences.get("framework", "Professional (RACE)")
+        rules = DOMAIN_KNOWLEDGE["text_copy"]
+        return (
+            f"You are an Elite Copywriter & Content Strategist.\n\n"
+            f"### OBJECTIVE\n{uio.raw_input}\n\n"
+            f"### PROFESSIONAL STANDARDS\n{rules}\n\n"
+            f"### FRAMEWORK: {framework}\nApply this logical framework to structure your response.\n\n"
+            f"### EXECUTION\nDeliver a comprehensive, perfectly formatted output."
+        )
+
+class MarketingExpert(BaseExpert):
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        rules = DOMAIN_KNOWLEDGE["marketing"]
+        return (
+            f"You are a Chief Marketing Officer & SEO Expert.\n\n"
+            f"### OBJECTIVE\n{uio.raw_input}\n\n"
+            f"### CONVERSION & HOOK STRATEGY\n{rules}\n\n"
+            f"### EXECUTION\nFocus on scroll-stopping hooks, high engagement, and psychological triggers."
+        )
+
+class DataScienceExpert(BaseExpert):
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        rules = DOMAIN_KNOWLEDGE["data_analysis"]
+        return (
+            f"<role>Lead Data Scientist & Systems Architect</role>\n"
+            f"<objective>{uio.raw_input}</objective>\n"
+            f"<data_standards>\n{rules}\n</data_standards>\n"
+            f"<instructions>Execute with strict mathematical rigor. Explain formulas and schemas step-by-step.</instructions>"
+        )
+
+class ResearchExpert(BaseExpert):
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        rules = DOMAIN_KNOWLEDGE["academic_research"]
+        return (
+            f"<role>Tenured Academic Researcher & Analyst</role>\n"
+            f"<objective>{uio.raw_input}</objective>\n"
+            f"<scholarly_standards>\n{rules}\n</scholarly_standards>\n"
+            f"<instructions>Synthesize information objectively. Use formal academic structuring. Provide empirical backing.</instructions>"
+        )
+
+class ProductivityExpert(BaseExpert):
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        rules = DOMAIN_KNOWLEDGE["productivity"]
+        return (
+            f"You are an Elite Executive Coach & Productivity Engineer.\n\n"
+            f"### OBJECTIVE\n{uio.raw_input}\n\n"
+            f"### OPTIMIZATION RULES\n{rules}\n\n"
+            f"### EXECUTION\nOutput highly actionable, frictionless steps. Eliminate overwhelm."
+        )
+
+# ---------------------------------------------
+# THE CORE ENGINE
 # ---------------------------------------------
 
 class InkOSCompiler:
+    def __init__(self):
+        # Register the experts
+        self.experts = {
+            ContentDomain.CODE_ANALYSIS: CodeExpert(),
+            ContentDomain.TEXT_COPY: CopywritingExpert(),
+            ContentDomain.MARKETING: MarketingExpert(),
+            ContentDomain.DATA_ANALYSIS: DataScienceExpert(),
+            ContentDomain.ACADEMIC: ResearchExpert(),
+            ContentDomain.PRODUCTIVITY: ProductivityExpert(),
+            ContentDomain.UNKNOWN: CopywritingExpert(),
+        }
+        self.visual_expert = VisualExpert()
+
     def compile(self, raw_input: str, user_preferences: dict | None = None) -> UnifiedIntentObject:
         uio = UnifiedIntentObject(raw_input=raw_input, user_preferences=user_preferences or {})
         low = raw_input.lower()
 
-        # STEP 1: SEMANTIC EXTRACTION
-        system = "Extract 'subject' and 'exact_text'. Determine if is_visual_task. Output strictly JSON."
+        # 1. SEMANTIC EXTRACTION & DOMAIN ROUTING
+        system = """Extract 'subject' and 'exact_text'. Determine 'is_visual_task' (bool).
+        Determine 'domain' string based on these strict rules:
+        - If programming/coding -> 'code_analysis'
+        - If ads/social/SEO/sales -> 'marketing'
+        - If Excel/SQL/math/data -> 'data_analysis'
+        - If studying/summarizing/science -> 'academic_research'
+        - If scheduling/routines/advice -> 'productivity'
+        - Else -> 'text_copy'. 
+        Output strictly JSON."""
+        
         data = self._llm_call(system, raw_input)
+        
         uio.subject = data.get("subject", raw_input)
         uio.exact_text = data.get("exact_text", [])
         uio.is_visual_task = data.get("is_visual_task", False)
+        
+        try:
+            uio.domain = ContentDomain(data.get("domain", "text_copy"))
+        except ValueError:
+            uio.domain = ContentDomain.TEXT_COPY
 
+        # Hard Visual Keyword Guardrail
         if any(w in low for w in ["make", "draw", "generate", "image", "banner", "header", "poster", "watch", "logo"]):
             uio.is_visual_task = True
 
-        # STEP 2: DOMAIN MAPPING
+        # 2. VISUAL DNA MAPPING
         if uio.is_visual_task:
             if "banner" in low or "header" in low:
                 uio.domain = ContentDomain.GRAPHIC_DESIGN
@@ -83,12 +207,17 @@ class InkOSCompiler:
                 uio.domain = ContentDomain.ILLUSTRATION
             
             uio = self._apply_intelligence(uio)
-        else:
-            uio.domain = ContentDomain.TEXT_COPY
 
-        # STEP 3: ROUTING & ASSEMBLY
+        # 3. ROUTING
         uio = self._route_target(uio)
-        uio = self._assemble(uio)
+        
+        # 4. EXPERT ASSEMBLY
+        if uio.is_visual_task:
+            uio.compiled_prompt = self.visual_expert.assemble(uio)
+        else:
+            expert = self.experts.get(uio.domain, self.experts[ContentDomain.TEXT_COPY])
+            uio.compiled_prompt = expert.assemble(uio)
+            
         return uio
 
     def _apply_intelligence(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
@@ -107,8 +236,6 @@ class InkOSCompiler:
 
     def _route_target(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
         forced_target = uio.user_preferences.get("target")
-        
-        # Respect UI manual override if it's not Auto
         if forced_target and "Auto" not in forced_target:
             try:
                 uio.target_model = TargetModel(forced_target)
@@ -116,63 +243,16 @@ class InkOSCompiler:
             except ValueError:
                 pass
 
-        # Auto Routing
         if not uio.is_visual_task: 
-            uio.target_model = TargetModel.CHATGPT
+            # Smart default routing based on the new domains
+            if uio.domain in [ContentDomain.CODE_ANALYSIS, ContentDomain.DATA_ANALYSIS, ContentDomain.ACADEMIC]:
+                uio.target_model = TargetModel.CLAUDE
+            else:
+                uio.target_model = TargetModel.CHATGPT
         elif uio.domain == ContentDomain.GRAPHIC_DESIGN or uio.exact_text: 
             uio.target_model = TargetModel.IMAGEN3
         else: 
             uio.target_model = TargetModel.MIDJOURNEY
-        return uio
-
-    def _assemble(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
-        prefs = uio.user_preferences
-        framework = prefs.get("framework", "Professional (RACE)")
-        guide = TARGET_GUIDES.get(uio.target_model.value, "")
-
-        # -- TEXT/COPY PROMPT OPTIMIZATION --
-        if not uio.is_visual_task:
-            if uio.target_model == TargetModel.CLAUDE:
-                uio.compiled_prompt = (
-                    f"<role>Expert AI Assistant</role>\n"
-                    f"<task>{uio.raw_input}</task>\n"
-                    f"<framework>{framework}</framework>\n"
-                    f"<syntax_guide>{guide}</syntax_guide>\n"
-                    f"<instructions>Execute the task leveraging the requested framework and syntax guide. Ensure output is highly structured.</instructions>"
-                )
-            elif uio.target_model == TargetModel.CHATGPT:
-                uio.compiled_prompt = (
-                    f"You are a highly capable expert assistant.\n\n"
-                    f"### OBJECTIVE\n{uio.raw_input}\n\n"
-                    f"### FRAMEWORK: {framework}\nApply this logical framework to structure your response.\n\n"
-                    f"### SYNTAX GUIDE\n{guide}\n\n"
-                    f"### EXECUTION\nDeliver a comprehensive, step-by-step output."
-                )
-            elif uio.target_model == TargetModel.MANUS:
-                uio.compiled_prompt = (
-                    f"[SYSTEM] {guide}\n"
-                    f"[OBJECTIVE] {uio.raw_input}\n"
-                    f"[FRAMEWORK] {framework}\n"
-                    f"[WORKFLOW] Step 1: Analyze. Step 2: Execute. Step 3: Format output."
-                )
-            else:
-                uio.compiled_prompt = f"Objective: {uio.raw_input}\nFramework: {framework}"
-            return uio
-
-        # -- VISUAL PROMPT OPTIMIZATION --
-        dna, quality = uio.style_dna, ", ".join(QUALITY_TIERS.get("studio", []))
-        txt = f'EXACT TEXT: "{" ".join(uio.exact_text)}"' if uio.exact_text else ""
-        
-        if uio.target_model == TargetModel.IMAGEN3:
-            h = "[GRAPHIC DESIGN LAYOUT]" if uio.domain == ContentDomain.GRAPHIC_DESIGN else "[SPATIAL BLUEPRINT]"
-            details = [f"Subject: {uio.subject}", txt, f"Style: {dna.get('art_medium', 'Anime')}", f"FX: {', '.join(dna.get('fx_elements', []))}", f"Fidelity: {quality}"]
-            uio.compiled_prompt = f"{h} " + ". ".join(filter(None, details)) + "."
-        elif uio.target_model == TargetModel.MIDJOURNEY:
-            parts = [uio.subject, txt, dna.get("art_medium"), quality]
-            uio.compiled_prompt = " :: ".join(filter(None, parts)) + " --ar 16:9"
-        elif uio.target_model == TargetModel.DALLE3:
-            uio.compiled_prompt = f"Create a highly detailed visual of {uio.subject}. {txt} Style inspired by {dna.get('art_medium', 'premium concepts')}. Quality: {quality}."
-            
         return uio
 
     def _llm_call(self, system: str, user: str) -> dict:
@@ -187,10 +267,9 @@ class InkOSCompiler:
 
 def detect_best_target(user_text: str) -> tuple:
     uio = InkOSCompiler().compile(user_text)
-    return str(uio.target_model.value), "Adaptive Intelligence Active."
+    return str(uio.target_model.value), f"{uio.domain.name.replace('_', ' ').title()} Engine Activated."
 
 def run_refinement_and_audit(user_text: str, target: str, framework: str, lang: str, aesthetic_choice: str, islamic_mode: bool = False, persona: Optional[dict] = None) -> Tuple[str, dict, Optional[dict]]:
-    # Package UI preferences to pass into the compiler
     prefs = {
         "target": target,
         "framework": framework,
@@ -203,7 +282,6 @@ def run_refinement_and_audit(user_text: str, target: str, framework: str, lang: 
     if lang == "Arabic (العربية)":
         pattern = detect_arabic_pattern(user_text)
 
-    # Pass preferences so text models can use frameworks and target overrides
     uio = InkOSCompiler().compile(user_text, user_preferences=prefs)
     
     prec = 20 if uio.subject else 0
@@ -216,7 +294,7 @@ def run_refinement_and_audit(user_text: str, target: str, framework: str, lang: 
         "precision": prec,
         "alignment": align,
         "efficiency": eff,
-        "critique": "Visual DNA mapped to layout." if uio.is_visual_task else f"Conversational intent formatted for {uio.target_model.value}."
+        "critique": "Visual DNA mapped to layout." if uio.is_visual_task else f"Expert Module active: {uio.domain.value.upper()}"
     }
 
     ui_display = f"### [COMPILED BINARY] -> {uio.target_model.value.upper()}\n{uio.compiled_prompt}\n\n"
