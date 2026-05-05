@@ -153,71 +153,100 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 }
 [data-testid="stSidebar"] > div { animation: fadeUp 0.4s ease both; }
 
+
+    
+
 /* ══════════════════════════════════════════
-   INKOS COMMAND PILL (Text Area Override)
+   THE CHATGPT PILL ILLUSION (Mobile-Proof)
 ══════════════════════════════════════════ */
-div[data-testid="stTextArea"] textarea {
-    border-radius: 28px !important;
+/* 1. Turn the Column Container into the unified Pill */
+.command-pill-marker + div[data-testid="stHorizontalBlock"] {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important; /* Forces side-by-side on mobile, NO STACKING */
     background-color: var(--bg-input) !important;
     border: 1px solid var(--gold-border) !important;
-    padding: 14px 24px !important;
-    field-sizing: content !important; /* MAGIC: Auto-grows vertically */
+    border-radius: 28px !important;
+    padding: 4px 10px 4px 0px !important;
+    align-items: flex-end !important;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.3) !important;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
     min-height: 56px !important;
+}
+
+/* Add a gold glow when the user clicks inside the pill */
+.command-pill-marker + div[data-testid="stHorizontalBlock"]:focus-within {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 15px var(--gold-glow), inset 0 2px 10px rgba(0,0,0,0.5) !important;
+}
+
+/* Prevent internal columns from collapsing */
+.command-pill-marker + div[data-testid="stHorizontalBlock"] > div {
+    min-width: unset !important;
+}
+
+/* 2. Strip native borders from the Text Area so it blends into the Pill */
+.command-pill-marker + div[data-testid="stHorizontalBlock"] div[data-testid="stTextArea"] textarea {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 12px 10px 12px 24px !important;
+    field-sizing: content !important; /* Auto-grows vertically */
+    min-height: 48px !important;
     max-height: 350px !important;
     color: var(--text) !important;
     font-family: var(--font-m) !important;
     font-size: 0.88rem !important;
     line-height: 1.6 !important;
-    caret-color: var(--gold) !important;
-    transition: all 0.3s ease !important;
-    box-shadow: inset 0 2px 10px rgba(0,0,0,0.5) !important;
 }
 
-div[data-testid="stTextArea"] textarea:focus {
-    border-color: var(--gold) !important;
-    box-shadow: 0 0 15px var(--gold-glow), inset 0 2px 10px rgba(0,0,0,0.5) !important;
+/* Remove focus outlines from the inner text area */
+.command-pill-marker + div[data-testid="stHorizontalBlock"] div[data-testid="stTextArea"] textarea:focus {
+    box-shadow: none !important;
     outline: none !important;
 }
-
 div[data-testid="InputInstructions"] { display: none !important; }
 
-/* ══════════════════════════════════════════
-   HARDWARE BUTTONS (Isolated Mic & Bolt)
-══════════════════════════════════════════ */
-/* ONLY targets the Mic button and the button with the specific 'help' attribute */
-[data-testid="stAudioInput"] button,
-button[title="Compile Blueprint"] {
+/* 3. Tame the bulky Audio Input so only the circular Mic shows */
+.command-pill-marker + div[data-testid="stHorizontalBlock"] [data-testid="stAudioInput"] {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 48px !important; /* Clips the huge waveform completely */
+    min-width: 48px !important;
+    overflow: hidden !important; 
+    margin-bottom: 2px !important;
+}
+
+/* 4. Standardize Action Buttons (Mic / Bolt) to fit inside the Pill */
+.command-pill-marker + div[data-testid="stHorizontalBlock"] button {
     border-radius: 50% !important;
-    width: 52px !important;
-    height: 52px !important;
-    min-width: 52px !important;
+    width: 44px !important;
+    height: 44px !important;
     padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
     background: linear-gradient(145deg, #1e2025, #080c14) !important;
     border: 1px solid var(--gold-border) !important;
     color: var(--gold) !important;
-    box-shadow: 4px 4px 10px #03040a, -2px -2px 8px rgba(201,168,76,0.05) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 2px !important;
     transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
 
-[data-testid="stAudioInput"] button:hover,
-button[title="Compile Blueprint"]:hover {
-    border-color: var(--gold) !important;
-    box-shadow: 0 0 20px var(--gold-glow) !important;
-    transform: scale(1.05) translateY(-2px) !important;
+.command-pill-marker + div[data-testid="stHorizontalBlock"] button:hover {
     background: var(--gold-glow) !important;
+    border-color: var(--gold) !important;
+    transform: scale(1.08) !important;
 }
 
-/* Lightning Bolt specific font sizing */
+/* Fix font size for the Bolt Icon specifically */
 button[title="Compile Blueprint"] p {
     font-size: 1.4rem !important;
     margin: 0 !important;
     line-height: 1 !important;
 }
-
-/* ══════════════════════════════════════════
+ ══════════════════════════════════════════
    STANDARD COMPONENTS (CARDS, METRICS)
 ══════════════════════════════════════════ */
 .vc-wordmark { font-family: var(--font-d); font-size: 1.3rem; font-weight: 700; color: var(--gold); letter-spacing: 0.18em; text-transform: uppercase; line-height: 1; }
