@@ -3,10 +3,10 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
 
-v16.0: THE COMMAND PILL OVERHAUL
-- Fixed StreamlitAPIException via Top-Gate Voice Processing.
-- Implemented Contextual UI (Mic ↔ Execute Bolt swap).
-- Integrated 'brand_identity' payload into the compiler execution.
+v16.1: THE UNBREAKABLE PILL FIX
+- Moved command-pill-marker INSIDE the column so CSS :has() selector works.
+- Preserved Top-Gate Voice Processing.
+- Preserved Contextual UI (Mic ↔ Execute Bolt swap).
 """
 
 import hashlib
@@ -81,10 +81,8 @@ def render_workspace(cfg: dict) -> None:
     """Main Workspace Tab (Tab 1) logic."""
 
     # ── 1. TOP-GATE VOICE PROCESSING ──────────────────────────────────────────
-    # Process audio BEFORE rendering the text_area to avoid Streamlit render-lock.
     if "voice_pill" in st.session_state and st.session_state.voice_pill is not None:
         audio_val = st.session_state.voice_pill
-        # Use file size as a lightweight hash to ensure we only process new recordings once
         if st.session_state.get("last_processed_audio_size") != audio_val.size:
             with st.spinner("🎙️ Transcribing via Groq Whisper..."):
                 try:
@@ -96,7 +94,6 @@ def render_workspace(cfg: dict) -> None:
                     current_text = st.session_state.get("ta_input", "")
                     new_text = f"{current_text} {transcription}".strip() if current_text else transcription
                     
-                    # Safely update text area state BEFORE it renders below
                     st.session_state["ta_input"] = new_text
                     st.session_state["last_processed_audio_size"] = audio_val.size
                 except Exception as e:
@@ -134,18 +131,16 @@ def render_workspace(cfg: dict) -> None:
     </div>
     """, unsafe_allow_html=True)
 
-    
-        
      # ── 3. DYNAMIC COMMAND PILL ───────────────────────────────────────────────
     st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;">⚡ COMMAND CENTER</div>', unsafe_allow_html=True)
-    
-    # INJECT THE CSS MARKER: The CSS will target the horizontal block immediately following this
-    st.markdown('<div class="command-pill-marker"></div>', unsafe_allow_html=True)
     
     # Use tightly packed columns
     col_input, col_action = st.columns([85, 15], gap="small", vertical_alignment="bottom")
 
     with col_input:
+        # 🚨 THE FIX: Marker is now INSIDE the column!
+        st.markdown('<div class="command-pill-marker" style="display:none;"></div>', unsafe_allow_html=True)
+        
         raw_input: str = st.text_area(
             "intent",
             height=None, 
@@ -163,7 +158,6 @@ def render_workspace(cfg: dict) -> None:
         else:
             # Key must match the Top-Gate check
             st.audio_input("Record", label_visibility="collapsed", key="voice_pill")
-
 
     # ── 4. METADATA (Counters & Patterns) ─────────────────────────────────────
     if raw_input:
@@ -196,7 +190,6 @@ def render_workspace(cfg: dict) -> None:
         elif not check_rate_limit(consume=1):
             st.warning(t("rate_limit"))
         else:
-            # Sleek terminal-style loading state
             with st.status("Initializing MARCEL Compiler...", expanded=True) as status:
                 st.write("> Connecting to Groq Engine...")
 
@@ -213,7 +206,6 @@ def render_workspace(cfg: dict) -> None:
 
                 st.write(f"> Target locked: {resolved_target}. Compiling Expert Blueprint...")
                 
-                # INJECTED BRAND IDENTITY HERE
                 result, audit, pattern = run_refinement_and_audit(
                     user_text        = cleaned,
                     target           = resolved_target,
@@ -225,7 +217,6 @@ def render_workspace(cfg: dict) -> None:
                     brand_identity   = cfg.get("brand_identity"),
                 )
                 
-                # Defensive type-check
                 res_str = str(result) if result is not None else ""
                 
                 if res_str.startswith("[CIPHER ERROR]"):
@@ -264,7 +255,6 @@ def render_workspace(cfg: dict) -> None:
         auto_target = st.session_state.get(K.AUTO_TARGET)
         auto_reason = st.session_state.get(K.AUTO_REASON)
         
-        # We need to know the final resolved target for Telemetry and Buttons
         final_target_display = auto_target if auto_target else cfg.get("target_model", "ChatGPT")
 
         if auto_target and auto_reason:
@@ -293,27 +283,17 @@ def render_workspace(cfg: dict) -> None:
             st.markdown(f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>', unsafe_allow_html=True)
             st.text_area("output", value=last_res_str, height=220, label_visibility="collapsed", key="out_area")
 
-            # ── 1-CLICK ACTION BUTTONS ────────────────────────────────────────
             dl_ts = datetime.now().strftime("%H%M%S")
             b1, b2, b3 = st.columns(3)
             
             with b1:
-                st.download_button(
-                    "💾 Download",
-                    data=last_res_str,
-                    file_name=f"inkos_{dl_ts}.txt",
-                    key=f"dl_btn_{dl_ts}",
-                    use_container_width=True
-                )
+                st.download_button("💾 Download", data=last_res_str, file_name=f"inkos_{dl_ts}.txt", key=f"dl_btn_{dl_ts}", use_container_width=True)
             with b2:
-                # ChatGPT supports prompt injection via URL param for Search/Chat
                 gpt_url = f"https://chatgpt.com/?q={urllib.parse.quote(last_res_str)}"
                 st.link_button("↗ Open in ChatGPT", gpt_url, use_container_width=True)
             with b3:
-                # Claude URL (Anthropic doesn't support direct URL prompt injection yet, so it goes to new chat)
                 st.link_button("↗ Open in Claude", "https://claude.ai/new", use_container_width=True)
             
-            # Vault Saving Logic
             from vault.supabase_client import SUPABASE_MISSING
             if not SUPABASE_MISSING:
                 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
