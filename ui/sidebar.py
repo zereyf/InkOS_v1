@@ -1,7 +1,10 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v1: Language switcher added at top. All labels use t() for i18n.
+v2: THE UX OVERHAUL
+- Promoted 'Islamic Mode' out of Aesthetic and into Logic Configuration.
+- Language switcher remains at the top. 
+- Cleaned up visual hierarchy.
 """
 
 import streamlit as st
@@ -88,6 +91,7 @@ def render_sidebar() -> SidebarConfig:
 
         # ── LOGIC CONFIGURATION ───────────────────────────────────────────────
         st.subheader(t("logic_config"))
+        
         # Auto option is first — when selected CIPHER picks the best target
         target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
         target_model = st.selectbox(
@@ -124,18 +128,31 @@ def render_sidebar() -> SidebarConfig:
                     CIPHER will analyse your input and select the best AI automatically.
                 </div>
                 """, unsafe_allow_html=True)
+                
         framework = st.selectbox(
             t("logic_framework"),
             ["Professional (RACE)", "Technical (Debugger)", "Academic", "Creative", "Visual Director"],
             key="sb_framework",
             help=t("framework_help"),
         )
+        
         source_lang = st.radio(
             t("linguistic_source"),
             ["English", "Arabic (العربية)"],
             key="sb_lang",
             help=t("lang_help"),
         )
+
+        # ── ISLAMIC MODE (Moved up to Logic Configuration) ────────────────────
+        islamic_mode = st.toggle(t("islamic_mode"), value=False, key="sb_islamic")
+        if islamic_mode:
+            st.markdown(f"""
+            <div class="islamic-badge">
+                <span class="status-dot green"></span>{t('islamic_active')}<br>
+                {t('islamic_sharia')}<br>
+                {t('islamic_citation')}
+            </div>
+            """, unsafe_allow_html=True)
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -199,17 +216,8 @@ def render_sidebar() -> SidebarConfig:
             options=list(AESTHETIC_PRESETS.keys()),
             key="sb_aesthetic",
             help=t("aesthetic_help"),
+            label_visibility="collapsed"
         )
-
-        islamic_mode = st.toggle(t("islamic_mode"), value=False, key="sb_islamic")
-        if islamic_mode:
-            st.markdown(f"""
-            <div class="islamic-badge">
-                <span class="status-dot green"></span>{t('islamic_active')}<br>
-                {t('islamic_sharia')}<br>
-                {t('islamic_citation')}
-            </div>
-            """, unsafe_allow_html=True)
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
