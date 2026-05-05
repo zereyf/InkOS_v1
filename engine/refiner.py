@@ -1,11 +1,10 @@
 """
 engine/refiner.py - InkOS Cognitive Prompt Engine
 =================================================
-v7.1: THE TYPOGRAPHY & EXTRACTION PATCH
-- Fixed: Python string `.join()` bug causing spaced out letters.
-- Fixed: LLM hallucination extracting the entire prompt as text.
-- Added: Hardcoded Identity Protection for "Ameer".
-
+v8.0: THE MARCEL CORE (Ultimate Expert Architecture)
+- Integrated: The 5 Elite MARCEL Personas (AXIOM, FORMA, VECTOR, CIPHER, LUCID).
+- Injected: MARCEL_IDENTITY overarching prompt into the LLM logic core.
+- Preserved: Ameer/Shikamaru protection, dynamic typography, and 12-domain routing.
 """
 
 from __future__ import annotations
@@ -17,6 +16,20 @@ from typing import Any, Optional, Tuple
 from config import client, MODEL_ID, MAX_TOKENS, STYLE_LIBRARY, QUALITY_TIERS, TARGET_GUIDES, DOMAIN_KNOWLEDGE
 from engine.cognitive_map import detect_arabic_pattern
 from i18n.translations import t
+
+# Defensive imports for MARCEL personas (Prevents crashes if config.py isn't fully updated)
+try:
+    from config import (
+        MARCEL_IDENTITY, EXPERT_PROMPT_ENGINEER, EXPERT_UX_DESIGNER, 
+        EXPERT_STRATEGIST, EXPERT_CYBERSECURITY, EXPERT_DECISION_SCIENCE
+    )
+except ImportError:
+    MARCEL_IDENTITY = "You are MARCEL, an elite AI orchestrator."
+    EXPERT_PROMPT_ENGINEER = "Act as AXIOM, a Principal Prompt Architect."
+    EXPERT_UX_DESIGNER = "Act as FORMA, a Principal Product Designer."
+    EXPERT_STRATEGIST = "Act as VECTOR, a Principal Startup Strategist."
+    EXPERT_CYBERSECURITY = "Act as CIPHER, a Principal Security Architect."
+    EXPERT_DECISION_SCIENCE = "Act as LUCID, a Principal Decision Scientist."
 
 # ---------------------------------------------
 # DATA MODELS
@@ -40,6 +53,12 @@ class ContentDomain(str, Enum):
     DATA_ANALYSIS   = "data_analysis"
     ACADEMIC        = "academic_research"
     PRODUCTIVITY    = "productivity"
+    # THE NEW MARCEL ELITE EXPERTS
+    PROMPT_ENGINEERING = "prompt_engineering"
+    UX_UI_DESIGN    = "ux_ui_design"
+    STARTUP_STRATEGY = "startup_strategy"
+    CYBERSECURITY   = "cybersecurity"
+    DECISION_SCIENCE = "decision_science"
     UNKNOWN         = "unknown"
 
 @dataclass
@@ -68,8 +87,6 @@ class VisualExpert(BaseExpert):
     def assemble(self, uio: UnifiedIntentObject) -> str:
         dna = uio.style_dna
         quality = ", ".join(QUALITY_TIERS.get("studio", []))
-        
-        # The spacing bug is fixed here because exact_text is strictly a list now
         txt = f'EXACT TEXT: "{" ".join(uio.exact_text)}"' if uio.exact_text else ""
         
         if uio.target_model == TargetModel.IMAGEN3:
@@ -84,69 +101,55 @@ class VisualExpert(BaseExpert):
         else: # DALLE-3
             return f"Create a highly detailed visual of {uio.subject}. {txt} Style inspired by {dna.get('art_medium', 'premium concepts')}. Quality: {quality}."
 
+# --- LEGACY EXPERTS ---
 class CodeExpert(BaseExpert):
     def assemble(self, uio: UnifiedIntentObject) -> str:
         framework = uio.user_preferences.get("framework", "Technical (Zero-Shot)")
-        rules = DOMAIN_KNOWLEDGE["code_analysis"]
-        return (
-            f"<role>Senior Staff Software Engineer</role>\n"
-            f"<objective>{uio.raw_input}</objective>\n"
-            f"<technical_requirements>\n{rules}\n</technical_requirements>\n"
-            f"<framework>{framework}</framework>\n"
-            f"<instructions>Execute the request. Provide production-ready code followed by complexity analysis.</instructions>"
-        )
+        rules = DOMAIN_KNOWLEDGE.get("code_analysis", "")
+        return f"<role>Senior Staff Software Engineer</role>\n<objective>{uio.raw_input}</objective>\n<technical_requirements>\n{rules}\n</technical_requirements>\n<framework>{framework}</framework>\n<instructions>Execute the request. Provide production-ready code followed by complexity analysis.</instructions>"
 
 class CopywritingExpert(BaseExpert):
     def assemble(self, uio: UnifiedIntentObject) -> str:
         framework = uio.user_preferences.get("framework", "Professional (RACE)")
-        rules = DOMAIN_KNOWLEDGE["text_copy"]
-        return (
-            f"You are an Elite Copywriter & Content Strategist.\n\n"
-            f"### OBJECTIVE\n{uio.raw_input}\n\n"
-            f"### PROFESSIONAL STANDARDS\n{rules}\n\n"
-            f"### FRAMEWORK: {framework}\nApply this logical framework to structure your response.\n\n"
-            f"### EXECUTION\nDeliver a comprehensive, perfectly formatted output."
-        )
+        rules = DOMAIN_KNOWLEDGE.get("text_copy", "")
+        return f"You are an Elite Copywriter.\n\n### OBJECTIVE\n{uio.raw_input}\n\n### PROFESSIONAL STANDARDS\n{rules}\n\n### FRAMEWORK: {framework}\nApply this logical framework.\n\n### EXECUTION\nDeliver perfectly formatted output."
 
 class MarketingExpert(BaseExpert):
     def assemble(self, uio: UnifiedIntentObject) -> str:
-        rules = DOMAIN_KNOWLEDGE["marketing"]
-        return (
-            f"You are a Chief Marketing Officer & SEO Expert.\n\n"
-            f"### OBJECTIVE\n{uio.raw_input}\n\n"
-            f"### CONVERSION & HOOK STRATEGY\n{rules}\n\n"
-            f"### EXECUTION\nFocus on scroll-stopping hooks, high engagement, and psychological triggers."
-        )
+        return f"You are a Chief Marketing Officer.\n\n### OBJECTIVE\n{uio.raw_input}\n\n### STRATEGY\n{DOMAIN_KNOWLEDGE.get('marketing', '')}\n\n### EXECUTION\nFocus on scroll-stopping hooks."
 
 class DataScienceExpert(BaseExpert):
     def assemble(self, uio: UnifiedIntentObject) -> str:
-        rules = DOMAIN_KNOWLEDGE["data_analysis"]
-        return (
-            f"<role>Lead Data Scientist & Systems Architect</role>\n"
-            f"<objective>{uio.raw_input}</objective>\n"
-            f"<data_standards>\n{rules}\n</data_standards>\n"
-            f"<instructions>Execute with strict mathematical rigor. Explain formulas and schemas step-by-step.</instructions>"
-        )
+        return f"<role>Lead Data Scientist</role>\n<objective>{uio.raw_input}</objective>\n<data_standards>\n{DOMAIN_KNOWLEDGE.get('data_analysis', '')}\n</data_standards>\n<instructions>Execute with strict mathematical rigor.</instructions>"
 
 class ResearchExpert(BaseExpert):
     def assemble(self, uio: UnifiedIntentObject) -> str:
-        rules = DOMAIN_KNOWLEDGE["academic_research"]
-        return (
-            f"<role>Tenured Academic Researcher & Analyst</role>\n"
-            f"<objective>{uio.raw_input}</objective>\n"
-            f"<scholarly_standards>\n{rules}\n</scholarly_standards>\n"
-            f"<instructions>Synthesize information objectively. Use formal academic structuring. Provide empirical backing.</instructions>"
-        )
+        return f"<role>Tenured Academic Researcher</role>\n<objective>{uio.raw_input}</objective>\n<scholarly_standards>\n{DOMAIN_KNOWLEDGE.get('academic_research', '')}\n</scholarly_standards>\n<instructions>Synthesize information objectively.</instructions>"
 
 class ProductivityExpert(BaseExpert):
     def assemble(self, uio: UnifiedIntentObject) -> str:
-        rules = DOMAIN_KNOWLEDGE["productivity"]
-        return (
-            f"You are an Elite Executive Coach & Productivity Engineer.\n\n"
-            f"### OBJECTIVE\n{uio.raw_input}\n\n"
-            f"### OPTIMIZATION RULES\n{rules}\n\n"
-            f"### EXECUTION\nOutput highly actionable, frictionless steps. Eliminate overwhelm."
-        )
+        return f"You are an Elite Executive Coach.\n\n### OBJECTIVE\n{uio.raw_input}\n\n### RULES\n{DOMAIN_KNOWLEDGE.get('productivity', '')}\n\n### EXECUTION\nOutput highly actionable, frictionless steps."
+
+# --- NEW MARCEL ELITE EXPERTS ---
+class PromptEngineerExpert(BaseExpert):
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        return f"{EXPERT_PROMPT_ENGINEER}\n\n<task>\n{uio.raw_input}\n</task>\n<instruction>Execute the role of AXIOM.</instruction>"
+
+class UxUiExpert(BaseExpert):
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        return f"{EXPERT_UX_DESIGNER}\n\n<task>\n{uio.raw_input}\n</task>\n<instruction>Execute the role of FORMA.</instruction>"
+
+class StrategyExpert(BaseExpert):
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        return f"{EXPERT_STRATEGIST}\n\n<task>\n{uio.raw_input}\n</task>\n<instruction>Execute the role of VECTOR.</instruction>"
+
+class CybersecurityExpert(BaseExpert):
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        return f"{EXPERT_CYBERSECURITY}\n\n<task>\n{uio.raw_input}\n</task>\n<instruction>Execute the role of CIPHER.</instruction>"
+
+class DecisionScienceExpert(BaseExpert):
+    def assemble(self, uio: UnifiedIntentObject) -> str:
+        return f"{EXPERT_DECISION_SCIENCE}\n\n<task>\n{uio.raw_input}\n</task>\n<instruction>Execute the role of LUCID. Begin with DIAGNOSTIC mode.</instruction>"
 
 # ---------------------------------------------
 # THE CORE ENGINE
@@ -161,6 +164,12 @@ class InkOSCompiler:
             ContentDomain.DATA_ANALYSIS: DataScienceExpert(),
             ContentDomain.ACADEMIC: ResearchExpert(),
             ContentDomain.PRODUCTIVITY: ProductivityExpert(),
+            # THE NEW MARCEL EXPERTS
+            ContentDomain.PROMPT_ENGINEERING: PromptEngineerExpert(),
+            ContentDomain.UX_UI_DESIGN: UxUiExpert(),
+            ContentDomain.STARTUP_STRATEGY: StrategyExpert(),
+            ContentDomain.CYBERSECURITY: CybersecurityExpert(),
+            ContentDomain.DECISION_SCIENCE: DecisionScienceExpert(),
             ContentDomain.UNKNOWN: CopywritingExpert(),
         }
         self.visual_expert = VisualExpert()
@@ -173,6 +182,11 @@ class InkOSCompiler:
         system = """Extract 'subject' and 'exact_text' (MUST be a list of strings containing ONLY explicit names, titles, or quoted words meant to be written as typography. Do NOT extract the whole prompt). 
         Determine 'is_visual_task' (bool).
         Determine 'domain' string based on these strict rules:
+        - If writing AI prompts/GPT instructions -> 'prompt_engineering'
+        - If UI/UX, wireframes, user flows -> 'ux_ui_design'
+        - If business models, finance, startup growth -> 'startup_strategy'
+        - If hacking, security, vulnerabilities, code audits -> 'cybersecurity'
+        - If analyzing logic, biases, decisions, or asking "is this a good idea" -> 'decision_science'
         - If programming/coding -> 'code_analysis'
         - If ads/social/SEO/sales -> 'marketing'
         - If Excel/SQL/math/data -> 'data_analysis'
@@ -185,7 +199,7 @@ class InkOSCompiler:
         
         uio.subject = data.get("subject", raw_input)
         
-        # THE FIX: Type Check the exact_text to prevent Python String Join Bugs
+        # Safe Type Casting for exact_text
         ext_text = data.get("exact_text", [])
         if isinstance(ext_text, str):
             uio.exact_text = [ext_text] if ext_text.strip() else []
@@ -234,18 +248,18 @@ class InkOSCompiler:
         low = uio.raw_input.lower()
         hits = 0
         
-        # 1. Identity Protection (Ameer)
+        # Identity Protection (Ameer)
         if "ameer" in low and not any("ameer" in t.lower() for t in uio.exact_text):
             uio.exact_text.append("Ameer")
             hits += 1
 
-        # 2. Character Protection (Shikamaru)
+        # Character Protection (Shikamaru)
         if "shikamaru" in low:
             uio.style_dna["art_medium"] = "Dynamic 2D anime render of Shikamaru Nara (Konoha Vest)"
             uio.exact_text = [t for t in uio.exact_text if t.lower() != "shikamaru"]
             hits += 1
             
-        # 3. Theme Protection (Cyber)
+        # Theme Protection (Cyber)
         if any(w in low for w in ["tech", "cyber", "security", "hacker"]):
             uio.style_dna["fx_elements"] = ["circuit board patterns", "data streams", "glitch distortion"]
             hits += 1
@@ -264,7 +278,13 @@ class InkOSCompiler:
                 pass
 
         if not uio.is_visual_task: 
-            if uio.domain in [ContentDomain.CODE_ANALYSIS, ContentDomain.DATA_ANALYSIS, ContentDomain.ACADEMIC]:
+            # Smart default routing: Code, Data, Academics, and MARCEL experts default to Claude's analytical brain
+            analytical_domains = [
+                ContentDomain.CODE_ANALYSIS, ContentDomain.DATA_ANALYSIS, ContentDomain.ACADEMIC,
+                ContentDomain.PROMPT_ENGINEERING, ContentDomain.UX_UI_DESIGN, ContentDomain.STARTUP_STRATEGY,
+                ContentDomain.CYBERSECURITY, ContentDomain.DECISION_SCIENCE
+            ]
+            if uio.domain in analytical_domains:
                 uio.target_model = TargetModel.CLAUDE
             else:
                 uio.target_model = TargetModel.CHATGPT
@@ -276,7 +296,15 @@ class InkOSCompiler:
 
     def _llm_call(self, system: str, user: str) -> dict:
         try:
-            res = client.chat.completions.create(model=MODEL_ID, messages=[{"role": "system", "content": system}, {"role": "user", "content": user}], temperature=0.0, response_format={"type": "json_object"})
+            # Fusing MARCEL's core identity with the strict extraction task
+            marcel_system = f"{MARCEL_IDENTITY}\n\nStrict Task Execution:\n{system}"
+            
+            res = client.chat.completions.create(
+                model=MODEL_ID, 
+                messages=[{"role": "system", "content": marcel_system}, {"role": "user", "content": user}], 
+                temperature=0.0, 
+                response_format={"type": "json_object"}
+            )
             return json.loads(res.choices[0].message.content or "{}")
         except: return {}
 
@@ -286,7 +314,7 @@ class InkOSCompiler:
 
 def detect_best_target(user_text: str) -> tuple:
     uio = InkOSCompiler().compile(user_text)
-    return str(uio.target_model.value), f"{uio.domain.name.replace('_', ' ').title()} Engine Activated."
+    return str(uio.target_model.value), f"{uio.domain.name.replace('_', ' ').title()} Module Activated."
 
 def run_refinement_and_audit(user_text: str, target: str, framework: str, lang: str, aesthetic_choice: str, islamic_mode: bool = False, persona: Optional[dict] = None) -> Tuple[str, dict, Optional[dict]]:
     prefs = {
