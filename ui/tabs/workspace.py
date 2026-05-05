@@ -3,9 +3,9 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
 
-v17.0: THE ABSOLUTE PILL
-- Eradicated legacy "Execute Refinement" button.
-- Stripped column complexity for Absolute Positioning anchor.
+v17.0: THE LEVITATION PILL
+- Eradicated Streamlit columns entirely to prevent mobile UI collapse.
+- Components are stacked normally; CSS handles the overlapping.
 """
 
 import hashlib
@@ -102,30 +102,25 @@ def render_workspace(cfg: dict) -> None:
         </div>
         """, unsafe_allow_html=True)
 
-    # ── 3. DYNAMIC COMMAND PILL ───────────────────────────────────────────────
+    # ── 3. DYNAMIC COMMAND PILL (NO COLUMNS) ──────────────────────────────────
     st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;">⚡ COMMAND CENTER</div>', unsafe_allow_html=True)
     
-    # Simple columns. Absolute CSS will handle the layout lock.
-    col_input, col_action = st.columns([1, 1])
+    # 1. Render the Text Area
+    raw_input: str = st.text_area(
+        "intent",
+        height=None, 
+        placeholder="Describe your intent or speak to MARCEL...",
+        label_visibility="collapsed",
+        key="ta_input",
+    )
 
-    with col_input:
-        st.markdown('<div class="command-pill-marker" style="display:none;"></div>', unsafe_allow_html=True)
-        raw_input: str = st.text_area(
-            "intent",
-            height=None, 
-            placeholder="Describe your intent or speak to MARCEL...",
-            label_visibility="collapsed",
-            key="ta_input",
-        )
-
-    with col_action:
-        execute_pill_triggered = False
-        # CONTEXTUAL SWAP: If text exists, show Bolt. Else, show Mic.
-        if len(raw_input.strip()) > 0:
-            if st.button("⚡", key="btn_exec_pill", use_container_width=True, help="Compile Blueprint"):
-                execute_pill_triggered = True
-        else:
-            st.audio_input("Record", label_visibility="collapsed", key="voice_pill")
+    # 2. Render the Action right below it (CSS pulls it up into the box)
+    execute_pill_triggered = False
+    if len(raw_input.strip()) > 0:
+        if st.button("⚡", key="btn_exec_pill", help="Compile Blueprint"):
+            execute_pill_triggered = True
+    else:
+        st.audio_input("Record", label_visibility="collapsed", key="voice_pill")
 
     # ── 4. METADATA ───────────────────────────────────────────────────────────
     if raw_input:
@@ -141,7 +136,6 @@ def render_workspace(cfg: dict) -> None:
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
     # ── 5. EXECUTION LOGIC ────────────────────────────────────────────────────
-    # Only triggered by typing text and hitting the floating Lightning Bolt
     if execute_pill_triggered:
         cleaned, violations = sanitize_input(raw_input or "")
 
