@@ -112,7 +112,7 @@ def render_workspace(cfg: dict) -> None:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── MAJLIS VOICE ENGINE ───────────────────────────────────────────────────
+    # ── VOICE ENGINE ───────────────────────────────────────────────────
     st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;"> VOICE INPUT </div>', unsafe_allow_html=True)
     audio_value = st.audio_input("Record your intent", label_visibility="collapsed")
     
