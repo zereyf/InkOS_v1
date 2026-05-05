@@ -3,7 +3,7 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
 
-v16.2: THE PURE PILL
+v16.3: THE PURE PILL
 - Removed legacy "Execute Refinement" button entirely.
 - Solely relies on the dynamic Command Pill (Mic ↔ Bolt).
 """
@@ -105,7 +105,7 @@ def render_workspace(cfg: dict) -> None:
     # ── 3. DYNAMIC COMMAND PILL ───────────────────────────────────────────────
     st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;">⚡ COMMAND CENTER</div>', unsafe_allow_html=True)
     
-    col_input, col_action = st.columns([85, 15], gap="small", vertical_alignment="bottom")
+    col_input, col_action = st.columns([1, 1])
 
     with col_input:
         st.markdown('<div class="command-pill-marker" style="display:none;"></div>', unsafe_allow_html=True)
@@ -129,7 +129,7 @@ def render_workspace(cfg: dict) -> None:
     if raw_input:
         char = len(raw_input)
         c_color = "#A93226" if char > INPUT_WARN_THRESHOLD else "#3A4455"
-        st.markdown(f'<div class="char-counter" style="color:{c_color}; text-align: right; margin-top: -6px;">{char} / {INPUT_MAX_CHARS}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="char-counter" style="color:{c_color}; text-align: right; margin-top: 4px;">{char} / {INPUT_MAX_CHARS}</div>', unsafe_allow_html=True)
 
         if cfg["source_lang"] == "Arabic (العربية)":
             preview = detect_arabic_pattern(raw_input)
@@ -139,7 +139,7 @@ def render_workspace(cfg: dict) -> None:
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
     # ── 5. EXECUTION LOGIC ────────────────────────────────────────────────────
-    # 🚨 ONLY THE PILL BUTTON TRIGGERS EXECUTION NOW
+    # 🚨 ONLY THE PILL BUTTON TRIGGERS EXECUTION NOW 🚨
     if execute_pill_triggered:
         cleaned, violations = sanitize_input(raw_input or "")
 
