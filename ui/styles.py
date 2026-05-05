@@ -2,6 +2,11 @@
 ui/styles.py — InkOS Design System
 ==========================================
 The full CSS string exported as a single constant.
+
+v4.0: THE COMMAND PILL UPDATE
+- Added 'field-sizing: content' for auto-expanding ChatGPT-style text area.
+- Added specific isolation CSS for the Circular Hardware Buttons (Mic/Bolt).
+- Kept standard buttons pristine.
 """
 
 STYLES: str = """
@@ -112,6 +117,12 @@ a, button, [role="button"], select, input, textarea, label {
     animation: fadeUp 0.5s ease both;
 }
 
+/* Align circular Mic/Execute buttons to the bottom of the pill as it grows */
+[data-testid="column"] {
+    display: flex;
+    align-items: flex-end;
+}
+
 /* Mobile-Specific Overrides */
 @media (max-width: 768px) {
     .block-container {
@@ -143,7 +154,71 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 [data-testid="stSidebar"] > div { animation: fadeUp 0.4s ease both; }
 
 /* ══════════════════════════════════════════
-   COMPONENTS (CARDS, BUTTONS, FORMS)
+   INKOS COMMAND PILL (Text Area Override)
+══════════════════════════════════════════ */
+div[data-testid="stTextArea"] textarea {
+    border-radius: 28px !important;
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--gold-border) !important;
+    padding: 14px 24px !important;
+    field-sizing: content !important; /* MAGIC: Auto-grows vertically */
+    min-height: 56px !important;
+    max-height: 350px !important;
+    color: var(--text) !important;
+    font-family: var(--font-m) !important;
+    font-size: 0.88rem !important;
+    line-height: 1.6 !important;
+    caret-color: var(--gold) !important;
+    transition: all 0.3s ease !important;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.5) !important;
+}
+
+div[data-testid="stTextArea"] textarea:focus {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 15px var(--gold-glow), inset 0 2px 10px rgba(0,0,0,0.5) !important;
+    outline: none !important;
+}
+
+div[data-testid="InputInstructions"] { display: none !important; }
+
+/* ══════════════════════════════════════════
+   HARDWARE BUTTONS (Isolated Mic & Bolt)
+══════════════════════════════════════════ */
+/* ONLY targets the Mic button and the button with the specific 'help' attribute */
+[data-testid="stAudioInput"] button,
+button[title="Compile Blueprint"] {
+    border-radius: 50% !important;
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: linear-gradient(145deg, #1e2025, #080c14) !important;
+    border: 1px solid var(--gold-border) !important;
+    color: var(--gold) !important;
+    box-shadow: 4px 4px 10px #03040a, -2px -2px 8px rgba(201,168,76,0.05) !important;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+[data-testid="stAudioInput"] button:hover,
+button[title="Compile Blueprint"]:hover {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 20px var(--gold-glow) !important;
+    transform: scale(1.05) translateY(-2px) !important;
+    background: var(--gold-glow) !important;
+}
+
+/* Lightning Bolt specific font sizing */
+button[title="Compile Blueprint"] p {
+    font-size: 1.4rem !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+
+/* ══════════════════════════════════════════
+   STANDARD COMPONENTS (CARDS, METRICS)
 ══════════════════════════════════════════ */
 .vc-wordmark { font-family: var(--font-d); font-size: 1.3rem; font-weight: 700; color: var(--gold); letter-spacing: 0.18em; text-transform: uppercase; line-height: 1; }
 .vc-wordmark-sub { font-family: var(--font-m); font-size: 0.58rem; color: var(--text-muted); letter-spacing: 0.22em; text-transform: uppercase; margin-top: 4px; }
@@ -168,6 +243,7 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 .bar-val { font-family: var(--font-m); font-size: 0.6rem; color: var(--text-muted); width: 36px; text-align: right; flex-shrink: 0; }
 .critique-line { font-family: var(--font-m); font-style: italic; font-size: 0.68rem; color: var(--text-muted); border-left: 2px solid var(--gold-border); padding-left: 10px; margin-top: 14px; line-height: 1.6; }
 
+/* STANDARD BUTTON BASE - Kept strictly rectangular */
 .stButton > button { background: transparent !important; border: 1px solid var(--gold) !important; color: var(--gold) !important; font-family: var(--font-d) !important; font-size: 0.72rem !important; letter-spacing: 0.22em !important; text-transform: uppercase !important; padding: 11px 22px !important; border-radius: 2px !important; transition: background 0.25s, box-shadow 0.25s, transform 0.15s !important; width: 100%; }
 .stButton > button:hover { background: var(--gold-glow) !important; box-shadow: 0 0 22px rgba(201,168,76,0.2) !important; transform: translateY(-1px) !important; }
 .stButton > button:active { transform: translateY(0px) !important; box-shadow: 0 0 8px rgba(201,168,76,0.1) !important; }
@@ -175,10 +251,6 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 
 .stDownloadButton > button { background: transparent !important; border: 1px solid var(--text-dim) !important; color: var(--text-muted) !important; font-family: var(--font-m) !important; font-size: 0.65rem !important; letter-spacing: 0.1em !important; border-radius: 2px !important; transition: border-color 0.2s, color 0.2s !important; }
 .stDownloadButton > button:hover { border-color: var(--gold-border) !important; color: var(--gold) !important; }
-
-.stTextArea textarea { background: var(--bg-input) !important; border: 1px solid var(--text-dim) !important; border-radius: 3px !important; color: var(--text) !important; font-family: var(--font-m) !important; font-size: 0.82rem !important; line-height: 1.75 !important; caret-color: var(--gold) !important; transition: border-color 0.2s, box-shadow 0.2s !important; }
-.stTextArea textarea:focus { border-color: var(--gold-border) !important; box-shadow: 0 0 0 1px var(--gold-border), inset 0 0 20px var(--gold-faint) !important; outline: none !important; }
-.stTextArea textarea::placeholder { color: var(--text-dim) !important; }
 
 .stSelectbox > div > div { background: var(--bg-input) !important; border-color: var(--text-dim) !important; color: var(--text) !important; font-family: var(--font-m) !important; font-size: 0.78rem !important; border-radius: 3px !important; }
 .stRadio > div { font-family: var(--font-m) !important; font-size: 0.75rem !important; }
@@ -192,7 +264,7 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
     border-bottom: 1px solid var(--text-dim) !important; 
     gap: 0 !important;
     display: flex !important;
-    flex-wrap: wrap !important; /* Forces tabs to wrap instead of scroll */
+    flex-wrap: wrap !important;
 }
 
 .stTabs [data-baseweb="tab"] {
@@ -204,7 +276,7 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
     background: transparent !important;
     border: none !important; 
     border-bottom: 2px solid transparent !important;
-    padding: 10px 12px !important; /* Reduced from 18px to save space */
+    padding: 10px 12px !important; 
     transition: color 0.2s !important;
     white-space: nowrap !important;
 }
@@ -212,38 +284,23 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 /* ══════════════════════════════════════════
    STREAMLIT CHROME & RESPONSIVENESS FIX
 ══════════════════════════════════════════ */
-#MainMenu, footer { visibility: hidden; }
-
-[data-testid="stHeader"] { background-color: transparent !important; }
-
-[data-testid="collapsedControl"], [data-testid="collapsedControl"] svg {
-    color: var(--gold) !important;
-    fill: var(--gold) !important;
-}
-
 .block-container {
-    max-width: 100vw !important; /* Strictly prevents horizontal scroll */
+    max-width: 100vw !important;
     overflow-x: hidden !important;
-    padding-top: 1.8rem !important;
-    padding-bottom: 3rem !important;
-    animation: fadeUp 0.5s ease both;
 }
 
 /* Mobile-Specific Overrides (The Final Alignment) */
 @media (max-width: 768px) {
     .block-container {
         padding-top: 3.5rem !important;
-        padding-left: 0.8rem !important; /* Tighter margins for mobile */
+        padding-left: 0.8rem !important; 
         padding-right: 0.8rem !important;
     }
     .stTabs [data-baseweb="tab"] {
-        padding: 8px 8px !important; /* Even tighter padding on tiny screens */
-        font-size: 0.58rem !important; /* Slightly smaller text for fit */
+        padding: 8px 8px !important; 
+        font-size: 0.58rem !important; 
     }
-    .score-num { font-size: 2rem !important; }
-    .vc-wordmark { font-size: 1.1rem !important; }
     
-    /* Ensure code blocks and cards don't force width */
     .vc-card, [data-testid="stCode"] {
         width: 100% !important;
         margin-left: 0 !important;
@@ -284,40 +341,10 @@ label[data-testid="stWidgetLabel"] p, .stSelectbox label, .stRadio label span { 
 
 /* ══════════════════════════════════════════
    RTL MODE — Arabic UI direction
-   Applied by injecting class="rtl-mode" on
-   the stApp element via st.markdown JS trick.
-   All text flips to right-to-left.
-   Sidebar moves to right side.
 ══════════════════════════════════════════ */
-.rtl-mode {
-    direction: rtl !important;
-    text-align: right !important;
-    font-family: var(--font-a) !important;
-}
-.rtl-mode .vc-header,
-.rtl-mode .vc-wordmark,
-.rtl-mode .vc-wordmark-sub,
-.rtl-mode .score-lbl,
-.rtl-mode .bar-lbl,
-.rtl-mode .p-label,
-.rtl-mode .p-paradigm,
-.rtl-mode .arc-meta {
-    direction: rtl !important;
-    text-align: right !important;
-    font-family: var(--font-a) !important;
-    letter-spacing: 0 !important;
-}
-.rtl-mode .stTextArea textarea,
-.rtl-mode .stSelectbox > div > div,
-.rtl-mode label {
-    direction: rtl !important;
-    text-align: right !important;
-    font-family: var(--font-a) !important;
-}
-.rtl-mode [data-testid="stSidebar"] {
-    right: 0 !important;
-    left: auto !important;
-}
-
+.rtl-mode { direction: rtl !important; text-align: right !important; font-family: var(--font-a) !important; }
+.rtl-mode .vc-header, .rtl-mode .vc-wordmark, .rtl-mode .vc-wordmark-sub, .rtl-mode .score-lbl, .rtl-mode .bar-lbl, .rtl-mode .p-label, .rtl-mode .p-paradigm, .rtl-mode .arc-meta { direction: rtl !important; text-align: right !important; font-family: var(--font-a) !important; letter-spacing: 0 !important; }
+.rtl-mode .stTextArea textarea, .rtl-mode .stSelectbox > div > div, .rtl-mode label { direction: rtl !important; text-align: right !important; font-family: var(--font-a) !important; }
+.rtl-mode [data-testid="stSidebar"] { right: 0 !important; left: auto !important; }
 </style>
 """
