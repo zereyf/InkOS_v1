@@ -2,14 +2,12 @@
 ui/tabs/cognitive_map.py — Cognitive Map Reference Tab
 ========================================================
 Tab 4: Full Arabic rhetorical device reference.
-v14.5: THE INTERACTIVE UPGRADE
-- Converted static cards into interactive "Remote Control" buttons.
-- Added FRAMEWORK_ROUTER to safely translate Arabic patterns to system frameworks.
-- Added a direct toggle for Islamic Professional Mode.
+v14.6: THE RENDER LOOP PATCH
+- Replaced linear state updates with Streamlit Callbacks (on_click).
+- Fixed StreamlitAPIException preventing state modification after widget instantiation.
 """
 
 import streamlit as st
-import time
 from engine.cognitive_map import ARABIC_COGNITIVE_MAP
 from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
 
@@ -21,6 +19,21 @@ FRAMEWORK_ROUTER = {
     "التصوير": "Visual Director",     # Imagery -> Visual DNA Compiler
     "default": "Technical (Debugger)" # Fallback
 }
+
+# ── STREAMLIT CALLBACKS ───────────────────────────────────────────────────────
+# Callbacks execute BEFORE the main script runs, bypassing the render lock.
+
+def apply_framework_callback(target_framework: str, name: str):
+    st.session_state["sb_framework"] = target_framework
+    st.toast(f"✅ {name} Logic Applied! (Routing to {target_framework})")
+
+def toggle_islamic_callback():
+    current_state = st.session_state.get("sb_islamic", False)
+    st.session_state["sb_islamic"] = not current_state
+    status_msg = "Activated" if not current_state else "Deactivated"
+    st.toast(f"✅ Islamic Context Layer {status_msg}!")
+
+# ──────────────────────────────────────────────────────────────────────────────
 
 def render_cognitive_map() -> None:
     st.markdown(
@@ -40,14 +53,12 @@ def render_cognitive_map() -> None:
 
     for i, (name, data) in enumerate(ARABIC_COGNITIVE_MAP.items()):
         color = data.get("color", "#C9A84C")
-        # Staggered animation — each card appears 50ms after the previous
         delay = i * 0.05
         triggers_html = " ".join(
             f'<span class="trigger-chip">{w}</span>'
             for w in data["trigger_words"]
         )
         
-        # Render the informational card
         st.markdown(f"""
         <div class="map-entry" style="animation-delay:{delay}s; margin-bottom: 8px;">
             <div style="display:flex;justify-content:space-between;
@@ -62,18 +73,18 @@ def render_cognitive_map() -> None:
         </div>
         """, unsafe_allow_html=True)
         
-        # The Interactive Remote Control
         target_framework = FRAMEWORK_ROUTER.get(name, FRAMEWORK_ROUTER["default"])
         
-        # Align the action button to the right side under the card
         col1, col2 = st.columns([4, 1])
         with col2:
-            if st.button(f"⚡ Apply {name}", key=f"btn_apply_{name}", use_container_width=True):
-                # Update the sidebar's session state key
-                st.session_state["sb_framework"] = target_framework
-                st.toast(f"✅ {name} Logic Applied! (Routing to {target_framework})")
-                time.sleep(0.3) # Brief pause so the user sees the toast before UI refreshes
-                st.rerun()
+            # Replaced manual update with on_click callback
+            st.button(
+                f"⚡ Apply {name}", 
+                key=f"btn_apply_{name}", 
+                on_click=apply_framework_callback,
+                args=(target_framework, name),
+                use_container_width=True
+            )
                 
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
@@ -90,13 +101,13 @@ def render_cognitive_map() -> None:
     with col_a:
         st.code(ISLAMIC_CONTEXT_LAYER.strip(), language="text")
     with col_b:
-        # Check current state from the sidebar toggle
         is_active = st.session_state.get("sb_islamic", False)
         btn_label = "🟢 Mode Active" if is_active else "⚡ Activate Mode"
         
-        if st.button(btn_label, key="btn_activate_islamic", use_container_width=True):
-            st.session_state["sb_islamic"] = not is_active
-            status_msg = "Activated" if not is_active else "Deactivated"
-            st.toast(f"✅ Islamic Context Layer {status_msg}!")
-            time.sleep(0.3)
-            st.rerun()
+        # Replaced manual update with on_click callback
+        st.button(
+            btn_label, 
+            key="btn_activate_islamic", 
+            on_click=toggle_islamic_callback,
+            use_container_width=True
+        )
