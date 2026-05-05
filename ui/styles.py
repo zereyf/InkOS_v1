@@ -154,66 +154,88 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 [data-testid="stSidebar"] > div { animation: fadeUp 0.4s ease both; }
 
 
-/* ══════════════════════════════════════════
-   THE CHATGPT PILL ILLUSION (Mobile-Proof)
+ /* ══════════════════════════════════════════
+   THE CHATGPT PILL ILLUSION (Nuke-Proof Fix)
 ══════════════════════════════════════════ */
-/* 1. Target the Horizontal Block that CONTAINS our marker */
+/* 1. The Outer Pill Container */
 div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) {
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: nowrap !important; /* STRICTLY bans vertical stacking on mobile */
+    flex-wrap: nowrap !important;
     background-color: var(--bg-input) !important;
     border: 1px solid var(--gold-border) !important;
     border-radius: 28px !important;
-    padding: 4px 10px 4px 0px !important;
+    padding: 4px 6px 4px 0px !important;
     align-items: flex-end !important;
-    box-shadow: inset 0 2px 10px rgba(0,0,0,0.3) !important;
-    min-height: 58px !important;
-    transition: all 0.3s ease !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    min-height: 56px !important;
 }
 
 div[data-testid="stHorizontalBlock"]:has(.command-pill-marker):focus-within {
     border-color: var(--gold) !important;
-    box-shadow: 0 0 15px var(--gold-glow), inset 0 2px 10px rgba(0,0,0,0.5) !important;
+    box-shadow: 0 0 12px var(--gold-glow) !important;
 }
 
-/* 2. Strip native styling from the Text Area so it vanishes into the Pill */
+/* 2. Lock the Columns to prevent the button from being shoved off-screen */
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) > div[data-testid="column"]:nth-child(1) {
+    width: calc(100% - 55px) !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important; /* Crucial: stops the text area from pushing the button out */
+}
+
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) > div[data-testid="column"]:nth-child(2) {
+    width: 55px !important;
+    flex: 0 0 55px !important;
+    min-width: 55px !important;
+    display: flex !important;
+    justify-content: center !important;
+    padding-bottom: 2px !important;
+}
+
+/* 3. Nuke Streamlit's inner grey backgrounds on the text area */
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) div[data-testid="stTextArea"],
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) div[data-testid="stTextArea"] > div,
 div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) div[data-testid="stTextArea"] textarea {
     background: transparent !important;
+    background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    padding: 14px 10px 14px 24px !important;
-    field-sizing: content !important; /* Auto-grows vertically */
+}
+
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) div[data-testid="stTextArea"] textarea {
+    padding: 12px 10px 12px 20px !important;
+    field-sizing: content !important;
     min-height: 48px !important;
-    max-height: 350px !important;
+    max-height: 250px !important;
     color: var(--text) !important;
     font-family: var(--font-m) !important;
     font-size: 0.88rem !important;
     line-height: 1.6 !important;
+    margin-bottom: 0 !important;
 }
 
 div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) div[data-testid="stTextArea"] textarea:focus {
     box-shadow: none !important;
     outline: none !important;
 }
+
 div[data-testid="InputInstructions"] { display: none !important; }
 
-/* 3. Tame the bulky Audio Input so ONLY the circular Mic shows */
+/* 4. Action Buttons (Mic / Bolt) */
 div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) [data-testid="stAudioInput"] {
+    width: 46px !important;
+    min-width: 46px !important;
     background: transparent !important;
     border: none !important;
-    box-shadow: none !important;
-    width: 48px !important; /* Clips the huge waveform completely */
-    flex: 0 0 48px !important; /* Prevents column from squishing the mic */
-    overflow: hidden !important; 
-    margin-bottom: 3px !important;
+    overflow: hidden !important;
+    margin-bottom: 0 !important;
 }
 
-/* 4. Standardize Action Buttons (Mic / Bolt) to fit perfectly */
 div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) button {
     border-radius: 50% !important;
-    width: 44px !important;
-    height: 44px !important;
+    width: 46px !important;
+    height: 46px !important;
     padding: 0 !important;
     background: linear-gradient(145deg, #1e2025, #080c14) !important;
     border: 1px solid var(--gold-border) !important;
@@ -221,14 +243,14 @@ div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) button {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    margin-bottom: 3px !important;
-    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    margin: 0 !important;
+    transition: all 0.2s ease !important;
 }
 
 div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) button:hover {
     background: var(--gold-glow) !important;
     border-color: var(--gold) !important;
-    transform: scale(1.08) !important;
+    transform: scale(1.05) !important;
 }
 
 div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) button p {
@@ -237,8 +259,9 @@ div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) button p {
     line-height: 1 !important;
 }
 
-
-/* ══════════════════════════════════════════
+     
+ 
+     ══════════════════════════════════════════
    STANDARD COMPONENTS (CARDS, METRICS)
 ══════════════════════════════════════════ */
 .vc-wordmark { font-family: var(--font-d); font-size: 1.3rem; font-weight: 700; color: var(--gold); letter-spacing: 0.18em; text-transform: uppercase; line-height: 1; }
