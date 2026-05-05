@@ -319,45 +319,48 @@ label[data-testid="stWidgetLabel"] p, .stSelectbox label, .stRadio label span { 
     left: auto !important;
 }
 
-/* ── UNIFIED LANGUAGE SEGMENTS (NEW) ── */
-/* Targets the horizontal grouping for language buttons in sidebar */
-[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:has(button) {
-    display: flex !important;
+/* ── UNIFIED LANGUAGE SEGMENTS (FORCED HORIZONTAL) ── */
+/* Targets the specific container for the language buttons */
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:has(button) {
     flex-direction: row !important;
-    gap: 4px !important;
-    background: rgba(255, 255, 255, 0.02) !important;
-    padding: 4px !important;
-    border-radius: 8px !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 2px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    padding: 3px !important;
+    border-radius: 6px !important;
     border: 1px solid var(--text-dim) !important;
+    margin-top: 10px !important;
 }
 
-/* Force buttons into slim segments */
-[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:has(button) button {
-    flex: 1 !important;
-    height: 32px !important;
+/* Force buttons to behave as slim segments */
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:has(button) button {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    height: 30px !important;
     background: transparent !important;
     border: none !important;
-    font-size: 0.62rem !important;
+    font-size: 0.6rem !important;
     color: var(--text-muted) !important;
-    border-radius: 6px !important;
+    border-radius: 4px !important;
     text-transform: uppercase !important;
     padding: 0 !important;
-    letter-spacing: 0.1em !important;
-    box-shadow: none !important;
-    transform: none !important;
+    margin: 0 !important;
 }
 
-/* Hover effect */
-[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:has(button) button:hover {
+/* Selected state - If you are using st.button, we'll style the "primary" kind 
+   If you move to st.radio later, this remains compatible. */
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:has(button) button[kind="primary"] {
+    background: var(--gold-glow) !important;
     color: var(--gold) !important;
-    background: rgba(201, 168, 76, 0.08) !important;
+    border: 1px solid var(--gold-border) !important;
 }
 
-/* Tip: Highlighting the active selection if using st.radio logic */
-[data-testid="stSidebar"] div[role="radiogroup"]:has(input:checked) label {
-    background: rgba(201, 168, 76, 0.12) !important;
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:has(button) button:hover {
     color: var(--gold) !important;
+    background: rgba(201, 168, 76, 0.1) !important;
 }
+
 
 </style>
 """
