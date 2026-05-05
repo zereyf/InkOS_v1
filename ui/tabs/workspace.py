@@ -3,10 +3,11 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
 
-v14.0: THE MAJLIS VOICE ENGINE
-- Integrated native st.audio_input for voice-to-prompt capability.
-- Wired up Groq's whisper-large-v3-turbo for lightning-fast English/Arabic transcription.
-- Added UX logic to append voice transcriptions to the text area dynamically.
+v15.0: THE DYNAMIC IDENTITY PATCH
+- Integrated 'brand_identity' payload into the compiler execution.
+- Added 1-Click "Send to AI" quick-launch buttons for ChatGPT and Claude.
+- Improved terminal-style loading states to prevent UI jitter.
+- Integrated CIPHER auto-target visual telemetry.
 """
 
 import hashlib
@@ -193,6 +194,7 @@ def render_workspace(cfg: dict) -> None:
 
                 st.write(f"> Target locked: {resolved_target}. Compiling Expert Blueprint...")
                 
+                # INJECTED BRAND IDENTITY HERE
                 result, audit, pattern = run_refinement_and_audit(
                     user_text        = cleaned,
                     target           = resolved_target,
@@ -201,6 +203,7 @@ def render_workspace(cfg: dict) -> None:
                     aesthetic_choice = cfg["aesthetic_choice"],
                     islamic_mode     = cfg["islamic_mode"],
                     persona          = cfg.get("active_persona"),
+                    brand_identity   = cfg.get("brand_identity"),
                 )
                 
                 # Defensive type-check
