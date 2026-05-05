@@ -13,7 +13,7 @@ Pipeline (7 Steps):
     6. PROMPT COMPILER       → Emit model-native syntax
     7. VALIDATOR             → Sanity-check for contradictions
 
-v2.5: Universal Domain Matrix (Handles Logos, Arch, Photos, etc.)
+v2.6: Graphic Design Text Priority Patch
 """
 
 from __future__ import annotations
@@ -236,7 +236,7 @@ class InkOSCompiler:
         uio.constraints = ConstraintSet(
             must_have=must_have,
             should_have=[f"Setting: {chunks.setting}"] if chunks.setting else [],
-            avoid=list(prefs.get("avoid", [])),
+            avoid=list(prefs.get("avoid", [])) + ["photorealistic desk", "real room", "looking at a computer monitor"],
             aspect_ratio=aspect
         )
         return uio
@@ -249,7 +249,6 @@ class InkOSCompiler:
             return uio 
 
         # ── UNIVERSAL DOMAIN MATRIX ──
-        # This applies elite aesthetics to ANY type of request before custom overrides
         DOMAIN_MATRIX = {
             ContentDomain.ARCHITECTURE: {
                 "refs": ["ArchDaily", "Dezeen", "Unreal Engine 5 architectural visualization", "Octane Render"],
@@ -283,7 +282,6 @@ class InkOSCompiler:
             }
         }
 
-        # Apply base domain aesthetics if it exists in the matrix
         if ip.domain in DOMAIN_MATRIX:
             matrix = DOMAIN_MATRIX[ip.domain]
             layer.art_references.extend(matrix["refs"])
@@ -291,13 +289,11 @@ class InkOSCompiler:
             layer.camera_keywords.extend(matrix["cams"])
             layer.texture_keywords.extend(matrix["textures"])
 
-        # Gather all text to scan for specific style/IP triggers
         all_cues = " ".join(chunks.style_cues + [chunks.subject, chunks.setting, chunks.mood, uio.raw_input]).lower()
 
         ip_injected = False
         character_desc = ""
 
-        # Specialized IP Character mapping
         if "shikamaru" in all_cues:
             character_desc = "dynamic 2D anime render of Shikamaru Nara with spiky ponytail and flak jacket"
             ip_injected = True
@@ -310,16 +306,22 @@ class InkOSCompiler:
 
         # ── CUSTOM HIGHEST-PRIORITY OVERRIDES ──
         
-        # 1. GRAPHIC DESIGN / BANNER
         if ip.domain == ContentDomain.GRAPHIC_DESIGN:
             if ip_injected:
                 layer.art_references.insert(0, f"{character_desc} placed over a highly stylized background")
+            else:
+                layer.art_references.insert(0, "Dynamic 2D character render")
+            
             layer.art_references.extend(["E-sports team Twitter header graphic design", "Streetwear aesthetic vector art overlay", "High-contrast abstract geometric background"])
+            
+            # PATCH V2.6: Inject Tech/Cybersecurity themes into graphic design if present
+            if any(w in all_cues for w in ["tech", "cyber", "security", "hacker", "data"]):
+                 layer.art_references.extend(["futuristic data visualization elements", "circuit board patterns", "glitch art details", "cyberpunk graphic design elements"])
+
             layer.texture_keywords.extend(["crisp vector edges", "flat 2D shading", "dynamic graphic layout, NO photorealism, NO physical rooms"])
             uio.constraints.avoid.extend(["photorealistic desk", "real room", "looking at a computer monitor"])
             ip.photorealism = PhotorealismLevel.ABSTRACT
         
-        # 2. ANIME / 2D
         elif any(w in all_cues for w in ["anime", "manga", "cel", "ghibli", "shinkai"]):
             if ip_injected: layer.art_references.insert(0, f"{character_desc} physically in the scene")
             layer.art_references.extend(["Akira 1988 cel animation", "Studio Ghibli background detailing", "Makoto Shinkai volumetric lighting"])
@@ -327,7 +329,6 @@ class InkOSCompiler:
             ip.photorealism = PhotorealismLevel.STYLIZED 
             ip.domain = ContentDomain.ILLUSTRATION
             
-        # 3. CYBERPUNK / TECH
         elif any(w in all_cues for w in ["cyberpunk", "tech-noir", "hacker", "neon"]):
             layer.art_references.extend(["Syd Mead", "Blade Runner aesthetic"])
             layer.color_palette.extend(["neon cyan", "electric purple", "dark base", "RGB accents"])
@@ -385,7 +386,9 @@ class InkOSCompiler:
         
         elif m == TargetModel.IMAGEN3:
             if ip.domain in (ContentDomain.GRAPHIC_DESIGN, ContentDomain.LOGO_BRAND):
-                uio.compiled_prompt = f"[GRAPHIC DESIGN LAYOUT] Core Layout: 2D {ip.domain.value.replace('_', ' ')} featuring {core}. Typography overlay: {must}. Graphic Aesthetics & Background: {refs}. Aspect Ratio layout: {cons.aspect_ratio}."
+                # PATCH V2.6: Replaced "Typography overlay: {must}" with a more direct integration
+                # to force the AI to prioritize the text as a core layout element.
+                uio.compiled_prompt = f"[GRAPHIC DESIGN LAYOUT] Core Layout: {cons.aspect_ratio} 2D {ip.domain.value.replace('_', ' ')} featuring {core} and prominent typography. {must}. Graphic Aesthetics & Background: {refs}."
             else:
                 uio.compiled_prompt = f"[SPATIAL BLUEPRINT] Core Scene: {core}. Typography & Placement: {must}. Atmosphere & Lighting: {lights}. Medium & Style: {refs}."
             
