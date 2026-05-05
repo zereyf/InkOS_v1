@@ -107,13 +107,13 @@ def render_workspace(cfg: dict) -> None:
     st.markdown("""
     <div style="font-family:var(--font-m);font-size:0.68rem;
                 color:var(--text-muted);line-height:1.7;margin-bottom:8px;">
-        Write your raw intent in plain English or Arabic.
+        Write or speak your raw intent in plain English or Arabic.
         InkOS restructures it into a precision prompt for your selected AI.
     </div>
     """, unsafe_allow_html=True)
 
     # ── MAJLIS VOICE ENGINE ───────────────────────────────────────────────────
-    st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;">🎙️ MAJLIS VOICE ENGINE</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;"> VOICE INPUT </div>', unsafe_allow_html=True)
     audio_value = st.audio_input("Record your intent", label_visibility="collapsed")
     
     if audio_value is not None:
