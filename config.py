@@ -1,10 +1,10 @@
 """
 config.py - Environment Bootstrap & Application Constants
 ==========================================================
-v3.0: THE MARCEL CORE INTEGRATION
-- Injected: MARCEL_IDENTITY and 5 Elite Expert Personas (AXIOM, FORMA, VECTOR, CIPHER, LUCID).
-- Preserved: AESTHETIC_PRESETS, AUTO_SELECT_LABEL, VISUAL_DIRECTOR_PROMPT to prevent UI crashes.
-- Maintained: Expansive DOMAIN_KNOWLEDGE dictionary for legacy expert routing.
+v3.1: THE MAJLIS CONFIGURATION
+- Added: AUDIO_MODEL_ID for Groq Whisper integration.
+- Added: WHISPER_CONTEXT_PROMPT to prevent Arabic-to-English auto-translation hallucinations.
+- Injected: MARCEL_IDENTITY and 5 Elite Expert Personas.
 """
 
 import os
@@ -19,9 +19,19 @@ client: Groq = Groq(api_key=_api_key) if _api_key else None  # type: ignore
 API_KEY_MISSING: bool = not bool(_api_key)
 
 # -- MODEL CONFIG --------------------------------------------------------------
-MODEL_ID:    str = "llama-3.3-70b-versatile"
-TEMPERATURE: float = 0.3
-MAX_TOKENS:  int   = 1536
+MODEL_ID:       str = "llama-3.3-70b-versatile"
+AUDIO_MODEL_ID: str = "whisper-large-v3-turbo"  # The Majlis Voice Engine
+TEMPERATURE:    float = 0.3
+MAX_TOKENS:     int   = 1536
+
+# -- WHISPER API GUARDRAILS ----------------------------------------------------
+# This forces Whisper to transcribe Arabic as Arabic, English as English, 
+# and primes it to understand technical InkOS vocabulary.
+WHISPER_CONTEXT_PROMPT: str = (
+    "This is a voice command for InkOS. The user may speak in English or Arabic (العربية). "
+    "Do NOT translate Arabic to English; transcribe it exactly in the spoken language. "
+    "Keep terms like 'Ameer', 'Shikamaru', 'Tech-Noir', and 'Obsidian' properly capitalized."
+)
 
 # -- RATE LIMITING -------------------------------------------------------------
 RATE_WINDOW_SECONDS: int = 60
