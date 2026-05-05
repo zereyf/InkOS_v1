@@ -1,10 +1,9 @@
 """
 config.py - Environment Bootstrap & Application Constants
 ==========================================================
-v2.0: The Omni-Expert Update.
-- Added expansive DOMAIN_KNOWLEDGE dictionary for daily professional use cases.
-- Includes Marketing, Data Science, Research, and Productivity experts.
-- Preserved all previous UI, API, and Visual DNA configurations safely.
+v2.1: The Omni-Expert + UI Restoration Update.
+- Restored AESTHETIC_PRESETS, AUTO_SELECT_LABEL, and VISUAL_DIRECTOR_PROMPT.
+- Maintains the expansive DOMAIN_KNOWLEDGE dictionary for expert routing.
 """
 
 import os
@@ -101,6 +100,14 @@ TARGET_GUIDES: dict = {
     "Gemini (Imagen 3)": "Spatially explicit 'Spatial Blueprint' mapping out zones and diegetic text."
 }
 
+# -- AESTHETIC PRESETS (RESTORED FOR UI) ---------------------------------------
+AESTHETIC_PRESETS: dict = {
+    "Raw (No Preset)": "Standard AI interpretation. Follow user description literally with no added flavor.",
+    "Velvet (Signature)": "Focus: Tech-Noir Minimalism. Palette: Obsidian, Matte Black, Deep Gold (#C9A84C). Lighting: Chiaroscuro, high-contrast, cinematic amber glows.",
+    "Scholar (Traditional)": "Focus: Arabic Heritage & Calligraphy. Palette: Sandstone, Emerald, Aged Parchment. Lighting: Natural sunlight, soft organic shadows.",
+    "Cyber-Radiant": "Focus: High-energy tech. Palette: Electric Blue, Cyber Lime, Carbon Fiber. Lighting: Volumetric neon, sharp lens flares."
+}
+
 # -- LOGIC FRAMEWORKS ----------------------------------------------------------
 LOGIC_FRAMEWORKS: list = [
     "Professional (RACE)", 
@@ -109,6 +116,23 @@ LOGIC_FRAMEWORKS: list = [
     "Visual Director"
 ]
 
+VISUAL_DIRECTOR_PROMPT: str = """
+ACTIVE FRAMEWORK: Visual Director (Cognitive Prompt Compiler)
+Task: Deconstruct raw concepts into elite, studio-grade prompt architecture.
+Instead of treating styles as generic keywords, you must deconstruct them into latent production attributes (Style DNA).
+"""
+
 # -- UI CONSTANTS --------------------------------------------------------------
 INPUT_MAX_CHARS: int = 2000
 INPUT_WARN_THRESHOLD: int = 1800
+AUTO_SELECT_LABEL: str = "⚡ Auto (CIPHER Selects)"
+
+TARGET_SELECTION_GUIDE: str = """
+Given a raw user input, determine the single best AI target from this list:
+- Claude: Best for structured analysis, long-form writing, document creation, coding tasks, research synthesis.
+- ChatGPT: Best for conversational tasks, brainstorming, quick rewrites, marketing copy, social media.
+- Manus AI: Best for multi-step agentic tasks, web research pipelines, file operations, automation sequences.
+- Midjourney/Flux: Best for cinematic art, stylized concepts, high-end tech-noir.
+- DALL-E 3: Best for photorealistic scenes, product shots, narrative descriptions.
+- Gemini (Imagen 3): Best for precise text rendering, readable typography, brand/logo text, signage.
+"""
