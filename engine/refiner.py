@@ -13,7 +13,7 @@ Pipeline (7 Steps):
     6. PROMPT COMPILER       → Emit model-native syntax
     7. VALIDATOR             → Sanity-check for contradictions
 
-v2.6: Graphic Design Text Priority Patch
+v2.7: The Fail-Safe & Clean Formatting Patch
 """
 
 from __future__ import annotations
@@ -233,10 +233,11 @@ class InkOSCompiler:
         if uio.intent_profile.domain == ContentDomain.GRAPHIC_DESIGN: aspect = "21:9"
         if uio.intent_profile.domain == ContentDomain.LOGO_BRAND: aspect = "1:1"
 
+        # V2.7 FIX: Removed the leaky graphic design negative constraints here
         uio.constraints = ConstraintSet(
             must_have=must_have,
             should_have=[f"Setting: {chunks.setting}"] if chunks.setting else [],
-            avoid=list(prefs.get("avoid", [])) + ["photorealistic desk", "real room", "looking at a computer monitor"],
+            avoid=list(prefs.get("avoid", [])),
             aspect_ratio=aspect
         )
         return uio
@@ -314,11 +315,11 @@ class InkOSCompiler:
             
             layer.art_references.extend(["E-sports team Twitter header graphic design", "Streetwear aesthetic vector art overlay", "High-contrast abstract geometric background"])
             
-            # PATCH V2.6: Inject Tech/Cybersecurity themes into graphic design if present
             if any(w in all_cues for w in ["tech", "cyber", "security", "hacker", "data"]):
                  layer.art_references.extend(["futuristic data visualization elements", "circuit board patterns", "glitch art details", "cyberpunk graphic design elements"])
 
             layer.texture_keywords.extend(["crisp vector edges", "flat 2D shading", "dynamic graphic layout, NO photorealism, NO physical rooms"])
+            # V2.7 FIX: Moved the graphic design avoids here so they only apply to banners
             uio.constraints.avoid.extend(["photorealistic desk", "real room", "looking at a computer monitor"])
             ip.photorealism = PhotorealismLevel.ABSTRACT
         
@@ -368,29 +369,46 @@ class InkOSCompiler:
         core_elements = [c for c in [uio.semantic_chunks.subject, uio.semantic_chunks.action, uio.semantic_chunks.setting, uio.semantic_chunks.mood] if c]
         core = ", ".join(core_elements)
 
+        # V2.7 FIX: The Fail-Safe Fallback
+        # If the API hiccups and returns nothing, fallback to raw input so the prompt never breaks
+        if not core.strip():
+            core = uio.raw_input.strip()
+
         if m in (TargetModel.CLAUDE, TargetModel.CHATGPT, TargetModel.MANUS):
             uio.compiled_prompt = f"Objective: {core}\nConstraints: {', '.join(cons.must_have)}"
             return uio
 
-        must = " | ".join(cons.must_have) if cons.must_have else "None"
-        lights = ", ".join(aes.lighting_keywords) if aes.lighting_keywords else "Optimal lighting"
-        refs = ", ".join(aes.art_references + aes.texture_keywords) if aes.art_references else "Premium aesthetics"
+        must_str = " | ".join(cons.must_have) if cons.must_have else ""
+        lights_str = ", ".join(aes.lighting_keywords) if aes.lighting_keywords else ""
+        refs_str = ", ".join(aes.art_references + aes.texture_keywords) if aes.art_references else ""
         
         if m == TargetModel.MIDJOURNEY:
             quality = " ".join(self._QUALITY_TOKENS[m])
-            uio.compiled_prompt = f"{core} :: {must} :: lighting: {lights} :: style: {refs} --ar {cons.aspect_ratio} {quality}"
+            # V2.7 FIX: Dynamic formatting so it doesn't output empty :: blocks
+            blocks = [core]
+            if must_str: blocks.append(must_str)
+            if lights_str: blocks.append(f"lighting: {lights_str}")
+            if refs_str: blocks.append(f"style: {refs_str}")
+            
+            uio.compiled_prompt = " :: ".join(blocks) + f" --ar {cons.aspect_ratio} {quality}"
         
         elif m == TargetModel.DALLE3:
             domain_name = ip.domain.value.replace('_', ' ')
-            uio.compiled_prompt = f"Create a high-end {domain_name} featuring {core}. Critical constraints: {must}. Use {lights} to illuminate. The artistic style should be inspired by {refs}."
+            uio.compiled_prompt = f"Create a high-end {domain_name} featuring {core}."
+            if must_str: uio.compiled_prompt += f" Critical constraints: {must_str}."
+            if lights_str: uio.compiled_prompt += f" Use {lights_str} to illuminate."
+            if refs_str: uio.compiled_prompt += f" The artistic style should be inspired by {refs_str}."
         
         elif m == TargetModel.IMAGEN3:
             if ip.domain in (ContentDomain.GRAPHIC_DESIGN, ContentDomain.LOGO_BRAND):
-                # PATCH V2.6: Replaced "Typography overlay: {must}" with a more direct integration
-                # to force the AI to prioritize the text as a core layout element.
-                uio.compiled_prompt = f"[GRAPHIC DESIGN LAYOUT] Core Layout: {cons.aspect_ratio} 2D {ip.domain.value.replace('_', ' ')} featuring {core} and prominent typography. {must}. Graphic Aesthetics & Background: {refs}."
+                uio.compiled_prompt = f"[GRAPHIC DESIGN LAYOUT] Core Layout: {cons.aspect_ratio} 2D {ip.domain.value.replace('_', ' ')} featuring {core}. "
+                if must_str: uio.compiled_prompt += f"{must_str}. "
+                if refs_str: uio.compiled_prompt += f"Graphic Aesthetics & Background: {refs_str}."
             else:
-                uio.compiled_prompt = f"[SPATIAL BLUEPRINT] Core Scene: {core}. Typography & Placement: {must}. Atmosphere & Lighting: {lights}. Medium & Style: {refs}."
+                uio.compiled_prompt = f"[SPATIAL BLUEPRINT] Core Scene: {core}. "
+                if must_str: uio.compiled_prompt += f"Typography & Placement: {must_str}. "
+                if lights_str: uio.compiled_prompt += f"Atmosphere & Lighting: {lights_str}. "
+                if refs_str: uio.compiled_prompt += f"Medium & Style: {refs_str}."
             
         uio.negative_prompt = ", ".join(cons.avoid)
         return uio
