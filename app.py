@@ -1,9 +1,11 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2.1: THE UX OVERHAUL + COMMAND PILL SUPPORT
-- Added 'field-sizing' for auto-expanding text area.
-- Added column alignment for circular action buttons.
+v2: THE UX OVERHAUL
+- Killed the clunky dropdown navigation.
+- Implemented persistent, clean sidebar routing.
+- Added custom CSS to style the radio buttons like a premium SaaS menu.
+- Preserved RTL support and mobile-optimized constraints.
 """
 
 import sys
@@ -32,32 +34,6 @@ st.markdown("""
         }
         div[role="radiogroup"] > label:hover {
             background-color: rgba(201,168,76,0.1);
-        }
-
-        /* ── COMMAND PILL STRUCTURAL UPDATES ── */
-        div[data-testid="stTextArea"] textarea {
-            field-sizing: content !important; /* The Magic: Auto-grows as you type */
-            min-height: 56px !important;
-            max-height: 350px !important;
-        }
-
-        /* Align circular Mic/Execute buttons to the bottom of the pill as it grows */
-        [data-testid="column"] {
-            display: flex;
-            align-items: flex-end;
-        }
-
-        /* Stylize action buttons into hardware circles */
-        .stButton > button, 
-        [data-testid="stAudioInput"] button {
-            border-radius: 50% !important;
-            width: 52px !important;
-            height: 52px !important;
-            min-width: 52px !important;
-            padding: 0 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
         }
     </style>
 """, unsafe_allow_html=True)
