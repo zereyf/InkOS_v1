@@ -1,5 +1,5 @@
 """
-config.py — Environment Bootstrap & Application Constants
+config.py — Environment Bootstrap & Application Constantsd
 ==========================================================
 v1.8: STABLE RESTORATION.
 - Restores all original UI constants and Groq client.
