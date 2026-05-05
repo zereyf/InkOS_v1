@@ -13,7 +13,6 @@ Pipeline (7 Steps):
     6. PROMPT COMPILER       → Emit model-native syntax
     7. VALIDATOR             → Sanity-check for contradictions
 
-v2.0: The Claude Architecture & Groq Integration (Markdown safe)
 """
 
 from __future__ import annotations
