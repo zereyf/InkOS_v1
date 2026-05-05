@@ -3,9 +3,9 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
 
-v16.3: THE PURE PILL
-- Removed legacy "Execute Refinement" button entirely.
-- Solely relies on the dynamic Command Pill (Mic ↔ Bolt).
+v17.0: THE ABSOLUTE PILL
+- Eradicated legacy "Execute Refinement" button.
+- Stripped column complexity for Absolute Positioning anchor.
 """
 
 import hashlib
@@ -105,6 +105,7 @@ def render_workspace(cfg: dict) -> None:
     # ── 3. DYNAMIC COMMAND PILL ───────────────────────────────────────────────
     st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;">⚡ COMMAND CENTER</div>', unsafe_allow_html=True)
     
+    # Simple columns. Absolute CSS will handle the layout lock.
     col_input, col_action = st.columns([1, 1])
 
     with col_input:
@@ -119,6 +120,7 @@ def render_workspace(cfg: dict) -> None:
 
     with col_action:
         execute_pill_triggered = False
+        # CONTEXTUAL SWAP: If text exists, show Bolt. Else, show Mic.
         if len(raw_input.strip()) > 0:
             if st.button("⚡", key="btn_exec_pill", use_container_width=True, help="Compile Blueprint"):
                 execute_pill_triggered = True
@@ -139,7 +141,7 @@ def render_workspace(cfg: dict) -> None:
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
     # ── 5. EXECUTION LOGIC ────────────────────────────────────────────────────
-    # 🚨 ONLY THE PILL BUTTON TRIGGERS EXECUTION NOW 🚨
+    # Only triggered by typing text and hitting the floating Lightning Bolt
     if execute_pill_triggered:
         cleaned, violations = sanitize_input(raw_input or "")
 
