@@ -13,6 +13,7 @@ Pipeline (7 Steps):
     6. PROMPT COMPILER       → Emit model-native syntax
     7. VALIDATOR             → Sanity-check for contradictions
 
+v2.1: The Typographic Memory Patch
 """
 
 from __future__ import annotations
@@ -31,7 +32,6 @@ from config import client, MODEL_ID, MAX_TOKENS
 # ─────────────────────────────────────────────
 
 class TargetModel(str, Enum):
-    """Supported downstream generative models (Mapped to InkOS UI)."""
     CLAUDE       = "Claude"
     CHATGPT      = "ChatGPT"
     MANUS        = "Manus AI"
@@ -40,7 +40,6 @@ class TargetModel(str, Enum):
     IMAGEN3      = "Gemini (Imagen 3)"
 
 class ContentDomain(str, Enum):
-    """High-level creative/technical domain of the request."""
     PHOTOGRAPHY     = "photography"
     ILLUSTRATION    = "illustration"
     CONCEPT_ART     = "concept_art"
@@ -56,7 +55,6 @@ class ContentDomain(str, Enum):
     UNKNOWN         = "unknown"
 
 class PhotorealismLevel(int, Enum):
-    """0 = pure abstraction, 10 = hyper-photorealism."""
     ABSTRACT    = 1
     STYLIZED    = 3
     PAINTERLY   = 5
@@ -74,6 +72,7 @@ class SemanticChunk:
     action:     str = ""
     setting:    str = ""
     mood:       str = ""
+    exact_text: list[str] = field(default_factory=list) # BUG FIX: Added typographic memory
     style_cues: list[str] = field(default_factory=list)
 
 @dataclass
@@ -135,6 +134,7 @@ _PREPROCESSOR_SYSTEM_PROMPT = textwrap.dedent("""
         "action":           "<what is happening/motion>",
         "setting":          "<environment/context>",
         "mood":             "<emotional tone>",
+        "exact_text":       ["<Extract ANY specific names, letters, or words the user explicitly wants written in the output>"],
         "style_cues":       ["<aesthetic/technical keywords>"]
     }
 """).strip()
@@ -179,15 +179,18 @@ class InkOSCompiler:
     def _step1_preprocess(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
         data = self._llm_call(_PREPROCESSOR_SYSTEM_PROMPT, uio.raw_input)
         uio.normalized_input = data.get("normalized_input", uio.raw_input)
+        
+        # BUG FIX: Extracting the exact text from the JSON output
         uio.semantic_chunks  = SemanticChunk(
             subject=data.get("subject", ""), action=data.get("action", ""),
             setting=data.get("setting", ""), mood=data.get("mood", ""),
+            exact_text=data.get("exact_text", []),
             style_cues=data.get("style_cues", [])
         )
         return uio
 
     def _step2_classify(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
-        summary = f"Subject: {uio.semantic_chunks.subject} | Action: {uio.semantic_chunks.action} | Cues: {uio.semantic_chunks.style_cues}"
+        summary = f"Subject: {uio.semantic_chunks.subject} | Text Needed: {uio.semantic_chunks.exact_text} | Cues: {uio.semantic_chunks.style_cues}"
         data = self._llm_call(_CLASSIFIER_SYSTEM_PROMPT, summary)
         
         try:
@@ -198,9 +201,12 @@ class InkOSCompiler:
         lvl = max(1, min(10, int(data.get("photorealism", 5))))
         closest_lvl = min(PhotorealismLevel, key=lambda l: abs(l.value - lvl))
 
+        # Force text_required to true if exact_text was found
+        requires_text = bool(data.get("text_required", False)) or len(uio.semantic_chunks.exact_text) > 0
+
         uio.intent_profile = IntentProfile(
             domain=domain, photorealism=closest_lvl,
-            text_required=bool(data.get("text_required", False)),
+            text_required=requires_text,
             brand_safe=bool(data.get("brand_safe", True)),
             cinematic=bool(data.get("cinematic", False)),
             product_focus=bool(data.get("product_focus", False)),
@@ -214,8 +220,11 @@ class InkOSCompiler:
         chunks = uio.semantic_chunks
         
         must_have = list(prefs.get("must_have", []))
-        if chunks.subject: must_have.append(f"Subject: {chunks.subject}")
-        if uio.intent_profile.text_required: must_have.append("Typography/Text accuracy required")
+        
+        # BUG FIX: Forcing typographic layout instructions
+        if chunks.exact_text: 
+            text_string = '", "'.join(chunks.exact_text)
+            must_have.append(f'EXACT TEXT TO RENDER: "{text_string}" (Crucial: Anchor this text physically into the scene, e.g., embossed on metal, glowing on a screen, or written on a label. Do not let it float.)')
 
         uio.constraints = ConstraintSet(
             must_have=must_have,
@@ -228,14 +237,14 @@ class InkOSCompiler:
     def _step4_enrich_aesthetics(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
         ip, layer = uio.intent_profile, AestheticLayer()
         if ip.domain in (ContentDomain.CODE_ANALYSIS, ContentDomain.TEXT_COPY, ContentDomain.AGENTIC):
-            return uio # Skip visuals for text
+            return uio 
 
         if ip.cinematic:
             layer.lighting_keywords = ["Shotdeck cinematic lighting", "anamorphic flare"]
             layer.camera_keywords = ["35mm lens", "shallow depth of field"]
         elif ip.domain == ContentDomain.PRODUCT_RENDER:
             layer.lighting_keywords = ["studio softbox", "rim lighting"]
-            layer.art_references = ["luxury commercial macro photography"]
+            layer.art_references = ["luxury commercial macro photography", "Behance packaging design"]
         
         uio.aesthetic_layer = layer
         return uio
@@ -268,24 +277,30 @@ class InkOSCompiler:
 
     def _step6_compile_prompt(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
         m, ip, aes, cons = uio.target_model, uio.intent_profile, uio.aesthetic_layer, uio.constraints
-        core = ", ".join(filter(None, [uio.semantic_chunks.subject, uio.semantic_chunks.action, uio.semantic_chunks.setting]))
+        
+        # Filter out empty strings for a clean core prompt
+        core_elements = [c for c in [uio.semantic_chunks.subject, uio.semantic_chunks.action, uio.semantic_chunks.setting, uio.semantic_chunks.mood] if c]
+        core = ", ".join(core_elements)
 
-        # Text/Code Output
         if m in (TargetModel.CLAUDE, TargetModel.CHATGPT, TargetModel.MANUS):
             uio.compiled_prompt = f"Objective: {core}\nConstraints: {', '.join(cons.must_have)}"
             return uio
 
-        # Visual Output
-        must = ", ".join(cons.must_have)
-        lights = ", ".join(aes.lighting_keywords)
-        refs = ", ".join(aes.art_references)
+        # Visual Output - Improved String Formatting
+        must = " | ".join(cons.must_have) if cons.must_have else "None"
+        lights = ", ".join(aes.lighting_keywords) if aes.lighting_keywords else "Natural lighting"
+        refs = ", ".join(aes.art_references) if aes.art_references else "Premium aesthetics"
         
         if m == TargetModel.MIDJOURNEY:
-            uio.compiled_prompt = f"{core} :: {must} :: {lights} :: {refs} --ar {cons.aspect_ratio}"
+            quality = " ".join(self._QUALITY_TOKENS[m])
+            uio.compiled_prompt = f"{core} :: {must} :: lighting: {lights} :: style: {refs} --ar {cons.aspect_ratio} {quality}"
+        
         elif m == TargetModel.DALLE3:
-            uio.compiled_prompt = f"Generate a {ip.domain.value} of {core}. {must}. Lighting: {lights}. Style: {refs}."
+            domain_name = ip.domain.value.replace('_', ' ')
+            uio.compiled_prompt = f"Create a high-end {domain_name} featuring {core}. Critical constraints: {must}. Use {lights} to illuminate the scene. The artistic style should be inspired by {refs}."
+        
         elif m == TargetModel.IMAGEN3:
-            uio.compiled_prompt = f"[SPATIAL BLUEPRINT] Domain: {ip.domain.value}. Scene: {core}. Typography/Constraints: {must}. Style: {refs}."
+            uio.compiled_prompt = f"[SPATIAL BLUEPRINT] Core Scene: {core}. Typography & Placement: {must}. Atmosphere & Lighting: {lights}. Medium & Style: {refs}."
             
         uio.negative_prompt = ", ".join(cons.avoid)
         return uio
@@ -296,29 +311,25 @@ class InkOSCompiler:
         uio.is_valid = len(uio.contradictions) == 0
         return uio
 
-    # Groq API Execution
     def _llm_call(self, system: str, user: str) -> dict:
         try:
             res = client.chat.completions.create(
                 model=MODEL_ID,
                 messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-                temperature=0.0, # Zero temp for deterministic compilation
+                temperature=0.0, 
                 max_tokens=MAX_TOKENS,
                 response_format={"type": "json_object"}
             )
             raw = res.choices[0].message.content or "{}"
-            
-            # Safe parsing to prevent Markdown parser UI glitches
             token = "`" * 3
             cleaned = raw.replace(f"{token}json", "").replace(token, "").strip()
-            
             return json.loads(cleaned)
         except Exception as e:
             print(f"Compiler API Error: {e}")
             return {}
 
 # ─────────────────────────────────────────────
-# INKOS UI BRIDGE (Do not modify - connects to sidebar.py)
+# INKOS UI BRIDGE 
 # ─────────────────────────────────────────────
 
 def detect_best_target(user_text: str) -> tuple:
@@ -348,7 +359,6 @@ def run_refinement_and_audit(
         "critique": uio.routing_reason if uio.is_valid else " | ".join(uio.validation_notes)
     }
 
-    # Format the payload beautifully for the UI Output box
     ui_display = f"### [COMPILED BINARY] → {uio.target_model.value.upper()}\n{uio.compiled_prompt}\n\n"
     if uio.negative_prompt:
         ui_display += f"### [NEGATIVE CONSTRAINTS]\n{uio.negative_prompt}\n"
