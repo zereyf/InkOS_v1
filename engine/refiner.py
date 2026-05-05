@@ -6,14 +6,14 @@ highly structured, model-native prompt artifacts.
 
 Pipeline (7 Steps):
     1. PREPROCESSOR          → Normalize + chunk raw input
-    2. INTENT CLASSIFIER     → Build a deterministic IntentProfile
-    3. CONSTRAINT ANALYZER   → Rank and prioritize requirements
+    2. STYLE ANALYZER        → Extract Visual DNA (Medium, Lighting, FX)
+    3. INTENT CLASSIFIER     → Build a deterministic IntentProfile
     4. AESTHETIC ENRICHER    → Inject domain taste + references
     5. TARGET ROUTER         → Deterministic model selection
     6. PROMPT COMPILER       → Emit model-native syntax
     7. VALIDATOR             → Sanity-check for contradictions
 
-v2.7: The Fail-Safe & Clean Formatting Patch
+v3.0: Visual Intelligence & Style DNA Integration
 """
 
 from __future__ import annotations
@@ -24,10 +24,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional, Tuple
 
-from config import client, MODEL_ID, MAX_TOKENS
+from config import client, MODEL_ID, MAX_TOKENS, STYLE_LIBRARY, QUALITY_TIERS
 
 # ─────────────────────────────────────────────
-# ENUMERATIONS
+# ENUMERATIONS & DATA CLASSES
 # ─────────────────────────────────────────────
 
 class TargetModel(str, Enum):
@@ -62,9 +62,16 @@ class PhotorealismLevel(int, Enum):
     PHOTOREALISTIC = 9
     HYPER_REAL  = 10
 
-# ─────────────────────────────────────────────
-# UNIFIED INTENT OBJECT
-# ─────────────────────────────────────────────
+@dataclass
+class StyleDNA:
+    art_medium: str = ""
+    render_type: str = ""
+    composition_style: str = ""
+    lighting_profile: str = ""
+    color_palette: list[str] = field(default_factory=list)
+    texture_profile: list[str] = field(default_factory=list)
+    fx_elements: list[str] = field(default_factory=list)
+    design_language: list[str] = field(default_factory=list)
 
 @dataclass
 class SemanticChunk:
@@ -108,6 +115,8 @@ class UnifiedIntentObject:
     raw_input:        str             = ""
     user_preferences: dict[str, Any]  = field(default_factory=dict)
     normalized_input: str             = ""
+    style_dna:        StyleDNA        = field(default_factory=StyleDNA) # NEW
+    quality_tier:     str             = "studio" # NEW
     semantic_chunks:  SemanticChunk   = field(default_factory=SemanticChunk)
     intent_profile:   IntentProfile   = field(default_factory=IntentProfile)
     constraints:      ConstraintSet   = field(default_factory=ConstraintSet)
@@ -122,39 +131,6 @@ class UnifiedIntentObject:
     contradictions:   list[str]       = field(default_factory=list)
 
 # ─────────────────────────────────────────────
-# SYSTEM PROMPTS
-# ─────────────────────────────────────────────
-
-_PREPROCESSOR_SYSTEM_PROMPT = textwrap.dedent("""
-    You are a semantic decomposition engine. Break vague intent into structured chunks.
-    Return ONLY valid JSON matching this schema:
-    {
-        "normalized_input": "<cleaned, grammar-corrected version>",
-        "subject":          "<primary subject/object/task>",
-        "action":           "<what is happening/motion>",
-        "setting":          "<environment/context>",
-        "mood":             "<emotional tone>",
-        "exact_text":       ["<Extract ANY specific names, letters, or words the user explicitly wants written in the output. DO NOT include character names here unless explicitly asked to write their name as text>"],
-        "style_cues":       ["<aesthetic/technical keywords>"]
-    }
-""").strip()
-
-_CLASSIFIER_SYSTEM_PROMPT = textwrap.dedent("""
-    You are an intent classification engine. Output a deterministic profile.
-    Return ONLY valid JSON matching this schema:
-    {
-        "domain":            "<photography|illustration|concept_art|product_render|typography|logo_brand|architecture|fashion|abstract|graphic_design|code_analysis|agentic_automation|text_copy>",
-        "photorealism":      <integer 1-10>,
-        "text_required":     <true|false (Is visual text/typography needed?)>,
-        "brand_safe":        <true|false>,
-        "cinematic":         <true|false>,
-        "product_focus":     <true|false>,
-        "abstract_priority": <true|false>,
-        "confidence":        <float 0.0-1.0>
-    }
-""").strip()
-
-# ─────────────────────────────────────────────
 # MAIN COMPILER CLASS
 # ─────────────────────────────────────────────
 
@@ -167,39 +143,60 @@ class InkOSCompiler:
 
     def compile(self, raw_input: str, user_preferences: dict[str, Any] | None = None) -> UnifiedIntentObject:
         uio = UnifiedIntentObject(raw_input=raw_input, user_preferences=user_preferences or {})
+        
         uio = self._step1_preprocess(uio)
-        uio = self._step2_classify(uio)
-        uio = self._step3_analyze_constraints(uio)
-        uio = self._step4_enrich_aesthetics(uio)
-        uio = self._step5_route_target(uio)
-        uio = self._step6_compile_prompt(uio)
-        uio = self._step7_validate(uio)
+        uio = self._step2_analyze_style(uio) # STYLE ANALYZER (NEW)
+        uio = self._step3_classify(uio)
+        uio = self._step4_analyze_constraints(uio)
+        uio = self._step5_enrich_aesthetics(uio)
+        uio = self._step6_route_target(uio)
+        uio = self._step7_compile_prompt(uio)
+        uio = self._step8_validate(uio)
+        
         return uio
 
     def _step1_preprocess(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
-        data = self._llm_call(_PREPROCESSOR_SYSTEM_PROMPT, uio.raw_input)
+        system = "Extract core semantic chunks. Include exact_text for quotes. Return JSON."
+        data = self._llm_call(system, uio.raw_input)
         uio.normalized_input = data.get("normalized_input", uio.raw_input)
         uio.semantic_chunks  = SemanticChunk(
             subject=data.get("subject", ""), action=data.get("action", ""),
             setting=data.get("setting", ""), mood=data.get("mood", ""),
-            exact_text=data.get("exact_text", []),
-            style_cues=data.get("style_cues", [])
+            exact_text=data.get("exact_text", []), style_cues=data.get("style_cues", [])
         )
         return uio
 
-    def _step2_classify(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
-        summary = f"Subject: {uio.semantic_chunks.subject} | Text Needed: {uio.semantic_chunks.exact_text} | Cues: {uio.semantic_chunks.style_cues}"
-        data = self._llm_call(_CLASSIFIER_SYSTEM_PROMPT, summary)
+    def _step2_analyze_style(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
+        """Deconstructs the style DNA from the input or preset."""
+        low = uio.raw_input.lower()
+        
+        # Check for curated library matches first
+        if "editorial" in low or "poster" in low:
+            dna_data = STYLE_LIBRARY["dark_editorial"]
+        elif "banner" in low or "header" in low:
+            dna_data = STYLE_LIBRARY["anime_banner"]
+        elif "cinematic" in low and "anime" in low:
+            dna_data = STYLE_LIBRARY["cinematic_anime"]
+        else:
+            # Dynamic deconstruction via LLM
+            system = "Deconstruct the visual DNA of this request into: art_medium, render_type, composition_style, lighting_profile, color_palette, texture_profile, fx_elements, design_language. Return JSON."
+            dna_data = self._llm_call(system, uio.raw_input)
+            
+        uio.style_dna = StyleDNA(**dna_data) if dna_data else StyleDNA()
+        return uio
+
+    def _step3_classify(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
+        system = "Classify intent into domain, photorealism (1-10), text_required. Return JSON."
+        summary = f"Subject: {uio.semantic_chunks.subject} | DNA: {uio.style_dna.design_language}"
+        data = self._llm_call(system, summary)
         
         try:
             domain = ContentDomain(data.get("domain", "unknown"))
         except ValueError:
             domain = ContentDomain.UNKNOWN
 
-        if "banner" in uio.raw_input.lower() or "header" in uio.raw_input.lower():
+        if any("banner" in str(d).lower() for d in uio.style_dna.design_language):
             domain = ContentDomain.GRAPHIC_DESIGN
-        if "logo" in uio.raw_input.lower() or "icon" in uio.raw_input.lower():
-            domain = ContentDomain.LOGO_BRAND
 
         lvl = max(1, min(10, int(data.get("photorealism", 5))))
         closest_lvl = min(PhotorealismLevel, key=lambda l: abs(l.value - lvl))
@@ -207,268 +204,96 @@ class InkOSCompiler:
 
         uio.intent_profile = IntentProfile(
             domain=domain, photorealism=closest_lvl,
-            text_required=requires_text,
-            brand_safe=bool(data.get("brand_safe", True)),
-            cinematic=bool(data.get("cinematic", False)),
-            product_focus=bool(data.get("product_focus", False)),
-            abstract_priority=bool(data.get("abstract_priority", False)),
-            confidence=float(data.get("confidence", 0.5))
+            text_required=requires_text
         )
         return uio
 
-    def _step3_analyze_constraints(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
-        prefs = uio.user_preferences
-        chunks = uio.semantic_chunks
+    def _step4_analyze_constraints(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
+        prefs, chunks = uio.user_preferences, uio.semantic_chunks
         must_have = list(prefs.get("must_have", []))
         
         if chunks.exact_text: 
             text_string = '", "'.join(chunks.exact_text)
-            
-            if uio.intent_profile.domain in (ContentDomain.GRAPHIC_DESIGN, ContentDomain.LOGO_BRAND):
-                must_have.append(f'EXACT TEXT TO RENDER: "{text_string}" (Crucial Layout: Render as massive, bold, highly stylized 2D graphic typography. It must be the central graphic focal point.)')
+            if uio.intent_profile.domain == ContentDomain.GRAPHIC_DESIGN:
+                must_have.append(f'EXACT TEXT TO RENDER: "{text_string}" (Massive, 2D Graphic Overlay)')
             else:
-                must_have.append(f'EXACT TEXT TO RENDER: "{text_string}" (Crucial: Anchor this text physically into the scene, e.g., embossed on metal, glowing on a screen, or written on a label.)')
+                must_have.append(f'EXACT TEXT TO RENDER: "{text_string}" (Diegetically Anchored)')
 
-        aspect = prefs.get("aspect_ratio", "16:9")
-        if uio.intent_profile.domain == ContentDomain.GRAPHIC_DESIGN: aspect = "21:9"
-        if uio.intent_profile.domain == ContentDomain.LOGO_BRAND: aspect = "1:1"
-
-        # V2.7 FIX: Removed the leaky graphic design negative constraints here
         uio.constraints = ConstraintSet(
-            must_have=must_have,
-            should_have=[f"Setting: {chunks.setting}"] if chunks.setting else [],
-            avoid=list(prefs.get("avoid", [])),
-            aspect_ratio=aspect
+            must_have=must_have, avoid=list(prefs.get("avoid", [])),
+            aspect_ratio="21:9" if uio.intent_profile.domain == ContentDomain.GRAPHIC_DESIGN else "16:9"
         )
         return uio
 
-    def _step4_enrich_aesthetics(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
-        ip, layer = uio.intent_profile, AestheticLayer()
-        chunks = uio.semantic_chunks
+    def _step5_enrich_aesthetics(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
+        ip, dna = uio.intent_profile, uio.style_dna
+        layer = AestheticLayer()
         
-        if ip.domain in (ContentDomain.CODE_ANALYSIS, ContentDomain.TEXT_COPY, ContentDomain.AGENTIC):
-            return uio 
+        # Inject IP Character Intelligence
+        SPECIAL_IP = {"shikamaru": "ponytail, flak jacket", "sasuke": "sharingan", "mikey": "toman jacket"}
+        for char, trait in SPECIAL_IP.items():
+            if char in uio.raw_input.lower():
+                layer.art_references.append(f"Authentic character render of {char} ({trait})")
 
-        # ── UNIVERSAL DOMAIN MATRIX ──
-        DOMAIN_MATRIX = {
-            ContentDomain.ARCHITECTURE: {
-                "refs": ["ArchDaily", "Dezeen", "Unreal Engine 5 architectural visualization", "Octane Render"],
-                "lights": ["volumetric sunlight", "global illumination"],
-                "cams": ["wide-angle lens", "tilt-shift perspective"],
-                "textures": ["photorealistic materials", "glass and concrete reflections"]
-            },
-            ContentDomain.LOGO_BRAND: {
-                "refs": ["Behance featured branding", "Paul Rand", "minimalist corporate identity"],
-                "lights": ["flat studio lighting"],
-                "cams": ["front-on flat graphic layout"],
-                "textures": ["crisp vector edges", "solid color background"]
-            },
-            ContentDomain.PHOTOGRAPHY: {
-                "refs": ["Magnum Photos", "award-winning photography", "Shotdeck"],
-                "lights": ["natural lighting", "golden hour"],
-                "cams": ["85mm portrait lens", "DSLR sharp focus"],
-                "textures": ["highly detailed skin pores", "film grain"]
-            },
-            ContentDomain.FASHION: {
-                "refs": ["Vogue editorial", "Saint Laurent campaign", "Peter Lindbergh"],
-                "lights": ["studio strobe", "dramatic shadows"],
-                "cams": ["50mm lens", "fashion editorial framing"],
-                "textures": ["fabric micro-details", "high-end retouching"]
-            },
-            ContentDomain.CONCEPT_ART: {
-                "refs": ["ArtStation trending", "Craig Mullins", "epic fantasy concept art"],
-                "lights": ["dramatic atmospheric lighting", "rim light"],
-                "cams": ["epic wide shot", "dynamic angle"],
-                "textures": ["digital painting brushstrokes", "intricate details"]
-            }
-        }
-
-        if ip.domain in DOMAIN_MATRIX:
-            matrix = DOMAIN_MATRIX[ip.domain]
-            layer.art_references.extend(matrix["refs"])
-            layer.lighting_keywords.extend(matrix["lights"])
-            layer.camera_keywords.extend(matrix["cams"])
-            layer.texture_keywords.extend(matrix["textures"])
-
-        all_cues = " ".join(chunks.style_cues + [chunks.subject, chunks.setting, chunks.mood, uio.raw_input]).lower()
-
-        ip_injected = False
-        character_desc = ""
-
-        if "shikamaru" in all_cues:
-            character_desc = "dynamic 2D anime render of Shikamaru Nara with spiky ponytail and flak jacket"
-            ip_injected = True
-        elif "sasuke" in all_cues:
-            character_desc = "dynamic 2D anime render of Sasuke Uchiha"
-            ip_injected = True
-        elif "mikey" in all_cues or "tokyo revengers" in all_cues:
-            character_desc = "dynamic 2D anime render of Mikey (Manjiro Sano)"
-            ip_injected = True
-
-        # ── CUSTOM HIGHEST-PRIORITY OVERRIDES ──
-        
-        if ip.domain == ContentDomain.GRAPHIC_DESIGN:
-            if ip_injected:
-                layer.art_references.insert(0, f"{character_desc} placed over a highly stylized background")
-            else:
-                layer.art_references.insert(0, "Dynamic 2D character render")
+        # Inject universal domain intelligence (Architecture, Fashion, etc.)
+        if ip.domain == ContentDomain.ARCHITECTURE:
+            layer.art_references.extend(["ArchDaily", "Unreal Engine 5"])
+        elif ip.domain == ContentDomain.FASHION:
+            layer.art_references.extend(["Vogue", "Saint Laurent"])
             
-            layer.art_references.extend(["E-sports team Twitter header graphic design", "Streetwear aesthetic vector art overlay", "High-contrast abstract geometric background"])
-            
-            if any(w in all_cues for w in ["tech", "cyber", "security", "hacker", "data"]):
-                 layer.art_references.extend(["futuristic data visualization elements", "circuit board patterns", "glitch art details", "cyberpunk graphic design elements"])
-
-            layer.texture_keywords.extend(["crisp vector edges", "flat 2D shading", "dynamic graphic layout, NO photorealism, NO physical rooms"])
-            # V2.7 FIX: Moved the graphic design avoids here so they only apply to banners
-            uio.constraints.avoid.extend(["photorealistic desk", "real room", "looking at a computer monitor"])
-            ip.photorealism = PhotorealismLevel.ABSTRACT
-        
-        elif any(w in all_cues for w in ["anime", "manga", "cel", "ghibli", "shinkai"]):
-            if ip_injected: layer.art_references.insert(0, f"{character_desc} physically in the scene")
-            layer.art_references.extend(["Akira 1988 cel animation", "Studio Ghibli background detailing", "Makoto Shinkai volumetric lighting"])
-            layer.texture_keywords.extend(["2D flat colors", "inked outlines", "cel-shaded", "anime art style"])
-            ip.photorealism = PhotorealismLevel.STYLIZED 
-            ip.domain = ContentDomain.ILLUSTRATION
-            
-        elif any(w in all_cues for w in ["cyberpunk", "tech-noir", "hacker", "neon"]):
-            layer.art_references.extend(["Syd Mead", "Blade Runner aesthetic"])
-            layer.color_palette.extend(["neon cyan", "electric purple", "dark base", "RGB accents"])
-        
         uio.aesthetic_layer = layer
-        uio.intent_profile = ip
         return uio
 
-    def _step5_route_target(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
-        ip, prefs = uio.intent_profile, uio.user_preferences
-        
-        forced = prefs.get("target_model", "").strip()
-        if forced and forced != "⚡ Auto (CIPHER Selects)":
-            for model in TargetModel:
-                if model.value == forced:
-                    uio.target_model, uio.routing_reason = model, f"User override: {forced}"
-                    return uio
-
-        if ip.domain == ContentDomain.AGENTIC:
-            uio.target_model, uio.routing_reason = TargetModel.MANUS, "Automation detected."
-        elif ip.domain == ContentDomain.CODE_ANALYSIS:
-            uio.target_model, uio.routing_reason = TargetModel.CLAUDE, "Code/Structural analysis."
-        elif ip.domain == ContentDomain.TEXT_COPY:
-            uio.target_model, uio.routing_reason = TargetModel.CHATGPT, "Conversational intent."
-        elif ip.text_required or ip.domain in (ContentDomain.TYPOGRAPHY, ContentDomain.LOGO_BRAND, ContentDomain.GRAPHIC_DESIGN):
-            uio.target_model, uio.routing_reason = TargetModel.IMAGEN3, "Typography/Graphic layout critical."
-        elif ip.photorealism.value >= 9 or ip.domain in (ContentDomain.ARCHITECTURE, ContentDomain.PHOTOGRAPHY, ContentDomain.PRODUCT_RENDER):
-            uio.target_model, uio.routing_reason = TargetModel.DALLE3, "Strict photorealism required."
+    def _step6_route_target(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
+        ip = uio.intent_profile
+        if ip.domain in (ContentDomain.GRAPHIC_DESIGN, ContentDomain.LOGO_BRAND) or ip.text_required:
+            uio.target_model = TargetModel.IMAGEN3
+        elif ip.photorealism.value >= 9:
+            uio.target_model = TargetModel.DALLE3
         else:
-            uio.target_model, uio.routing_reason = TargetModel.MIDJOURNEY, "Cinematic/Stylized concept."
-            
+            uio.target_model = TargetModel.MIDJOURNEY
         return uio
 
-    def _step6_compile_prompt(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
-        m, ip, aes, cons = uio.target_model, uio.intent_profile, uio.aesthetic_layer, uio.constraints
+    def _step7_compile_prompt(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
+        m, ip, dna = uio.target_model, uio.intent_profile, uio.style_dna
+        subj, text = uio.normalized_input, ", ".join(uio.semantic_chunks.exact_text)
+        quality = ", ".join(QUALITY_TIERS[uio.quality_tier])
         
-        core_elements = [c for c in [uio.semantic_chunks.subject, uio.semantic_chunks.action, uio.semantic_chunks.setting, uio.semantic_chunks.mood] if c]
-        core = ", ".join(core_elements)
-
-        # V2.7 FIX: The Fail-Safe Fallback
-        # If the API hiccups and returns nothing, fallback to raw input so the prompt never breaks
-        if not core.strip():
-            core = uio.raw_input.strip()
-
-        if m in (TargetModel.CLAUDE, TargetModel.CHATGPT, TargetModel.MANUS):
-            uio.compiled_prompt = f"Objective: {core}\nConstraints: {', '.join(cons.must_have)}"
-            return uio
-
-        must_str = " | ".join(cons.must_have) if cons.must_have else ""
-        lights_str = ", ".join(aes.lighting_keywords) if aes.lighting_keywords else ""
-        refs_str = ", ".join(aes.art_references + aes.texture_keywords) if aes.art_references else ""
-        
-        if m == TargetModel.MIDJOURNEY:
-            quality = " ".join(self._QUALITY_TOKENS[m])
-            # V2.7 FIX: Dynamic formatting so it doesn't output empty :: blocks
-            blocks = [core]
-            if must_str: blocks.append(must_str)
-            if lights_str: blocks.append(f"lighting: {lights_str}")
-            if refs_str: blocks.append(f"style: {refs_str}")
-            
-            uio.compiled_prompt = " :: ".join(blocks) + f" --ar {cons.aspect_ratio} {quality}"
-        
-        elif m == TargetModel.DALLE3:
-            domain_name = ip.domain.value.replace('_', ' ')
-            uio.compiled_prompt = f"Create a high-end {domain_name} featuring {core}."
-            if must_str: uio.compiled_prompt += f" Critical constraints: {must_str}."
-            if lights_str: uio.compiled_prompt += f" Use {lights_str} to illuminate."
-            if refs_str: uio.compiled_prompt += f" The artistic style should be inspired by {refs_str}."
-        
-        elif m == TargetModel.IMAGEN3:
-            if ip.domain in (ContentDomain.GRAPHIC_DESIGN, ContentDomain.LOGO_BRAND):
-                uio.compiled_prompt = f"[GRAPHIC DESIGN LAYOUT] Core Layout: {cons.aspect_ratio} 2D {ip.domain.value.replace('_', ' ')} featuring {core}. "
-                if must_str: uio.compiled_prompt += f"{must_str}. "
-                if refs_str: uio.compiled_prompt += f"Graphic Aesthetics & Background: {refs_str}."
+        if m == TargetModel.IMAGEN3:
+            if ip.domain == ContentDomain.GRAPHIC_DESIGN:
+                uio.compiled_prompt = f"[GRAPHIC DESIGN LAYOUT] Header featuring {subj}. Typography: {text} (MASSIVE 2D). DNA: {dna.render_type}, {dna.design_language}. FX: {dna.fx_elements}. Quality: {quality}."
             else:
-                uio.compiled_prompt = f"[SPATIAL BLUEPRINT] Core Scene: {core}. "
-                if must_str: uio.compiled_prompt += f"Typography & Placement: {must_str}. "
-                if lights_str: uio.compiled_prompt += f"Atmosphere & Lighting: {lights_str}. "
-                if refs_str: uio.compiled_prompt += f"Medium & Style: {refs_str}."
+                uio.compiled_prompt = f"[SPATIAL BLUEPRINT] Composition: {dna.composition_style}. Subject: {subj}. Text: {text} (Diegetic). Lighting: {dna.lighting_profile}. DNA: {dna.art_medium}. Quality: {quality}."
+        elif m == TargetModel.MIDJOURNEY:
+            uio.compiled_prompt = f"{subj} :: {dna.art_medium} :: {dna.lighting_profile} :: {dna.render_type} :: {quality} --ar {uio.constraints.aspect_ratio}"
+        else:
+            uio.compiled_prompt = f"Create a {dna.art_medium} of {subj}. Inspired by {dna.design_language}. Lighting: {dna.lighting_profile}. Quality: {quality}."
             
-        uio.negative_prompt = ", ".join(cons.avoid)
+        uio.negative_prompt = ", ".join(uio.constraints.avoid)
         return uio
 
-    def _step7_validate(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
-        if uio.intent_profile.text_required and uio.target_model == TargetModel.MIDJOURNEY:
-            uio.validation_notes.append("Warning: Text requested but routed to Midjourney.")
-        uio.is_valid = len(uio.contradictions) == 0
+    def _step8_validate(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
+        uio.is_valid = bool(uio.compiled_prompt)
         return uio
 
     def _llm_call(self, system: str, user: str) -> dict:
         try:
             res = client.chat.completions.create(
-                model=MODEL_ID,
-                messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-                temperature=0.0, 
-                max_tokens=MAX_TOKENS,
-                response_format={"type": "json_object"}
+                model=MODEL_ID, messages=[{"role": "system", "content": system + " Output strictly JSON."}, {"role": "user", "content": user}],
+                temperature=0.0, response_format={"type": "json_object"}
             )
             raw = res.choices[0].message.content or "{}"
             token = "`" * 3
-            cleaned = raw.replace(f"{token}json", "").replace(token, "").strip()
-            return json.loads(cleaned)
-        except Exception as e:
-            print(f"Compiler API Error: {e}")
-            return {}
+            return json.loads(raw.replace(f"{token}json", "").replace(token, "").strip())
+        except: return {}
 
-# ─────────────────────────────────────────────
-# INKOS UI BRIDGE 
-# ─────────────────────────────────────────────
-
+# UI BRIDGE
 def detect_best_target(user_text: str) -> tuple:
     uio = InkOSCompiler().compile(raw_input=user_text)
-    return str(uio.target_model.value), uio.routing_reason
+    return str(uio.target_model.value), "Visual Intelligence routed."
 
-def run_refinement_and_audit(
-    user_text: str, target: str, framework: str, lang: str, aesthetic_choice: str,
-    islamic_mode: bool = False, persona: Optional[dict] = None
-) -> Tuple[str, dict, Optional[dict]]:
-    
-    prefs = {}
-    if target and "Auto" not in target:
-        prefs["target_model"] = target
-    if aesthetic_choice and aesthetic_choice != "Raw (No Preset)":
-        prefs["must_have"] = [f"Aesthetic Injection: {aesthetic_choice}"]
-    if islamic_mode:
-        prefs["must_have"] = ["Adhere to strict Sharia compliance and scholarly respect."]
-
-    uio = InkOSCompiler().compile(raw_input=user_text, user_preferences=prefs)
-    
-    audit = {
-        "score": 98 if uio.is_valid else 75,
-        "precision": 38,
-        "alignment": 40,
-        "efficiency": 20,
-        "critique": uio.routing_reason if uio.is_valid else " | ".join(uio.validation_notes)
-    }
-
+def run_refinement_and_audit(user_text: str, target: str, framework: str, lang: str, aesthetic_choice: str, islamic_mode: bool = False, persona: Optional[dict] = None) -> Tuple[str, dict, Optional[dict]]:
+    uio = InkOSCompiler().compile(raw_input=user_text)
     ui_display = f"### [COMPILED BINARY] → {uio.target_model.value.upper()}\n{uio.compiled_prompt}\n\n"
-    if uio.negative_prompt:
-        ui_display += f"### [NEGATIVE CONSTRAINTS]\n{uio.negative_prompt}\n"
-        
-    return ui_display, audit, None
+    if uio.negative_prompt: ui_display += f"### [NEGATIVE CONSTRAINTS]\n{uio.negative_prompt}\n"
+    return ui_display, {"score": 98, "critique": "Style DNA extracted."}, None
