@@ -1,8 +1,11 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v1: Language switcher — EN/AR/FR with RTL support.
-Mobile-Optimized Selectbox Navigation.
+v2: THE UX OVERHAUL
+- Killed the clunky dropdown navigation.
+- Implemented persistent, clean sidebar routing.
+- Added custom CSS to style the radio buttons like a premium SaaS menu.
+- Preserved RTL support and mobile-optimized constraints.
 """
 
 import sys
@@ -10,7 +13,8 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
-st.set_page_config(page_title="InkOS", page_icon="⚡", layout="wide")
+# FIX: Forced sidebar to remain expanded so users never lose the navigation menu
+st.set_page_config(page_title="InkOS", page_icon="⚡", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
     <style>
@@ -20,10 +24,16 @@ st.markdown("""
         }
         .block-container { padding-top: 4rem !important; }
         
-        /* Make the navigation selectbox look more premium */
-        div[data-testid="stSelectbox"] > div[data-baseweb="select"] {
-            border-color: rgba(201,168,76,0.3) !important;
-            background-color: var(--bg-raised) !important;
+        /* Clean up the sidebar radio buttons to look like a premium SaaS menu */
+        div[data-testid="stSidebarNav"] {display: none;} /* Hide default multipage nav */
+        div[role="radiogroup"] > label {
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        div[role="radiogroup"] > label:hover {
+            background-color: rgba(201,168,76,0.1);
         }
     </style>
 """, unsafe_allow_html=True)
@@ -49,8 +59,6 @@ init_session_state()
 st.markdown(STYLES, unsafe_allow_html=True)
 
 # ── RTL MODE ──────────────────────────────────────────────────────────────────
-# When Arabic UI is active, inject a JS snippet that adds the
-# "rtl-mode" CSS class to the stApp element.
 if is_rtl():
     st.markdown("""
     <script>
@@ -66,11 +74,9 @@ else:
     </script>
     """, unsafe_allow_html=True)
 
-cfg = render_sidebar()
-
-# ── MOBILE-OPTIMIZED NAVIGATION ───────────────────────────────────────────────
+# ── PERSISTENT SIDEBAR NAVIGATION ─────────────────────────────────────────────
 nav_options = {
-    t("tab_workspace"):     lambda: render_workspace(cfg),
+    t("tab_workspace"):     render_workspace,
     t("tab_archive"):       render_archive,
     t("tab_security"):      render_security_log,
     t("tab_cognitive_map"): render_cognitive_map,
@@ -79,15 +85,21 @@ nav_options = {
     t("tab_guide"):         render_guide,
 }
 
-# The Dropdown Navigation Bar
-selected_nav = st.selectbox(
-    "Navigation", 
-    list(nav_options.keys()), 
-    label_visibility="collapsed"
-)
+with st.sidebar:
+    st.markdown("### ⚡ InkOS")
+    selected_nav = st.radio(
+        "Navigation", 
+        list(nav_options.keys()), 
+        label_visibility="collapsed"
+    )
+    st.markdown("---") # Visual divider before the configuration controls
 
-# A subtle divider to separate navigation from the content
-st.markdown("<hr style='border: none; border-bottom: 1px solid rgba(201,168,76,0.15); margin-top: 0; margin-bottom: 15px;'>", unsafe_allow_html=True)
+# Render the rest of the sidebar configuration controls
+cfg = render_sidebar()
 
-# Execute the selected page
-nav_options[selected_nav]()
+# ── MAIN CONTENT EXECUTION ────────────────────────────────────────────────────
+# The main UI is now completely clean of navigation clutter.
+if selected_nav == t("tab_workspace"):
+    nav_options[selected_nav](cfg)
+else:
+    nav_options[selected_nav]()
