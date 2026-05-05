@@ -3,11 +3,10 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
 
-v15.0: THE DYNAMIC IDENTITY PATCH
+v16.0: THE COMMAND PILL OVERHAUL
+- Fixed StreamlitAPIException via Top-Gate Voice Processing.
+- Implemented Contextual UI (Mic ↔ Execute Bolt swap).
 - Integrated 'brand_identity' payload into the compiler execution.
-- Added 1-Click "Send to AI" quick-launch buttons for ChatGPT and Claude.
-- Improved terminal-style loading states to prevent UI jitter.
-- Integrated CIPHER auto-target visual telemetry.
 """
 
 import hashlib
@@ -80,12 +79,35 @@ def _render_telemetry_block(audit: dict, pattern: Optional[dict], output_text: s
 
 def render_workspace(cfg: dict) -> None:
     """Main Workspace Tab (Tab 1) logic."""
+
+    # ── 1. TOP-GATE VOICE PROCESSING ──────────────────────────────────────────
+    # Process audio BEFORE rendering the text_area to avoid Streamlit render-lock.
+    if "voice_pill" in st.session_state and st.session_state.voice_pill is not None:
+        audio_val = st.session_state.voice_pill
+        # Use file size as a lightweight hash to ensure we only process new recordings once
+        if st.session_state.get("last_processed_audio_size") != audio_val.size:
+            with st.spinner("🎙️ Transcribing via Groq Whisper..."):
+                try:
+                    transcription = client.audio.transcriptions.create(
+                        file=("audio.wav", audio_val.read()),
+                        model="whisper-large-v3-turbo",
+                        response_format="text"
+                    )
+                    current_text = st.session_state.get("ta_input", "")
+                    new_text = f"{current_text} {transcription}".strip() if current_text else transcription
+                    
+                    # Safely update text area state BEFORE it renders below
+                    st.session_state["ta_input"] = new_text
+                    st.session_state["last_processed_audio_size"] = audio_val.size
+                except Exception as e:
+                    st.error(f"Voice Engine Error: {str(e)}")
+
+    # ── 2. HEADERS & BADGES ───────────────────────────────────────────────────
     st.markdown(
         f'<div class="vc-header"><span class="status-dot"></span>{t("workspace_header")}</div>',
         unsafe_allow_html=True,
     )
 
-    # Active persona badge
     active_persona = cfg.get("active_persona")
     if active_persona:
         from forge.persona_engine import get_persona_display_name
@@ -112,50 +134,41 @@ def render_workspace(cfg: dict) -> None:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── MAJLIS VOICE ENGINE ───────────────────────────────────────────────────
-    st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;">🎙️ MAJLIS VOICE ENGINE</div>', unsafe_allow_html=True)
-    audio_value = st.audio_input("Record your intent", label_visibility="collapsed")
+    # ── 3. DYNAMIC COMMAND PILL ───────────────────────────────────────────────
+    st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;">⚡ COMMAND CENTER</div>', unsafe_allow_html=True)
     
-    if audio_value is not None:
-        # Check if we already processed this exact audio snippet to prevent loop rendering
-        if st.session_state.get("last_processed_audio") != audio_value:
-            with st.spinner("Transcribing via Groq Whisper..."):
-                try:
-                    # Send audio bytes to Groq Whisper API
-                    transcription = client.audio.transcriptions.create(
-                        file=("audio.wav", audio_value.read()),
-                        model="whisper-large-v3-turbo",
-                        response_format="text"
-                    )
-                    
-                    # Append the transcription to whatever is already in the text area
-                    current_text = st.session_state.get("ta_input", "")
-                    new_text = f"{current_text} {transcription}".strip() if current_text else transcription
-                    
-                    # Update session state and refresh
-                    st.session_state["ta_input"] = new_text
-                    st.session_state["last_processed_audio"] = audio_value
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Voice Engine Error: {str(e)}")
+    # Use vertical_alignment="bottom" to keep buttons anchored to the bottom right
+    col_input, col_action = st.columns([8, 1.5], gap="small", vertical_alignment="bottom")
 
-    # ── TEXT AREA ─────────────────────────────────────────────────────────────
-    raw_input: str = st.text_area(
-        "intent",
-        height=145,
-        placeholder=(
-            "English: Act as a senior analyst. Review this pitch deck...\n"
-            "عربي: اشرح لي هذا المفهوم تدريجياً بأسلوب تقني للمحترفين"
-        ),
-        label_visibility="collapsed",
-        key="ta_input",
-    )
+    with col_input:
+        raw_input: str = st.text_area(
+            "intent",
+            height=None, # CSS handles auto-grow
+            placeholder=(
+                "English: Act as a senior analyst. Review this pitch deck...\n"
+                "عربي: اشرح لي هذا المفهوم تدريجياً بأسلوب تقني للمحترفين"
+            ),
+            label_visibility="collapsed",
+            key="ta_input",
+        )
 
+    with col_action:
+        execute_pill_triggered = False
+        # CONTEXTUAL SWAP: If text exists, show Bolt. Else, show Mic.
+        if len(raw_input.strip()) > 0:
+            if st.button("⚡", key="btn_exec_pill", use_container_width=True, help="Compile Blueprint"):
+                execute_pill_triggered = True
+        else:
+            # Key must match the Top-Gate check above
+            st.audio_input("Record", label_visibility="collapsed", key="voice_pill")
+
+    # ── 4. METADATA (Counters & Patterns) ─────────────────────────────────────
     if raw_input:
         char = len(raw_input)
         c_color = "#A93226" if char > INPUT_WARN_THRESHOLD else "#3A4455"
+        # Adjusted counter layout for the Pill
         st.markdown(
-            f'<div class="char-counter" style="color:{c_color};">{char} / {INPUT_MAX_CHARS}</div>',
+            f'<div class="char-counter" style="color:{c_color}; text-align: right; margin-top: -6px;">{char} / {INPUT_MAX_CHARS}</div>',
             unsafe_allow_html=True,
         )
 
@@ -166,8 +179,11 @@ def render_workspace(cfg: dict) -> None:
 
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
-    # ── EXECUTION ─────────────────────────────────────────────────────────────
-    if st.button(t("execute_btn"), use_container_width=True, key="btn_execute"):
+    # ── 5. EXECUTION LOGIC ────────────────────────────────────────────────────
+    # Triggered by either the new Pill Bolt OR the legacy main button
+    should_execute = execute_pill_triggered or st.button(t("execute_btn"), use_container_width=True, key="btn_execute")
+    
+    if should_execute:
         cleaned, violations = sanitize_input(raw_input or "")
 
         if not cleaned:
@@ -231,7 +247,7 @@ def render_workspace(cfg: dict) -> None:
                         "islamic": cfg["islamic_mode"],
                     })
 
-    # ── RESULTS RENDERING ─────────────────────────────────────────────────────
+    # ── 6. RESULTS RENDERING ──────────────────────────────────────────────────
     last_result  = st.session_state.get(K.LAST_RESULT)
     last_audit   = st.session_state.get(K.LAST_AUDIT) or {}
     last_input   = st.session_state.get(K.LAST_INPUT) or ""
@@ -265,7 +281,6 @@ def render_workspace(cfg: dict) -> None:
 
         left, right = st.columns([1, 2], gap="large")
         with left:
-            # Replaced Fake metrics with Real Telemetry
             _render_telemetry_block(last_audit, last_pattern, last_res_str, final_target_display)
             
         with right:
