@@ -134,20 +134,22 @@ def render_workspace(cfg: dict) -> None:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── 3. DYNAMIC COMMAND PILL ───────────────────────────────────────────────
+    
+        
+     # ── 3. DYNAMIC COMMAND PILL ───────────────────────────────────────────────
     st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;">⚡ COMMAND CENTER</div>', unsafe_allow_html=True)
     
-    # Use vertical_alignment="bottom" to keep buttons anchored to the bottom right
-    col_input, col_action = st.columns([8, 1.5], gap="small", vertical_alignment="bottom")
+    # INJECT THE CSS MARKER: The CSS will target the horizontal block immediately following this
+    st.markdown('<div class="command-pill-marker"></div>', unsafe_allow_html=True)
+    
+    # Use tightly packed columns
+    col_input, col_action = st.columns([85, 15], gap="small", vertical_alignment="bottom")
 
     with col_input:
         raw_input: str = st.text_area(
             "intent",
-            height=None, # CSS handles auto-grow
-            placeholder=(
-                "English: Act as a senior analyst. Review this pitch deck...\n"
-                "عربي: اشرح لي هذا المفهوم تدريجياً بأسلوب تقني للمحترفين"
-            ),
+            height=None, 
+            placeholder="Describe your intent or speak to MARCEL...",
             label_visibility="collapsed",
             key="ta_input",
         )
@@ -159,8 +161,9 @@ def render_workspace(cfg: dict) -> None:
             if st.button("⚡", key="btn_exec_pill", use_container_width=True, help="Compile Blueprint"):
                 execute_pill_triggered = True
         else:
-            # Key must match the Top-Gate check above
+            # Key must match the Top-Gate check
             st.audio_input("Record", label_visibility="collapsed", key="voice_pill")
+
 
     # ── 4. METADATA (Counters & Patterns) ─────────────────────────────────────
     if raw_input:
