@@ -13,7 +13,7 @@ Pipeline (7 Steps):
     6. PROMPT COMPILER       → Emit model-native syntax
     7. VALIDATOR             → Sanity-check for contradictions
 
-v2.1: The Typographic Memory Patch
+v2.2: The Master Aesthetic Patch (Anime/Cyberpunk Override)
 """
 
 from __future__ import annotations
@@ -72,7 +72,7 @@ class SemanticChunk:
     action:     str = ""
     setting:    str = ""
     mood:       str = ""
-    exact_text: list[str] = field(default_factory=list) # BUG FIX: Added typographic memory
+    exact_text: list[str] = field(default_factory=list) 
     style_cues: list[str] = field(default_factory=list)
 
 @dataclass
@@ -180,7 +180,6 @@ class InkOSCompiler:
         data = self._llm_call(_PREPROCESSOR_SYSTEM_PROMPT, uio.raw_input)
         uio.normalized_input = data.get("normalized_input", uio.raw_input)
         
-        # BUG FIX: Extracting the exact text from the JSON output
         uio.semantic_chunks  = SemanticChunk(
             subject=data.get("subject", ""), action=data.get("action", ""),
             setting=data.get("setting", ""), mood=data.get("mood", ""),
@@ -221,7 +220,6 @@ class InkOSCompiler:
         
         must_have = list(prefs.get("must_have", []))
         
-        # BUG FIX: Forcing typographic layout instructions
         if chunks.exact_text: 
             text_string = '", "'.join(chunks.exact_text)
             must_have.append(f'EXACT TEXT TO RENDER: "{text_string}" (Crucial: Anchor this text physically into the scene, e.g., embossed on metal, glowing on a screen, or written on a label. Do not let it float.)')
@@ -236,17 +234,40 @@ class InkOSCompiler:
 
     def _step4_enrich_aesthetics(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
         ip, layer = uio.intent_profile, AestheticLayer()
+        chunks = uio.semantic_chunks
+        
         if ip.domain in (ContentDomain.CODE_ANALYSIS, ContentDomain.TEXT_COPY, ContentDomain.AGENTIC):
             return uio 
 
-        if ip.cinematic:
+        # Gather all text to scan for style triggers
+        raw_cues = " ".join(chunks.style_cues + [chunks.subject, chunks.setting, chunks.mood, uio.raw_input]).lower()
+        ui_cues = " ".join(uio.constraints.must_have).lower()
+        all_cues = raw_cues + " " + ui_cues
+
+        # ── RESTORED TASTE LAYER: The Anime & Cyberpunk Hijack ──
+        if any(w in all_cues for w in ["anime", "manga", "cel", "ghibli", "shinkai", "shikamaru", "naruto"]):
+            layer.art_references = ["Akira 1988 cel animation", "Studio Ghibli background detailing", "Makoto Shinkai volumetric lighting"]
+            layer.texture_keywords = ["2D flat colors", "inked outlines", "cel-shaded", "anime art style"]
+            # Force stylized illustration (kills photorealism)
+            ip.photorealism = PhotorealismLevel.STYLIZED 
+            ip.domain = ContentDomain.ILLUSTRATION
+            
+        elif any(w in all_cues for w in ["cyberpunk", "tech-noir", "hacker", "neon"]):
+            layer.art_references = ["Syd Mead", "Blade Runner aesthetic"]
+            layer.color_palette = ["neon cyan", "electric purple", "dark base", "RGB accents"]
+            
+        elif ip.cinematic or "cinematic" in all_cues:
             layer.lighting_keywords = ["Shotdeck cinematic lighting", "anamorphic flare"]
             layer.camera_keywords = ["35mm lens", "shallow depth of field"]
-        elif ip.domain == ContentDomain.PRODUCT_RENDER:
+            layer.art_references = ["A24 portraiture", "Vogue editorial"]
+            
+        elif ip.domain == ContentDomain.PRODUCT_RENDER or "ad" in all_cues or "mockup" in all_cues:
             layer.lighting_keywords = ["studio softbox", "rim lighting"]
             layer.art_references = ["luxury commercial macro photography", "Behance packaging design"]
+            ip.domain = ContentDomain.PRODUCT_RENDER
         
         uio.aesthetic_layer = layer
+        uio.intent_profile = ip # Save the forced stylization
         return uio
 
     def _step5_route_target(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
@@ -278,7 +299,6 @@ class InkOSCompiler:
     def _step6_compile_prompt(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
         m, ip, aes, cons = uio.target_model, uio.intent_profile, uio.aesthetic_layer, uio.constraints
         
-        # Filter out empty strings for a clean core prompt
         core_elements = [c for c in [uio.semantic_chunks.subject, uio.semantic_chunks.action, uio.semantic_chunks.setting, uio.semantic_chunks.mood] if c]
         core = ", ".join(core_elements)
 
@@ -286,10 +306,9 @@ class InkOSCompiler:
             uio.compiled_prompt = f"Objective: {core}\nConstraints: {', '.join(cons.must_have)}"
             return uio
 
-        # Visual Output - Improved String Formatting
         must = " | ".join(cons.must_have) if cons.must_have else "None"
         lights = ", ".join(aes.lighting_keywords) if aes.lighting_keywords else "Natural lighting"
-        refs = ", ".join(aes.art_references) if aes.art_references else "Premium aesthetics"
+        refs = ", ".join(aes.art_references + aes.texture_keywords) if aes.art_references else "Premium aesthetics"
         
         if m == TargetModel.MIDJOURNEY:
             quality = " ".join(self._QUALITY_TOKENS[m])
