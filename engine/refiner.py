@@ -1,10 +1,10 @@
 """
 engine/refiner.py - InkOS Cognitive Prompt Engine
 =================================================
-v8.2: THE LUCID & VISUAL LOGIC PATCH
-- Fixed: Typographical Greed (Stopped LLM from swallowing adjectives into EXACT TEXT).
-- Fixed: Decision Science Routing (Forced subjective questions to LUCID).
-- Fixed: Visual DNA Sticky Default (Added specific Logo/Minimalist vector fallbacks instead of Anime).
+v9.0: THE DYNAMIC IDENTITY PATCH
+- Replaced hardcoded "Ameer" and "Shikamaru" protections with dynamic IdentityContext.
+- Updated `run_refinement_and_audit` signature to accept `brand_identity` payload.
+- Seamlessly maps UI brand settings to the Visual Expert's Style DNA.
 """
 
 from __future__ import annotations
@@ -173,7 +173,6 @@ class InkOSCompiler:
         uio = UnifiedIntentObject(raw_input=raw_input, user_preferences=user_preferences or {})
         low = raw_input.lower()
 
-        # FIX 1 & 2: Upgraded System Prompt to prevent greedy typography and enforce LUCID routing
         system = """Extract 'subject' and 'exact_text' (MUST be a list of strings containing ONLY explicit names or quoted words. Do NOT include adjectives or materials like 'obsidian' or 'vibes' in exact_text). 
         Determine 'is_visual_task' (bool).
         Determine 'domain' string based on these strict rules:
@@ -218,7 +217,6 @@ class InkOSCompiler:
         if any(w in low for w in visual_triggers):
             uio.is_visual_task = True
 
-        # FIX 3: Dynamic Visual DNA Defaulting
         if uio.is_visual_task:
             if "logo" in low or "icon" in low:
                 uio.domain = ContentDomain.GRAPHIC_DESIGN
@@ -256,19 +254,32 @@ class InkOSCompiler:
     def _apply_intelligence(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
         low = uio.raw_input.lower()
         hits = 0
-        if "ameer" in low and not any("ameer" in t.lower() for t in uio.exact_text):
-            uio.exact_text.append("Ameer")
+        
+        # Pull dynamic identity from UI (or fallback to your defaults)
+        b_id = uio.user_preferences.get("brand_identity") or {}
+        p_name = b_id.get("name", "Ameer")
+        p_trigger = b_id.get("trigger", "shikamaru")
+        p_muse = b_id.get("muse", "Dynamic 2D anime render of Shikamaru Nara (Konoha Vest)")
+        p_vibe = b_id.get("vibe", "circuit board patterns, data streams, glitch distortion").split(",")
+
+        # Dynamic Name Protection
+        if p_name.lower() in low and not any(p_name.lower() in t.lower() for t in uio.exact_text):
+            uio.exact_text.append(p_name)
             hits += 1
-        if "shikamaru" in low:
-            uio.style_dna["art_medium"] = "Dynamic 2D anime render of Shikamaru Nara (Konoha Vest)"
-            uio.exact_text = [t for t in uio.exact_text if t.lower() != "shikamaru"]
+            
+        # Dynamic Avatar/Muse Injection
+        if p_trigger in low:
+            uio.style_dna["art_medium"] = p_muse
+            uio.exact_text = [t for t in uio.exact_text if t.lower() != p_trigger]
             hits += 1
+            
+        # Dynamic Vibe/FX injection
         if any(w in low for w in ["tech", "cyber", "security", "hacker"]):
-            # Preserve existing medium if it's a logo, otherwise set default FX
             if "fx_elements" not in uio.style_dna:
                 uio.style_dna["fx_elements"] = []
-            uio.style_dna["fx_elements"].extend(["circuit board patterns", "data streams", "glitch distortion"])
+            uio.style_dna["fx_elements"].extend([v.strip() for v in p_vibe if v.strip()])
             hits += 1
+            
         if uio.exact_text: hits += 1
         uio.intelligence_score = hits
         return uio
@@ -318,13 +329,15 @@ def detect_best_target(user_text: str) -> tuple:
     uio = InkOSCompiler().compile(user_text)
     return str(uio.target_model.value), f"{uio.domain.name.replace('_', ' ').title()} Module Activated."
 
-def run_refinement_and_audit(user_text: str, target: str, framework: str, lang: str, aesthetic_choice: str, islamic_mode: bool = False, persona: Optional[dict] = None) -> Tuple[str, dict, Optional[dict]]:
+# UPDATED: Added brand_identity to the function parameters and injected it into prefs
+def run_refinement_and_audit(user_text: str, target: str, framework: str, lang: str, aesthetic_choice: str, islamic_mode: bool = False, persona: Optional[dict] = None, brand_identity: Optional[dict] = None) -> Tuple[str, dict, Optional[dict]]:
     prefs = {
         "target": target,
         "framework": framework,
         "lang": lang,
         "islamic_mode": islamic_mode,
-        "persona": persona
+        "persona": persona,
+        "brand_identity": brand_identity
     }
 
     pattern = None
