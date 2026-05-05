@@ -75,6 +75,37 @@ st.markdown("""
             font-weight: 600 !important;
             text-shadow: 0 0 10px rgba(201,168,76,0.2) !important;
         }
+
+          /* ── LOGO WORDMARK OVERHAUL ── */
+        .sidebar-logo-box {
+            background: linear-gradient(135deg, rgba(201,168,76,0.1) 0%, transparent 100%);
+            border-left: 2px solid var(--gold);
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 25px;
+            box-shadow: 10px 0 20px rgba(0,0,0,0.2);
+        }
+        .logo-text {
+            font-family: 'Cinzel', serif !important;
+            font-size: 1.4rem !important;
+            font-weight: 700 !important;
+            color: var(--gold) !important;
+            letter-spacing: 3px !important;
+            text-transform: uppercase;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-subtext {
+            font-family: 'IBM Plex Mono', monospace !important;
+            font-size: 0.55rem !important;
+            color: var(--text-muted) !important;
+            letter-spacing: 2px !important;
+            margin-top: 5px;
+            margin-left: 2px;
+        }
+
     </style>
 """, unsafe_allow_html=True)
 
@@ -127,13 +158,21 @@ nav_options = {
 }
 
 with st.sidebar:
-    st.markdown("### ⚡ InkOS")
+    # ⚡ BRANDED WORDMARK
+    st.markdown("""
+        <div class="sidebar-logo-box">
+            <div class="logo-text">⚡ INK<span style="color:var(--text); opacity:0.8;">OS</span></div>
+            <div class="logo-subtext">CORE NEURAL INTERFACE</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
     selected_nav = st.radio(
         "Navigation", 
         list(nav_options.keys()), 
         label_visibility="collapsed"
     )
-    st.markdown("---") # Visual divider before the configuration controls
+    st.markdown("---")
+ # Visual divider before the configuration controls
 
 # Render the rest of the sidebar configuration controls
 cfg = render_sidebar()
