@@ -1,5 +1,5 @@
 """
-engine/refiner.py — InkOS Cognitive Prompt Engine
+engine/refiner.py — InkOS Cognitive Prompt Enginee
 =================================================
 v5.1: THE ADAPTIVE ENGINE (FINAL STABLE INTEGRATION)
 - Fixed: Adaptive String Building (Removes all empty '::' and ghost placeholders).
