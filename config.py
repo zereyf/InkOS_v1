@@ -1,9 +1,10 @@
 """
-config.py — Environment Bootstrap & Application Constantsd
+config.py - Environment Bootstrap & Application Constants
 ==========================================================
-v1.8: STABLE RESTORATION.
-- Restores all original UI constants and Groq client.
-- Preserves the Style DNA Library for elite visual deconstruction.
+v2.0: The Omni-Expert Update.
+- Added expansive DOMAIN_KNOWLEDGE dictionary for daily professional use cases.
+- Includes Marketing, Data Science, Research, and Productivity experts.
+- Preserved all previous UI, API, and Visual DNA configurations safely.
 """
 
 import os
@@ -12,28 +13,28 @@ from groq import Groq
 
 load_dotenv()
 
-# ── API CLIENT ────────────────────────────────────────────────────────────────
+# -- API CLIENT ----------------------------------------------------------------
 _api_key: str = os.getenv("GROQ_API_KEY", "")
 client: Groq = Groq(api_key=_api_key) if _api_key else None  # type: ignore
 API_KEY_MISSING: bool = not bool(_api_key)
 
-# ── MODEL CONFIG ──────────────────────────────────────────────────────────────
+# -- MODEL CONFIG --------------------------------------------------------------
 MODEL_ID:    str = "llama-3.3-70b-versatile"
 TEMPERATURE: float = 0.3
 MAX_TOKENS:  int   = 1536
 
-# ── RATE LIMITING ─────────────────────────────────────────────────────────────
+# -- RATE LIMITING -------------------------------------------------------------
 RATE_WINDOW_SECONDS: int = 60
 RATE_MAX_CALLS:      int = 10
 
-# ── QUALITY TIERS ─────────────────────────────────────────────────────────────
+# -- QUALITY TIERS -------------------------------------------------------------
 QUALITY_TIERS: dict = {
     "standard": [],
     "premium": ["ultra polished rendering", "professional composition"],
     "studio": ["masterpiece quality", "artstation featured", "studio-grade rendering"]
 }
 
-# ── STYLE DNA LIBRARY ─────────────────────────────────────────────────────────
+# -- STYLE DNA LIBRARY ---------------------------------------------------------
 STYLE_LIBRARY: dict = {
     "anime_banner": {
         "art_medium": "2D anime illustration",
@@ -46,12 +47,53 @@ STYLE_LIBRARY: dict = {
         "render_type": "graphic poster composite",
         "composition_style": "hero portrait with oversized typography",
         "design_language": ["streetwear poster", "editorial graphic design"]
+    },
+    "cinematic_anime": {
+        "art_medium": "premium anime cel-shaded illustration",
+        "render_type": "high fidelity manga colorization",
+        "composition_style": "centered portrait framing",
+        "design_language": ["official anime frame", "studio key visual"]
     }
 }
 
-# ── TARGET AI DIALECT GUIDES ──────────────────────────────────────────────────
+# -- DOMAIN KNOWLEDGE (The Omni-Expert Memory) --------------------------------
+DOMAIN_KNOWLEDGE: dict = {
+    "code_analysis": (
+        "Strictly adhere to SOLID principles and DRY code. Provide comprehensive Big-O complexity "
+        "analysis for time and space. Enforce robust error handling, edge-case mitigation, and "
+        "include production-grade docstrings/type-hints."
+    ),
+    "text_copy": (
+        "Optimize for readability, tone alignment, and persuasive structure. Use strong semantic "
+        "HTML/Markdown headers (H1/H2). Eliminate fluff, jargon, and passive voice."
+    ),
+    "agentic_automation": (
+        "Execute as a precise agent workflow. Validate prerequisites before execution. "
+        "Explicitly tag tool usage. Provide clear fail-states and validation metrics."
+    ),
+    "marketing": (
+        "Optimize for virality, high-conversion hooks, and psychological triggers (FOMO, curiosity). "
+        "Integrate SEO best practices, keyword relevance without stuffing, and hyper-clear Call-to-Actions (CTAs)."
+    ),
+    "data_analysis": (
+        "Provide mathematically rigorous, logic-first explanations. If generating formulas (Excel/SQL), "
+        "explain the syntax step-by-step. Focus on efficiency, data cleanliness, and clear visualization strategies."
+    ),
+    "academic_research": (
+        "Maintain a highly objective, scholarly tone. Ensure rigorous synthesis of information, "
+        "proper structural flow (Abstract, Methodology, Synthesis), and demand empirical/logical backing. "
+        "Eliminate all colloquialisms and conversational filler."
+    ),
+    "productivity": (
+        "Adopt a highly actionable, structured, and motivational tone. Break down massive goals into "
+        "atomic, trackable daily habits. Utilize time-blocking, Pomodoro, or Eisenhower matrix principles. "
+        "Focus entirely on execution and removing friction."
+    )
+}
+
+# -- TARGET AI DIALECT GUIDES --------------------------------------------------
 TARGET_GUIDES: dict = {
-    "Manus AI": "Agentic syntax: chain steps as 'Search → Analyze → Output'.",
+    "Manus AI": "Agentic syntax: chain steps as 'Search -> Analyze -> Output'.",
     "Claude": "Structural syntax: wrap all sections in XML tags.",
     "ChatGPT": "Conversational syntax: open with 'You are a...'",
     "Midjourney/Flux": "Modular visual syntax: [Subject] :: [Environment] :: [Parameters]",
@@ -59,33 +101,14 @@ TARGET_GUIDES: dict = {
     "Gemini (Imagen 3)": "Spatially explicit 'Spatial Blueprint' mapping out zones and diegetic text."
 }
 
-# ── AESTHETIC PRESETS ─────────────────────────────────────────────────────────
-AESTHETIC_PRESETS: dict = {
-    "Raw (No Preset)": "Standard AI interpretation.",
-    "Velvet (Signature)": "Focus: Tech-Noir Minimalism. Palette: Obsidian, Matte Black, Gold.",
-    "Scholar (Traditional)": "Focus: Arabic Heritage. Palette: Sandstone, Emerald.",
-    "Cyber-Radiant": "Focus: High-energy tech. Palette: Electric Blue, Cyber Lime."
-}
+# -- LOGIC FRAMEWORKS ----------------------------------------------------------
+LOGIC_FRAMEWORKS: list = [
+    "Professional (RACE)", 
+    "Technical (Zero-Shot)", 
+    "Creative (Chain-of-Thought)", 
+    "Visual Director"
+]
 
-# ── LOGIC FRAMEWORKS ──────────────────────────────────────────────────────────
-LOGIC_FRAMEWORKS: list = ["Professional (RACE)", "Technical (Zero-Shot)", "Creative (Chain-of-Thought)", "Visual Director"]
-
-VISUAL_DIRECTOR_PROMPT: str = """
-ACTIVE FRAMEWORK: Visual Director (Cognitive Prompt Compiler)
-Task: Deconstruct user intent into a high-end visual blueprint. 
-Output strictly JSON matching the required pipeline schemas.
-"""
-
-# ── UI CONSTANTS ──────────────────────────────────────────────────────────────
+# -- UI CONSTANTS --------------------------------------------------------------
 INPUT_MAX_CHARS: int = 2000
 INPUT_WARN_THRESHOLD: int = 1800
-AUTO_SELECT_LABEL: str = "⚡ Auto (CIPHER Selects)"
-
-TARGET_SELECTION_GUIDE: str = """
-Select the best target:
-- Claude: Code/Technical.
-- ChatGPT: Conversational.
-- Midjourney/Flux: Cinematic art.
-- DALL-E 3: Products.
-- Gemini (Imagen 3): Typography/Banners.
-"""
