@@ -24,19 +24,60 @@ st.markdown("""
         }
         .block-container { padding-top: 4rem !important; }
         
-        /* Clean up the sidebar radio buttons to look like a premium SaaS menu */
-        div[data-testid="stSidebarNav"] {display: none;} /* Hide default multipage nav */
-        div[role="radiogroup"] > label {
-            padding: 8px 12px;
-            border-radius: 6px;
-            transition: all 0.2s ease-in-out;
-            cursor: pointer;
+        /* ── SAAS SIDEBAR NAVIGATION OVERHAUL ── */
+        div[data-testid="stSidebarNav"] {display: none;}
+        
+        /* 1. Nuke the native radio circles */
+        div[role="radiogroup"] > label > div:first-child {
+            display: none !important;
         }
+        
+        /* 2. Style the menu item containers */
+        div[role="radiogroup"] > label {
+            width: 100% !important;
+            padding: 12px 16px !important;
+            margin-bottom: 4px !important;
+            border-radius: 4px !important;
+            background: transparent !important;
+            border-left: 3px solid transparent !important;
+            transition: all 0.2s ease !important;
+            cursor: pointer !important;
+        }
+        
+        /* 3. Typography for inactive items */
+        div[role="radiogroup"] > label p {
+            font-family: 'IBM Plex Mono', monospace !important;
+            font-size: 0.75rem !important;
+            letter-spacing: 0.15em !important;
+            color: #5D6D7E !important; /* text-muted */
+            text-transform: uppercase !important;
+            margin: 0 !important;
+            transition: color 0.2s ease !important;
+        }
+        
+        /* 4. Hover State */
         div[role="radiogroup"] > label:hover {
-            background-color: rgba(201,168,76,0.1);
+            background: rgba(201, 168, 76, 0.04) !important;
+            border-left: 3px solid rgba(201, 168, 76, 0.4) !important;
+        }
+        div[role="radiogroup"] > label:hover p {
+            color: #E2D5BC !important; /* text glow on hover */
+        }
+        
+        /* 5. Active/Selected State Magic */
+        div[role="radiogroup"] > label:has(input:checked) {
+            background: linear-gradient(90deg, rgba(201,168,76,0.12) 0%, transparent 100%) !important;
+            border-left: 3px solid #C9A84C !important;
+        }
+        
+        div[role="radiogroup"] > label:has(input:checked) p {
+            color: #C9A84C !important;
+            font-weight: 600 !important;
+            text-shadow: 0 0 10px rgba(201,168,76,0.2) !important;
         }
     </style>
 """, unsafe_allow_html=True)
+
 
 from config import API_KEY_MISSING
 from state import init_session_state, K
