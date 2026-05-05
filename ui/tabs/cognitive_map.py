@@ -2,14 +2,25 @@
 ui/tabs/cognitive_map.py — Cognitive Map Reference Tab
 ========================================================
 Tab 4: Full Arabic rhetorical device reference.
-Each pattern rendered as an interactive card with staggered animation.
-Functions as both a reference tool and a brand asset.
+v14.5: THE INTERACTIVE UPGRADE
+- Converted static cards into interactive "Remote Control" buttons.
+- Added FRAMEWORK_ROUTER to safely translate Arabic patterns to system frameworks.
+- Added a direct toggle for Islamic Professional Mode.
 """
 
 import streamlit as st
+import time
 from engine.cognitive_map import ARABIC_COGNITIVE_MAP
 from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
 
+# Maps the Arabic rhetorical device to the backend system framework
+FRAMEWORK_ROUTER = {
+    "التدرج": "Creative",            # Gradualism -> Chain-of-Thought
+    "الإيجاز": "Professional (RACE)", # Conciseness -> RACE Framework
+    "التفصيل": "Academic",            # Elaboration -> Academic Rigor
+    "التصوير": "Visual Director",     # Imagery -> Visual DNA Compiler
+    "default": "Technical (Debugger)" # Fallback
+}
 
 def render_cognitive_map() -> None:
     st.markdown(
@@ -23,7 +34,7 @@ def render_cognitive_map() -> None:
         '<strong style="color:var(--gold);">علم البيان</strong> and '
         '<strong style="color:var(--gold);">علم المعاني</strong> — '
         'each mapped to its AI prompting equivalent. '
-        'This is the engine no other tool has.</p>',
+        'Click a framework to instantly apply its logic to your next prompt.</p>',
         unsafe_allow_html=True,
     )
 
@@ -35,8 +46,10 @@ def render_cognitive_map() -> None:
             f'<span class="trigger-chip">{w}</span>'
             for w in data["trigger_words"]
         )
+        
+        # Render the informational card
         st.markdown(f"""
-        <div class="map-entry" style="animation-delay:{delay}s;">
+        <div class="map-entry" style="animation-delay:{delay}s; margin-bottom: 8px;">
             <div style="display:flex;justify-content:space-between;
                         align-items:flex-start;flex-wrap:wrap;gap:10px;">
                 <div>
@@ -48,11 +61,42 @@ def render_cognitive_map() -> None:
             <div class="map-instruction">{data['prompt_instruction']}</div>
         </div>
         """, unsafe_allow_html=True)
+        
+        # The Interactive Remote Control
+        target_framework = FRAMEWORK_ROUTER.get(name, FRAMEWORK_ROUTER["default"])
+        
+        # Align the action button to the right side under the card
+        col1, col2 = st.columns([4, 1])
+        with col2:
+            if st.button(f"⚡ Apply {name}", key=f"btn_apply_{name}", use_container_width=True):
+                # Update the sidebar's session state key
+                st.session_state["sb_framework"] = target_framework
+                st.toast(f"✅ {name} Logic Applied! (Routing to {target_framework})")
+                time.sleep(0.3) # Brief pause so the user sees the toast before UI refreshes
+                st.rerun()
+                
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
     st.markdown("<hr>", unsafe_allow_html=True)
+    
+    # ── ISLAMIC CONTEXT LAYER ────────────────────────────────────────────────
     st.markdown(
         '<div class="vc-header" style="font-size:0.62rem;margin-top:6px;">'
         'Islamic Professional Context Layer</div>',
         unsafe_allow_html=True,
     )
-    st.code(ISLAMIC_CONTEXT_LAYER.strip(), language="text")
+    
+    col_a, col_b = st.columns([3, 1])
+    with col_a:
+        st.code(ISLAMIC_CONTEXT_LAYER.strip(), language="text")
+    with col_b:
+        # Check current state from the sidebar toggle
+        is_active = st.session_state.get("sb_islamic", False)
+        btn_label = "🟢 Mode Active" if is_active else "⚡ Activate Mode"
+        
+        if st.button(btn_label, key="btn_activate_islamic", use_container_width=True):
+            st.session_state["sb_islamic"] = not is_active
+            status_msg = "Activated" if not is_active else "Deactivated"
+            st.toast(f"✅ Islamic Context Layer {status_msg}!")
+            time.sleep(0.3)
+            st.rerun()
