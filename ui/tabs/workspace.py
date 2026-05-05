@@ -3,11 +3,10 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
 
-v15.0: THE DYNAMIC IDENTITY PATCH
-- Integrated 'brand_identity' payload into the compiler execution.
-- Added 1-Click "Send to AI" quick-launch buttons for ChatGPT and Claude.
-- Improved terminal-style loading states to prevent UI jitter.
-- Integrated CIPHER auto-target visual telemetry.
+v16.0: THE COMMAND PILL OVERHAUL
+- Implemented Dynamic Command Pill: Contextual swap between Mic and Execute.
+- Auto-growing text area support (requires CSS field-sizing in app.py).
+- Integrated Majlis Voice Engine into the Pill layout.
 """
 
 import hashlib
@@ -48,7 +47,6 @@ def _render_telemetry_block(audit: dict, pattern: Optional[dict], output_text: s
     audit_data = audit or {}
     critique   = str(audit_data.get("critique",  "Standard Text Compilation"))
     
-    # Calculate real data
     est_tokens = int(len(output_text.split()) * 1.3)
     char_count = len(output_text)
     
@@ -79,7 +77,7 @@ def _render_telemetry_block(audit: dict, pattern: Optional[dict], output_text: s
 
 
 def render_workspace(cfg: dict) -> None:
-    """Main Workspace Tab (Tab 1) logic."""
+    """Main Workspace Tab logic with Contextual Command Pill."""
     st.markdown(
         f'<div class="vc-header"><span class="status-dot"></span>{t("workspace_header")}</div>',
         unsafe_allow_html=True,
@@ -91,83 +89,74 @@ def render_workspace(cfg: dict) -> None:
         from forge.persona_engine import get_persona_display_name
         pname = get_persona_display_name(active_persona)
         st.markdown(f"""
-        <div class="persona-active-badge" style="
-            display:inline-flex;align-items:center;gap:8px;
-            background:rgba(201,168,76,0.07);
-            border:1px solid rgba(201,168,76,0.25);
-            border-radius:3px;padding:5px 12px;
-            font-family:var(--font-m);font-size:0.65rem;
-            color:var(--gold);margin-bottom:10px;
-        ">
-            <span class="status-dot"></span>
-            PERSONA ACTIVE: {pname}
+        <div class="persona-active-badge" style="display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.25);border-radius:3px;padding:5px 12px;font-family:var(--font-m);font-size:0.65rem;color:var(--gold);margin-bottom:10px;">
+            <span class="status-dot"></span>PERSONA ACTIVE: {pname}
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div style="font-family:var(--font-m);font-size:0.68rem;
-                color:var(--text-muted);line-height:1.7;margin-bottom:8px;">
-        Write your raw intent in plain English or Arabic.
-        InkOS restructures it into a precision prompt for your selected AI.
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── MAJLIS VOICE ENGINE ───────────────────────────────────────────────────
-    st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;">🎙️ MAJLIS VOICE ENGINE</div>', unsafe_allow_html=True)
-    audio_value = st.audio_input("Record your intent", label_visibility="collapsed")
+    # ── THE COMMAND PILL (TRANSFORMATIVE UI) ──────────────────────────────────
+    st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:8px; letter-spacing:1px;">⚡ COMMAND CENTER</div>', unsafe_allow_html=True)
     
-    if audio_value is not None:
-        # Check if we already processed this exact audio snippet to prevent loop rendering
-        if st.session_state.get("last_processed_audio") != audio_value:
-            with st.spinner("Transcribing via Groq Whisper..."):
-                try:
-                    # Send audio bytes to Groq Whisper API
-                    transcription = client.audio.transcriptions.create(
-                        file=("audio.wav", audio_value.read()),
-                        model="whisper-large-v3-turbo",
-                        response_format="text"
-                    )
-                    
-                    # Append the transcription to whatever is already in the text area
-                    current_text = st.session_state.get("ta_input", "")
-                    new_text = f"{current_text} {transcription}".strip() if current_text else transcription
-                    
-                    # Update session state and refresh
-                    st.session_state["ta_input"] = new_text
-                    st.session_state["last_processed_audio"] = audio_value
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Voice Engine Error: {str(e)}")
+    # Layout columns: Input Pill (8) | Contextual Action (1.5)
+    col_input, col_action = st.columns([8, 1.5], gap="small", vertical_alignment="bottom")
+    
+    with col_input:
+        # User input area
+        raw_input: str = st.text_area(
+            "intent",
+            height=None, # Height controlled by CSS field-sizing: content
+            placeholder="Describe your intent or speak to MARCEL...",
+            label_visibility="collapsed",
+            key="ta_input",
+        )
 
-    # ── TEXT AREA ─────────────────────────────────────────────────────────────
-    raw_input: str = st.text_area(
-        "intent",
-        height=145,
-        placeholder=(
-            "English: Act as a senior analyst. Review this pitch deck...\n"
-            "عربي: اشرح لي هذا المفهوم تدريجياً بأسلوب تقني للمحترفين"
-        ),
-        label_visibility="collapsed",
-        key="ta_input",
-    )
+    with col_action:
+        # CONTEXTUAL SWAP LOGIC
+        execute_triggered = False
+        
+        if len(raw_input.strip()) > 0:
+            # STATE: TYPING -> Show Execute Button
+            if st.button("⚡", key="btn_exec_pill", use_container_width=True, help="Compile Blueprint"):
+                execute_triggered = True
+        else:
+            # STATE: IDLE -> Show Majlis Voice Engine
+            audio_value = st.audio_input("Record", label_visibility="collapsed", key="voice_pill")
+            
+            if audio_value is not None:
+                if st.session_state.get("last_processed_audio") != audio_value:
+                    with st.spinner("🎙️"):
+                        try:
+                            transcription = client.audio.transcriptions.create(
+                                file=("audio.wav", audio_value.read()),
+                                model="whisper-large-v3-turbo",
+                                response_format="text"
+                            )
+                            st.session_state["ta_input"] = transcription
+                            st.session_state["last_processed_audio"] = audio_value
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
 
+    # Character counter beneath the pill
     if raw_input:
         char = len(raw_input)
-        c_color = "#A93226" if char > INPUT_WARN_THRESHOLD else "#3A4455"
+        c_color = "#A93226" if char > INPUT_WARN_THRESHOLD else "var(--text-muted)"
         st.markdown(
-            f'<div class="char-counter" style="color:{c_color};">{char} / {INPUT_MAX_CHARS}</div>',
+            f'<div style="text-align: right; font-size: 0.62rem; color:{c_color}; margin-top:-10px; margin-right: 15px;">{char} / {INPUT_MAX_CHARS}</div>',
             unsafe_allow_html=True,
         )
 
+        # Arabic Pattern Preview
         if cfg["source_lang"] == "Arabic (العربية)":
             preview = detect_arabic_pattern(raw_input)
             if preview:
                 _render_pattern_card(preview)
 
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
     # ── EXECUTION ─────────────────────────────────────────────────────────────
-    if st.button(t("execute_btn"), use_container_width=True, key="btn_execute"):
+    # Triggered by either the Pill Bolt or the legacy main button
+    if execute_triggered:
         cleaned, violations = sanitize_input(raw_input or "")
 
         if not cleaned:
@@ -177,7 +166,6 @@ def render_workspace(cfg: dict) -> None:
         elif not check_rate_limit(consume=1):
             st.warning(t("rate_limit"))
         else:
-            # Sleek terminal-style loading state
             with st.status("Initializing MARCEL Compiler...", expanded=True) as status:
                 st.write("> Connecting to Groq Engine...")
 
@@ -194,7 +182,6 @@ def render_workspace(cfg: dict) -> None:
 
                 st.write(f"> Target locked: {resolved_target}. Compiling Expert Blueprint...")
                 
-                # INJECTED BRAND IDENTITY HERE
                 result, audit, pattern = run_refinement_and_audit(
                     user_text        = cleaned,
                     target           = resolved_target,
@@ -206,7 +193,6 @@ def render_workspace(cfg: dict) -> None:
                     brand_identity   = cfg.get("brand_identity"),
                 )
                 
-                # Defensive type-check
                 res_str = str(result) if result is not None else ""
                 
                 if res_str.startswith("[CIPHER ERROR]"):
@@ -243,29 +229,10 @@ def render_workspace(cfg: dict) -> None:
         st.markdown("<hr>", unsafe_allow_html=True)
         
         auto_target = st.session_state.get(K.AUTO_TARGET)
-        auto_reason = st.session_state.get(K.AUTO_REASON)
-        
-        # We need to know the final resolved target for Telemetry and Buttons
         final_target_display = auto_target if auto_target else cfg.get("target_model", "ChatGPT")
-
-        if auto_target and auto_reason:
-            st.markdown(f"""
-            <div class="auto-target-pill" style="
-                display:inline-flex;align-items:center;gap:8px;
-                background:rgba(201,168,76,0.07);
-                border:1px solid rgba(201,168,76,0.25);
-                border-radius:3px;padding:5px 14px;
-                font-family:var(--font-m);font-size:0.65rem;
-                color:var(--gold);margin-bottom:12px;
-            ">
-                <span class="status-dot"></span>
-                CIPHER selected: <strong>{auto_target}</strong> — {auto_reason}
-            </div>
-            """, unsafe_allow_html=True)
 
         left, right = st.columns([1, 2], gap="large")
         with left:
-            # Replaced Fake metrics with Real Telemetry
             _render_telemetry_block(last_audit, last_pattern, last_res_str, final_target_display)
             
         with right:
@@ -275,25 +242,17 @@ def render_workspace(cfg: dict) -> None:
             st.markdown(f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>', unsafe_allow_html=True)
             st.text_area("output", value=last_res_str, height=220, label_visibility="collapsed", key="out_area")
 
-            # ── 1-CLICK ACTION BUTTONS ────────────────────────────────────────
+            # 1-CLICK ACTION BUTTONS
             dl_ts = datetime.now().strftime("%H%M%S")
             b1, b2, b3 = st.columns(3)
             
             with b1:
-                st.download_button(
-                    "💾 Download",
-                    data=last_res_str,
-                    file_name=f"inkos_{dl_ts}.txt",
-                    key=f"dl_btn_{dl_ts}",
-                    use_container_width=True
-                )
+                st.download_button("💾 Download", data=last_res_str, file_name=f"inkos_{dl_ts}.txt", key=f"dl_btn_{dl_ts}", use_container_width=True)
             with b2:
-                # ChatGPT supports prompt injection via URL param for Search/Chat
                 gpt_url = f"https://chatgpt.com/?q={urllib.parse.quote(last_res_str)}"
-                st.link_button("↗ Open in ChatGPT", gpt_url, use_container_width=True)
+                st.link_button("↗ ChatGPT", gpt_url, use_container_width=True)
             with b3:
-                # Claude URL (Anthropic doesn't support direct URL prompt injection yet, so it goes to new chat)
-                st.link_button("↗ Open in Claude", "https://claude.ai/new", use_container_width=True)
+                st.link_button("↗ Claude", "https://claude.ai/new", use_container_width=True)
             
             # Vault Saving Logic
             from vault.supabase_client import SUPABASE_MISSING
