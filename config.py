@@ -1,9 +1,11 @@
 """
 config.py — Environment Bootstrap & Application Constants
 ==========================================================
-Updated v1.6: The "Spatial Blueprint" Update.
+Updated v1.7: The Visual Intelligence Update.
 - Merged Anti-Sheen aesthetics with advanced Geographic Mapping.
 - Forces Gemini to use strict Diegetic Anchoring for flawless typography.
+- Added STYLE_LIBRARY for structural visual DNA (Banners, Editorial, Cinematic).
+- Added QUALITY_TIERS for high-fidelity render control.
 """
 
 import os
@@ -25,6 +27,56 @@ MAX_TOKENS:  int   = 1536
 # ── RATE LIMITING ─────────────────────────────────────────────────────────────
 RATE_WINDOW_SECONDS: int = 60
 RATE_MAX_CALLS:      int = 10
+
+# ── QUALITY TIERS ─────────────────────────────────────────────────────────────
+QUALITY_TIERS: dict = {
+    "standard": [],
+    "premium": [
+        "ultra polished rendering",
+        "professional composition",
+        "high production value"
+    ],
+    "studio": [
+        "masterpiece quality",
+        "artstation featured quality",
+        "studio-grade rendering",
+        "portfolio-worthy composition"
+    ]
+}
+
+# ── STYLE DNA LIBRARY (Visual Intelligence Layer) ─────────────────────────────
+STYLE_LIBRARY: dict = {
+    "anime_banner": {
+        "art_medium": "2D anime illustration",
+        "render_type": "high contrast composited wallpaper design",
+        "composition_style": "collage banner composition with layered character framing",
+        "lighting_profile": "neon rim lighting with glow accents",
+        "color_palette": ["electric blue", "black", "white"],
+        "texture_profile": ["airbrush glow", "soft bloom", "high contrast shadows"],
+        "fx_elements": ["smoke overlays", "ink splashes", "energy particles"],
+        "design_language": ["gaming banner", "esports branding", "anime edit aesthetic"]
+    },
+    "dark_editorial": {
+        "art_medium": "stylized manga/anime illustration",
+        "render_type": "graphic poster composite",
+        "composition_style": "hero portrait with oversized typography",
+        "lighting_profile": "extreme chiaroscuro with red accent lighting",
+        "color_palette": ["black", "white", "red"],
+        "texture_profile": ["grunge", "ink splatter", "paper noise"],
+        "fx_elements": ["UI overlays", "glitch lines", "geometric shards"],
+        "design_language": ["streetwear poster", "editorial graphic design", "cyber branding"]
+    },
+    "cinematic_anime": {
+        "art_medium": "premium anime cel-shaded illustration",
+        "render_type": "high fidelity manga colorization",
+        "composition_style": "centered portrait framing",
+        "lighting_profile": "soft natural daylight",
+        "color_palette": ["cool whites", "ice blue", "neutral skin"],
+        "texture_profile": ["clean cel shading", "ink contour lines"],
+        "fx_elements": [],
+        "design_language": ["official anime frame", "studio key visual"]
+    }
+}
 
 # ── TARGET AI DIALECT GUIDES ──────────────────────────────────────────────────
 TARGET_GUIDES: dict = {
@@ -82,10 +134,10 @@ LOGIC_FRAMEWORKS: list = [
 ]
 
 VISUAL_DIRECTOR_PROMPT: str = """
-ACTIVE FRAMEWORK: Visual Director (Cinematic & Editorial Photography)
+ACTIVE FRAMEWORK: Visual Director (Cognitive Prompt Compiler)
 
-You are the InkOS Visual Director. Your job is to translate raw concepts into elite, studio-grade prompt architecture.
-Output your response as a structured dictionary format (which the system will automatically humanize).
+You are the InkOS Visual Director. Your job is to deconstruct raw concepts into elite, studio-grade prompt architecture.
+Instead of treating styles as generic keywords, you must deconstruct them into latent production attributes (Style DNA).
 
 AESTHETIC ENHANCER (MANDATORY):
 Before finalizing the prompt, enrich it with latent premium aesthetic references to KILL the "Generic AI Look":
@@ -106,8 +158,8 @@ OUTPUT STRUCTURE (KEYS MUST BE EXACT):
 {
   "[SUBJECT & COMPOSITION]": "...",
   "[ENVIRONMENT & LIGHTING]": "...",
-  "[STYLE, MEDIUM & PLATFORM CUES]": "... (Inject the Aesthetic Enhancer cues here)",
-  "[TECHNICAL PARAMETERS & TYPOGRAPHY]": "... (Inject the Spatial Blueprint and Typographic layout here)",
+  "[STYLE DNA & MEDIUM]": "... (Inject the Style Library attributes here: Medium, Render type, Composition style)",
+  "[TECHNICAL PARAMETERS & TYPOGRAPHY]": "... (Inject the Spatial Blueprint and Quality Tier 'studio' descriptors here)",
   "[NEGATIVE CONSTRAINTS]": "(MANDATORY INCLUSION: 'generic AI style, plastic skin, overly smooth gradients, corporate vector, cliché, over-saturated, floating WordArt, messy text'. Add specific constraints for the prompt.)"
 }
 """
