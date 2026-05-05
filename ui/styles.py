@@ -3,10 +3,9 @@ ui/styles.py — InkOS Design System
 ==========================================
 The full CSS string exported as a single constant.
 
-v6.0: ABSOLUTE POSITIONING OVERRIDE
-- Defeated Streamlit's mobile column-wrapping engine entirely.
-- Floats the Action Button (Mic/Send) natively over the right corner of the text area.
-- Explicitly nukes all [data-baseweb] grey artifact boxes.
+v7.0: THE LEVITATION OVERRIDE
+- Text area acts as the primary pill.
+- CSS physically floats the action buttons right over the corner of the text area.
 """
 
 STYLES: str = """
@@ -43,128 +42,111 @@ STYLES: str = """
 .stApp { background-color: var(--bg-void); color: var(--text); font-family: var(--font-m); font-size: 14px; }
 
 /* ══════════════════════════════════════════
-   THE ABSOLUTE PILL (Immune to Streamlit)
+   THE LEVITATION PILL (ChatGPT-Style Input)
 ══════════════════════════════════════════ */
 
-/* 1. Turn the outer row container into an absolute positioning anchor */
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) {
-    position: relative !important;
-    display: block !important; /* KILLS Flexbox Column Stacking */
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: transparent !important;
-    border: none !important;
-}
-
-/* 2. Text Area Container takes 100% of the screen */
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) > div[data-testid="column"]:nth-child(1) {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 0 !important; margin: 0 !important;
-}
-
-/* Destroy Streamlit's inner grey backgrounds so only the gold border shows */
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) [data-testid="stTextArea"] > div,
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) [data-baseweb="base-input"] {
-    background: transparent !important;
-    background-color: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-/* The Text Area itself IS the pill */
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) textarea {
+/* 1. TEXT AREA BECOMES THE COMPLETE PILL */
+div[data-testid="stTextArea"]:has(textarea[aria-label="intent"]) > div {
     background-color: var(--bg-input) !important;
     border: 1px solid var(--gold-border) !important;
     border-radius: 28px !important;
-    padding: 16px 60px 16px 24px !important; /* 60px right padding reserves space for the floating button */
-    field-sizing: content !important;
-    min-height: 58px !important;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.3) !important;
+    transition: all 0.3s ease !important;
+    overflow: hidden !important;
+}
+
+div[data-testid="stTextArea"]:has(textarea[aria-label="intent"]):focus-within > div {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 12px var(--gold-glow), inset 0 2px 10px rgba(0,0,0,0.5) !important;
+}
+
+/* 2. TEXT AREA FORMATTING (Reserves space for the button) */
+div[data-testid="stTextArea"]:has(textarea[aria-label="intent"]) textarea {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 16px 60px 16px 24px !important; /* 🚨 60px padding leaves room for the button */
+    field-sizing: content !important; /* Auto-grows as you type */
+    min-height: 56px !important;
     max-height: 250px !important;
     color: var(--text) !important;
     font-family: var(--font-m) !important;
     font-size: 0.9rem !important;
     line-height: 1.6 !important;
-    box-shadow: inset 0 2px 10px rgba(0,0,0,0.3) !important;
-    transition: all 0.3s ease !important;
     margin: 0 !important;
 }
 
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) textarea:focus {
-    border-color: var(--gold) !important;
-    box-shadow: 0 0 12px var(--gold-glow), inset 0 2px 10px rgba(0,0,0,0.5) !important;
-    outline: none !important;
+div[data-testid="InputInstructions"] { display: none !important; }
+
+
+/* 3. LEVITATION MECHANICS: Pull the Button UP and RIGHT */
+div[data-testid="stAudioInput"],
+button[title="Compile Blueprint"] {
+    position: relative !important;
+    float: right !important;
+    top: -50px !important; /* Pulls it UP over the text area */
+    right: 8px !important; /* Pulls it IN from the right edge */
+    z-index: 100 !important;
+    margin-bottom: -44px !important; /* Collapses its physical space so it doesn't leave a gap */
 }
 
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) div[data-testid="InputInstructions"] { display: none !important; }
-
-/* 3. The Action Button Container physically levitates over the right side */
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) > div[data-testid="column"]:nth-child(2) {
-    position: absolute !important;
-    right: 6px !important;
-    bottom: 8px !important;
-    width: 44px !important;
-    height: 44px !important;
-    z-index: 100 !important; /* Forces it over the text area */
-    padding: 0 !important; margin: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-/* Eradicate Streamlit Audio Widget grey backgrounds */
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) [data-testid="stAudioInput"] {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
+/* 4. MIC SPECIFIC FORMATTING */
+div[data-testid="stAudioInput"] {
     width: 44px !important;
     height: 44px !important;
     min-width: 44px !important;
-    overflow: hidden !important;
-    padding: 0 !important; margin: 0 !important;
-}
-
-/* Aggressively nuke internal audio wrappers */
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) [data-testid="stAudioInput"] div,
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) [data-testid="stAudioInput"] section,
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) [data-testid="stAudioInput"] span {
-    background-color: transparent !important;
+    background: transparent !important;
     border: none !important;
     box-shadow: none !important;
+    overflow: hidden !important; /* Hides the waveform and timer */
 }
 
-/* Ensure the Button itself fits the aesthetic */
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) button {
-    position: absolute !important;
-    right: 0 !important;
-    bottom: 0 !important;
+div[data-testid="stAudioInput"] button {
+    border-radius: 50% !important;
     width: 44px !important;
     height: 44px !important;
+    padding: 0 !important;
+    background: linear-gradient(145deg, #1e2025, #080c14) !important;
+    border: 1px solid var(--gold-border) !important;
+    color: var(--gold) !important;
+    box-shadow: 4px 4px 10px #03040a, -2px -2px 8px rgba(201,168,76,0.05) !important;
+}
+
+/* 5. EXECUTE BOLT FORMATTING */
+button[title="Compile Blueprint"] {
     border-radius: 50% !important;
+    width: 44px !important;
+    height: 44px !important;
+    padding: 0 !important;
     background: linear-gradient(145deg, #1e2025, #080c14) !important;
     border: 1px solid var(--gold-border) !important;
     color: var(--gold) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    margin: 0 !important; padding: 0 !important;
-    transition: all 0.2s ease !important;
     box-shadow: 4px 4px 10px #03040a, -2px -2px 8px rgba(201,168,76,0.05) !important;
+    transition: all 0.2s ease !important;
 }
 
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) button:hover {
+button[title="Compile Blueprint"]:hover,
+div[data-testid="stAudioInput"] button:hover {
     background: var(--gold-glow) !important;
     border-color: var(--gold) !important;
     transform: scale(1.05) !important;
 }
 
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) button p,
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) button span {
+button[title="Compile Blueprint"] p {
     font-size: 1.4rem !important;
     margin: 0 !important;
     line-height: 1 !important;
 }
+
+/* Clears the CSS float so the character counter renders normally */
+.char-counter {
+    clear: both !important;
+    padding-top: 10px !important;
+}
+
 
 /* ══════════════════════════════════════════
    STANDARD COMPONENTS (CARDS, METRICS)
