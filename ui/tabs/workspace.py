@@ -3,11 +3,10 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 Tab 1: Input stream, live pattern preview, execution, results display.
 
-v13.0: THE UX OVERHAUL
-- Replaced fake "Refinement Quality" metrics with actual System Telemetry.
-- Added 1-Click "Send to AI" quick-launch buttons for ChatGPT and Claude.
-- Improved terminal-style loading states to prevent UI jitter.
-- Integrated CIPHER auto-target visual telemetry.
+v14.0: THE MAJLIS VOICE ENGINE
+- Integrated native st.audio_input for voice-to-prompt capability.
+- Wired up Groq's whisper-large-v3-turbo for lightning-fast English/Arabic transcription.
+- Added UX logic to append voice transcriptions to the text area dynamically.
 """
 
 import hashlib
@@ -21,7 +20,7 @@ from security.sanitizer import sanitize_input
 from security.rate_limiter import check_rate_limit
 from engine.cognitive_map import detect_arabic_pattern
 from engine.refiner import run_refinement_and_audit, detect_best_target
-from config import INPUT_MAX_CHARS, INPUT_WARN_THRESHOLD, AUTO_SELECT_LABEL
+from config import INPUT_MAX_CHARS, INPUT_WARN_THRESHOLD, AUTO_SELECT_LABEL, client
 from i18n.translations import t
 
 
@@ -112,6 +111,34 @@ def render_workspace(cfg: dict) -> None:
     </div>
     """, unsafe_allow_html=True)
 
+    # ── MAJLIS VOICE ENGINE ───────────────────────────────────────────────────
+    st.markdown('<div style="font-size:0.7rem; color:var(--gold); margin-bottom:4px; letter-spacing:1px;">🎙️ MAJLIS VOICE ENGINE</div>', unsafe_allow_html=True)
+    audio_value = st.audio_input("Record your intent", label_visibility="collapsed")
+    
+    if audio_value is not None:
+        # Check if we already processed this exact audio snippet to prevent loop rendering
+        if st.session_state.get("last_processed_audio") != audio_value:
+            with st.spinner("Transcribing via Groq Whisper..."):
+                try:
+                    # Send audio bytes to Groq Whisper API
+                    transcription = client.audio.transcriptions.create(
+                        file=("audio.wav", audio_value.read()),
+                        model="whisper-large-v3-turbo",
+                        response_format="text"
+                    )
+                    
+                    # Append the transcription to whatever is already in the text area
+                    current_text = st.session_state.get("ta_input", "")
+                    new_text = f"{current_text} {transcription}".strip() if current_text else transcription
+                    
+                    # Update session state and refresh
+                    st.session_state["ta_input"] = new_text
+                    st.session_state["last_processed_audio"] = audio_value
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Voice Engine Error: {str(e)}")
+
+    # ── TEXT AREA ─────────────────────────────────────────────────────────────
     raw_input: str = st.text_area(
         "intent",
         height=145,
