@@ -1,10 +1,10 @@
 """
 engine/refiner.py - InkOS Cognitive Prompt Engine
 =================================================
-v8.0: THE MARCEL CORE (Ultimate Expert Architecture)
-- Integrated: The 5 Elite MARCEL Personas (AXIOM, FORMA, VECTOR, CIPHER, LUCID).
-- Injected: MARCEL_IDENTITY overarching prompt into the LLM logic core.
-- Preserved: Ameer/Shikamaru protection, dynamic typography, and 12-domain routing.
+v1: THE CROSS-WIRING & TYPE CASTING PATCH
+- Fixed: Python list bug formatting arrays into the prompt subject.
+- Fixed: Cross-wiring bug where text models (Claude) were fed Visual prompts.
+- Refined: Visual keyword guardrails to prevent "Create" from triggering image generation.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from config import client, MODEL_ID, MAX_TOKENS, STYLE_LIBRARY, QUALITY_TIERS, T
 from engine.cognitive_map import detect_arabic_pattern
 from i18n.translations import t
 
-# Defensive imports for MARCEL personas (Prevents crashes if config.py isn't fully updated)
+# Defensive imports for MARCEL personas
 try:
     from config import (
         MARCEL_IDENTITY, EXPERT_PROMPT_ENGINEER, EXPERT_UX_DESIGNER, 
@@ -53,7 +53,6 @@ class ContentDomain(str, Enum):
     DATA_ANALYSIS   = "data_analysis"
     ACADEMIC        = "academic_research"
     PRODUCTIVITY    = "productivity"
-    # THE NEW MARCEL ELITE EXPERTS
     PROMPT_ENGINEERING = "prompt_engineering"
     UX_UI_DESIGN    = "ux_ui_design"
     STARTUP_STRATEGY = "startup_strategy"
@@ -76,7 +75,7 @@ class UnifiedIntentObject:
     intelligence_score: int = 0
 
 # ---------------------------------------------
-# DOMAIN EXPERT MODULES (Strategy Pattern)
+# DOMAIN EXPERT MODULES
 # ---------------------------------------------
 
 class BaseExpert:
@@ -93,15 +92,12 @@ class VisualExpert(BaseExpert):
             h = "[GRAPHIC DESIGN LAYOUT]" if uio.domain == ContentDomain.GRAPHIC_DESIGN else "[SPATIAL BLUEPRINT]"
             details = [f"Subject: {uio.subject}", txt, f"Style: {dna.get('art_medium', 'Anime')}", f"FX: {', '.join(dna.get('fx_elements', []))}" if dna.get('fx_elements') else "", f"Fidelity: {quality}"]
             return f"{h} " + ". ".join(filter(None, details)) + "."
-        
         elif uio.target_model == TargetModel.MIDJOURNEY:
             parts = [uio.subject, txt, dna.get("art_medium"), quality]
             return " :: ".join(filter(None, parts)) + " --ar 16:9"
-        
-        else: # DALLE-3
+        else: # DALLE-3 Fallback
             return f"Create a highly detailed visual of {uio.subject}. {txt} Style inspired by {dna.get('art_medium', 'premium concepts')}. Quality: {quality}."
 
-# --- LEGACY EXPERTS ---
 class CodeExpert(BaseExpert):
     def assemble(self, uio: UnifiedIntentObject) -> str:
         framework = uio.user_preferences.get("framework", "Technical (Zero-Shot)")
@@ -130,7 +126,6 @@ class ProductivityExpert(BaseExpert):
     def assemble(self, uio: UnifiedIntentObject) -> str:
         return f"You are an Elite Executive Coach.\n\n### OBJECTIVE\n{uio.raw_input}\n\n### RULES\n{DOMAIN_KNOWLEDGE.get('productivity', '')}\n\n### EXECUTION\nOutput highly actionable, frictionless steps."
 
-# --- NEW MARCEL ELITE EXPERTS ---
 class PromptEngineerExpert(BaseExpert):
     def assemble(self, uio: UnifiedIntentObject) -> str:
         return f"{EXPERT_PROMPT_ENGINEER}\n\n<task>\n{uio.raw_input}\n</task>\n<instruction>Execute the role of AXIOM.</instruction>"
@@ -164,7 +159,6 @@ class InkOSCompiler:
             ContentDomain.DATA_ANALYSIS: DataScienceExpert(),
             ContentDomain.ACADEMIC: ResearchExpert(),
             ContentDomain.PRODUCTIVITY: ProductivityExpert(),
-            # THE NEW MARCEL EXPERTS
             ContentDomain.PROMPT_ENGINEERING: PromptEngineerExpert(),
             ContentDomain.UX_UI_DESIGN: UxUiExpert(),
             ContentDomain.STARTUP_STRATEGY: StrategyExpert(),
@@ -178,16 +172,15 @@ class InkOSCompiler:
         uio = UnifiedIntentObject(raw_input=raw_input, user_preferences=user_preferences or {})
         low = raw_input.lower()
 
-        # 1. SEMANTIC EXTRACTION & DOMAIN ROUTING
-        system = """Extract 'subject' and 'exact_text' (MUST be a list of strings containing ONLY explicit names, titles, or quoted words meant to be written as typography. Do NOT extract the whole prompt). 
+        system = """Extract 'subject' and 'exact_text' (MUST be a list of strings containing ONLY explicit names or quoted words). 
         Determine 'is_visual_task' (bool).
         Determine 'domain' string based on these strict rules:
         - If writing AI prompts/GPT instructions -> 'prompt_engineering'
         - If UI/UX, wireframes, user flows -> 'ux_ui_design'
         - If business models, finance, startup growth -> 'startup_strategy'
         - If hacking, security, vulnerabilities, code audits -> 'cybersecurity'
-        - If analyzing logic, biases, decisions, or asking "is this a good idea" -> 'decision_science'
-        - If programming/coding -> 'code_analysis'
+        - If analyzing logic, biases, decisions -> 'decision_science'
+        - If programming/coding/web dev -> 'code_analysis'
         - If ads/social/SEO/sales -> 'marketing'
         - If Excel/SQL/math/data -> 'data_analysis'
         - If studying/summarizing/science -> 'academic_research'
@@ -197,9 +190,14 @@ class InkOSCompiler:
         
         data = self._llm_call(system, raw_input)
         
-        uio.subject = data.get("subject", raw_input)
+        # FIX 1: Safely cast the subject to a string so it never prints Python Arrays '[]'
+        raw_subj = data.get("subject", raw_input)
+        if isinstance(raw_subj, list):
+            uio.subject = ", ".join([str(x) for x in raw_subj])
+        else:
+            uio.subject = str(raw_subj)
         
-        # Safe Type Casting for exact_text
+        # Safely cast exact_text
         ext_text = data.get("exact_text", [])
         if isinstance(ext_text, str):
             uio.exact_text = [ext_text] if ext_text.strip() else []
@@ -215,11 +213,11 @@ class InkOSCompiler:
         except ValueError:
             uio.domain = ContentDomain.TEXT_COPY
 
-        # Hard Visual Keyword Guardrail
-        if any(w in low for w in ["make", "draw", "generate", "image", "banner", "header", "poster", "watch", "logo"]):
+        # Refined Guardrail: Only trigger image tasks on strict visual words (removed 'make' and 'create')
+        visual_triggers = ["draw", "paint", "image", "banner", "header", "poster", "logo", "photograph", "render"]
+        if any(w in low for w in visual_triggers):
             uio.is_visual_task = True
 
-        # 2. VISUAL DNA MAPPING
         if uio.is_visual_task:
             if "banner" in low or "header" in low:
                 uio.domain = ContentDomain.GRAPHIC_DESIGN
@@ -234,6 +232,16 @@ class InkOSCompiler:
 
         # 3. ROUTING
         uio = self._route_target(uio)
+
+        # FIX 2: STRICT CROSS-WIRING PROTECTION
+        # If the target is a text model, force `is_visual_task` to False so it uses a Text Expert, not a Visual Expert.
+        text_models = [TargetModel.CLAUDE, TargetModel.CHATGPT, TargetModel.MANUS]
+        visual_models = [TargetModel.MIDJOURNEY, TargetModel.DALLE3, TargetModel.IMAGEN3]
+        
+        if uio.target_model in text_models:
+            uio.is_visual_task = False
+        elif uio.target_model in visual_models:
+            uio.is_visual_task = True
         
         # 4. EXPERT ASSEMBLY
         if uio.is_visual_task:
@@ -247,23 +255,16 @@ class InkOSCompiler:
     def _apply_intelligence(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
         low = uio.raw_input.lower()
         hits = 0
-        
-        # Identity Protection (Ameer)
         if "ameer" in low and not any("ameer" in t.lower() for t in uio.exact_text):
             uio.exact_text.append("Ameer")
             hits += 1
-
-        # Character Protection (Shikamaru)
         if "shikamaru" in low:
             uio.style_dna["art_medium"] = "Dynamic 2D anime render of Shikamaru Nara (Konoha Vest)"
             uio.exact_text = [t for t in uio.exact_text if t.lower() != "shikamaru"]
             hits += 1
-            
-        # Theme Protection (Cyber)
         if any(w in low for w in ["tech", "cyber", "security", "hacker"]):
             uio.style_dna["fx_elements"] = ["circuit board patterns", "data streams", "glitch distortion"]
             hits += 1
-            
         if uio.exact_text: hits += 1
         uio.intelligence_score = hits
         return uio
@@ -278,7 +279,6 @@ class InkOSCompiler:
                 pass
 
         if not uio.is_visual_task: 
-            # Smart default routing: Code, Data, Academics, and MARCEL experts default to Claude's analytical brain
             analytical_domains = [
                 ContentDomain.CODE_ANALYSIS, ContentDomain.DATA_ANALYSIS, ContentDomain.ACADEMIC,
                 ContentDomain.PROMPT_ENGINEERING, ContentDomain.UX_UI_DESIGN, ContentDomain.STARTUP_STRATEGY,
@@ -296,9 +296,7 @@ class InkOSCompiler:
 
     def _llm_call(self, system: str, user: str) -> dict:
         try:
-            # Fusing MARCEL's core identity with the strict extraction task
             marcel_system = f"{MARCEL_IDENTITY}\n\nStrict Task Execution:\n{system}"
-            
             res = client.chat.completions.create(
                 model=MODEL_ID, 
                 messages=[{"role": "system", "content": marcel_system}, {"role": "user", "content": user}], 
