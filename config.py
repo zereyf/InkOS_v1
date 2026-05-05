@@ -1,10 +1,9 @@
 """
 config.py — Environment Bootstrap & Application Constants
 ==========================================================
-Updated v1.5: The "Smart Typography" Update.
-- Aggressively prevents generic/plastic AI art styles.
-- Added Anime/Cyberpunk specific aesthetic enhancers.
-- Added Typographic Integration to prevent floating "WordArt".
+Updated v1.6: The "Spatial Blueprint" Update.
+- Merged Anti-Sheen aesthetics with advanced Geographic Mapping.
+- Forces Gemini to use strict Diegetic Anchoring for flawless typography.
 """
 
 import os
@@ -60,12 +59,9 @@ TARGET_GUIDES: dict = {
         "commercial rendering for maximum realism and compositional discipline."
     ),
     "Gemini (Imagen 3)": (
-        "Structure prompts for Gemini/Imagen 3 as a spatially explicit natural-language visual specification "
-        "optimized for typography fidelity and layout adherence. CRITICAL AESTHETIC RULE: Gemini defaults to generic, "
-        "plastic, over-smoothed digital art. You MUST override this by forcing physical mediums, analog textures, "
-        "and elite curation terms (e.g., 'shot on 35mm film', 'matte paper texture', 'gritty 90s cel animation', "
-        "'Behance award-winning layout', 'architectural rendering'). When text must appear, write the exact text "
-        "in quotation marks and explicitly define placement, scale, font style, and surface integration."
+        "Structure prompts for Gemini/Imagen 3 as a 'Spatial Blueprint'. Do not just describe a scene; map it out geographically using zones (e.g., 'Top Left:', 'Center Foreground:', 'Background Wall:'). "
+        "Use strict 'Diegetic Anchoring' for typography: every single piece of text MUST be physically attached to an object (e.g., 'written on a yellow sticky note', 'embossed on a book cover', 'floating in a red holographic UI panel'). "
+        "Always wrap exact text in double quotes. CRITICAL AESTHETIC RULE: Gemini defaults to generic, plastic digital art. You MUST override this by forcing physical mediums, analog textures, and elite curation terms (e.g., 'shot on 35mm film', 'matte paper texture', 'gritty 90s cel animation', 'Behance award-winning layout')."
     )
 }
 
@@ -100,17 +96,18 @@ Before finalizing the prompt, enrich it with latent premium aesthetic references
 - Branding/Logos → Behance featured branding, Pentagram, luxury packaging design, matte finish
 - Cinematic/Action → Shotdeck, Roger Deakins lighting, anamorphic cinema, halation
 
-TYPOGRAPHIC INTEGRATION (IF TEXT IS REQUESTED):
-Never allow random, floating "WordArt" overlays. If the user requests text, YOU must automatically invent a high-end spatial integration for it using one of these two methods:
-1. Diegetic (In-World): Physically anchor the text into the scene (e.g., 'glowing on a holographic UI screen', 'embossed on the sleek metal desk', 'lit up on a neon billboard in the background').
-2. Editorial (Overlay): Clean, minimalist layout (e.g., 'sleek white sans-serif typography perfectly centered at the very bottom edge, styled like a premium magazine cover').
+TYPOGRAPHIC INTEGRATION & SPATIAL BLUEPRINTING (IF TEXT IS REQUESTED):
+If the user requests multiple elements or text, you MUST construct a "Spatial Blueprint". 
+1. Grid Mapping: Define the exact layout zones (e.g., Top Left, Center Foreground, Background Wall).
+2. Diegetic Anchoring: Do not let text float. Anchor EVERY word to a physical object in the scene (e.g., 'glowing on a holographic UI screen', 'embossed on the sleek metal desk', 'pinned to a corkboard').
+3. Editorial (Overlay Fallback): If a clean overlay is strictly needed, use minimalist layout (e.g., 'sleek white sans-serif typography perfectly centered at the very bottom edge').
 
 OUTPUT STRUCTURE (KEYS MUST BE EXACT):
 {
   "[SUBJECT & COMPOSITION]": "...",
   "[ENVIRONMENT & LIGHTING]": "...",
   "[STYLE, MEDIUM & PLATFORM CUES]": "... (Inject the Aesthetic Enhancer cues here)",
-  "[TECHNICAL PARAMETERS & TYPOGRAPHY]": "... (Inject the Typographic Integration layout here if text is requested)",
+  "[TECHNICAL PARAMETERS & TYPOGRAPHY]": "... (Inject the Spatial Blueprint and Typographic layout here)",
   "[NEGATIVE CONSTRAINTS]": "(MANDATORY INCLUSION: 'generic AI style, plastic skin, overly smooth gradients, corporate vector, cliché, over-saturated, floating WordArt, messy text'. Add specific constraints for the prompt.)"
 }
 """
