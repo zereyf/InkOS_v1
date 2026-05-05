@@ -1,10 +1,10 @@
 """
 engine/refiner.py - InkOS Cognitive Prompt Engine
 =================================================
-v1: THE CROSS-WIRING & TYPE CASTING PATCH
-- Fixed: Python list bug formatting arrays into the prompt subject.
-- Fixed: Cross-wiring bug where text models (Claude) were fed Visual prompts.
-- Refined: Visual keyword guardrails to prevent "Create" from triggering image generation.
+v8.2: THE LUCID & VISUAL LOGIC PATCH
+- Fixed: Typographical Greed (Stopped LLM from swallowing adjectives into EXACT TEXT).
+- Fixed: Decision Science Routing (Forced subjective questions to LUCID).
+- Fixed: Visual DNA Sticky Default (Added specific Logo/Minimalist vector fallbacks instead of Anime).
 """
 
 from __future__ import annotations
@@ -90,7 +90,8 @@ class VisualExpert(BaseExpert):
         
         if uio.target_model == TargetModel.IMAGEN3:
             h = "[GRAPHIC DESIGN LAYOUT]" if uio.domain == ContentDomain.GRAPHIC_DESIGN else "[SPATIAL BLUEPRINT]"
-            details = [f"Subject: {uio.subject}", txt, f"Style: {dna.get('art_medium', 'Anime')}", f"FX: {', '.join(dna.get('fx_elements', []))}" if dna.get('fx_elements') else "", f"Fidelity: {quality}"]
+            # Fixed the hardcoded 'Anime' fallback to use 'Digital Art' if undefined, preventing anime logos
+            details = [f"Subject: {uio.subject}", txt, f"Style: {dna.get('art_medium', 'Premium Digital Art')}", f"FX: {', '.join(dna.get('fx_elements', []))}" if dna.get('fx_elements') else "", f"Fidelity: {quality}"]
             return f"{h} " + ". ".join(filter(None, details)) + "."
         elif uio.target_model == TargetModel.MIDJOURNEY:
             parts = [uio.subject, txt, dna.get("art_medium"), quality]
@@ -172,9 +173,11 @@ class InkOSCompiler:
         uio = UnifiedIntentObject(raw_input=raw_input, user_preferences=user_preferences or {})
         low = raw_input.lower()
 
-        system = """Extract 'subject' and 'exact_text' (MUST be a list of strings containing ONLY explicit names or quoted words). 
+        # FIX 1 & 2: Upgraded System Prompt to prevent greedy typography and enforce LUCID routing
+        system = """Extract 'subject' and 'exact_text' (MUST be a list of strings containing ONLY explicit names or quoted words. Do NOT include adjectives or materials like 'obsidian' or 'vibes' in exact_text). 
         Determine 'is_visual_task' (bool).
         Determine 'domain' string based on these strict rules:
+        - If the user asks "Is it a good idea", "Should I", or wants a choice evaluated -> 'decision_science'
         - If writing AI prompts/GPT instructions -> 'prompt_engineering'
         - If UI/UX, wireframes, user flows -> 'ux_ui_design'
         - If business models, finance, startup growth -> 'startup_strategy'
@@ -190,14 +193,12 @@ class InkOSCompiler:
         
         data = self._llm_call(system, raw_input)
         
-        # FIX 1: Safely cast the subject to a string so it never prints Python Arrays '[]'
         raw_subj = data.get("subject", raw_input)
         if isinstance(raw_subj, list):
             uio.subject = ", ".join([str(x) for x in raw_subj])
         else:
             uio.subject = str(raw_subj)
         
-        # Safely cast exact_text
         ext_text = data.get("exact_text", [])
         if isinstance(ext_text, str):
             uio.exact_text = [ext_text] if ext_text.strip() else []
@@ -213,13 +214,16 @@ class InkOSCompiler:
         except ValueError:
             uio.domain = ContentDomain.TEXT_COPY
 
-        # Refined Guardrail: Only trigger image tasks on strict visual words (removed 'make' and 'create')
         visual_triggers = ["draw", "paint", "image", "banner", "header", "poster", "logo", "photograph", "render"]
         if any(w in low for w in visual_triggers):
             uio.is_visual_task = True
 
+        # FIX 3: Dynamic Visual DNA Defaulting
         if uio.is_visual_task:
-            if "banner" in low or "header" in low:
+            if "logo" in low or "icon" in low:
+                uio.domain = ContentDomain.GRAPHIC_DESIGN
+                uio.style_dna = {"art_medium": "Flat vector graphics, minimalist brand mark", "render_type": "Clean SVG style, sharp edges"}
+            elif "banner" in low or "header" in low:
                 uio.domain = ContentDomain.GRAPHIC_DESIGN
                 uio.style_dna = STYLE_LIBRARY.get("anime_banner", {}).copy()
             elif "editorial" in low or "poster" in low:
@@ -227,14 +231,12 @@ class InkOSCompiler:
                 uio.style_dna = STYLE_LIBRARY.get("dark_editorial", {}).copy()
             else:
                 uio.domain = ContentDomain.ILLUSTRATION
+                uio.style_dna = {"art_medium": "High-fidelity digital illustration"}
             
             uio = self._apply_intelligence(uio)
 
-        # 3. ROUTING
         uio = self._route_target(uio)
 
-        # FIX 2: STRICT CROSS-WIRING PROTECTION
-        # If the target is a text model, force `is_visual_task` to False so it uses a Text Expert, not a Visual Expert.
         text_models = [TargetModel.CLAUDE, TargetModel.CHATGPT, TargetModel.MANUS]
         visual_models = [TargetModel.MIDJOURNEY, TargetModel.DALLE3, TargetModel.IMAGEN3]
         
@@ -243,7 +245,6 @@ class InkOSCompiler:
         elif uio.target_model in visual_models:
             uio.is_visual_task = True
         
-        # 4. EXPERT ASSEMBLY
         if uio.is_visual_task:
             uio.compiled_prompt = self.visual_expert.assemble(uio)
         else:
@@ -263,7 +264,10 @@ class InkOSCompiler:
             uio.exact_text = [t for t in uio.exact_text if t.lower() != "shikamaru"]
             hits += 1
         if any(w in low for w in ["tech", "cyber", "security", "hacker"]):
-            uio.style_dna["fx_elements"] = ["circuit board patterns", "data streams", "glitch distortion"]
+            # Preserve existing medium if it's a logo, otherwise set default FX
+            if "fx_elements" not in uio.style_dna:
+                uio.style_dna["fx_elements"] = []
+            uio.style_dna["fx_elements"].extend(["circuit board patterns", "data streams", "glitch distortion"])
             hits += 1
         if uio.exact_text: hits += 1
         uio.intelligence_score = hits
