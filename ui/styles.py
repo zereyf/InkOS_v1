@@ -3,10 +3,10 @@ ui/styles.py — InkOS Design System
 ==========================================
 The full CSS string exported as a single constant.
 
-v4.0: THE COMMAND PILL UPDATE
-- Added 'field-sizing: content' for auto-expanding ChatGPT-style text area.
-- Added specific isolation CSS for the Circular Hardware Buttons (Mic/Bolt).
-- Kept standard buttons pristine.
+v4.1: THE UNBREAKABLE PILL UPDATE
+- Upgraded to :has() pseudo-class to pierce Streamlit's DOM wrappers.
+- Enforced flex-wrap: nowrap to strictly ban mobile vertical stacking.
+- Masked native audio widget to display only the circular mic interface.
 """
 
 STYLES: str = """
@@ -154,43 +154,35 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 [data-testid="stSidebar"] > div { animation: fadeUp 0.4s ease both; }
 
 
-    
-
 /* ══════════════════════════════════════════
    THE CHATGPT PILL ILLUSION (Mobile-Proof)
 ══════════════════════════════════════════ */
-/* 1. Turn the Column Container into the unified Pill */
-.command-pill-marker + div[data-testid="stHorizontalBlock"] {
+/* 1. Target the Horizontal Block that CONTAINS our marker */
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) {
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: nowrap !important; /* Forces side-by-side on mobile, NO STACKING */
+    flex-wrap: nowrap !important; /* STRICTLY bans vertical stacking on mobile */
     background-color: var(--bg-input) !important;
     border: 1px solid var(--gold-border) !important;
     border-radius: 28px !important;
     padding: 4px 10px 4px 0px !important;
     align-items: flex-end !important;
     box-shadow: inset 0 2px 10px rgba(0,0,0,0.3) !important;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
-    min-height: 56px !important;
+    min-height: 58px !important;
+    transition: all 0.3s ease !important;
 }
 
-/* Add a gold glow when the user clicks inside the pill */
-.command-pill-marker + div[data-testid="stHorizontalBlock"]:focus-within {
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker):focus-within {
     border-color: var(--gold) !important;
     box-shadow: 0 0 15px var(--gold-glow), inset 0 2px 10px rgba(0,0,0,0.5) !important;
 }
 
-/* Prevent internal columns from collapsing */
-.command-pill-marker + div[data-testid="stHorizontalBlock"] > div {
-    min-width: unset !important;
-}
-
-/* 2. Strip native borders from the Text Area so it blends into the Pill */
-.command-pill-marker + div[data-testid="stHorizontalBlock"] div[data-testid="stTextArea"] textarea {
+/* 2. Strip native styling from the Text Area so it vanishes into the Pill */
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) div[data-testid="stTextArea"] textarea {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    padding: 12px 10px 12px 24px !important;
+    padding: 14px 10px 14px 24px !important;
     field-sizing: content !important; /* Auto-grows vertically */
     min-height: 48px !important;
     max-height: 350px !important;
@@ -200,26 +192,25 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
     line-height: 1.6 !important;
 }
 
-/* Remove focus outlines from the inner text area */
-.command-pill-marker + div[data-testid="stHorizontalBlock"] div[data-testid="stTextArea"] textarea:focus {
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) div[data-testid="stTextArea"] textarea:focus {
     box-shadow: none !important;
     outline: none !important;
 }
 div[data-testid="InputInstructions"] { display: none !important; }
 
-/* 3. Tame the bulky Audio Input so only the circular Mic shows */
-.command-pill-marker + div[data-testid="stHorizontalBlock"] [data-testid="stAudioInput"] {
+/* 3. Tame the bulky Audio Input so ONLY the circular Mic shows */
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) [data-testid="stAudioInput"] {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
     width: 48px !important; /* Clips the huge waveform completely */
-    min-width: 48px !important;
+    flex: 0 0 48px !important; /* Prevents column from squishing the mic */
     overflow: hidden !important; 
-    margin-bottom: 2px !important;
+    margin-bottom: 3px !important;
 }
 
-/* 4. Standardize Action Buttons (Mic / Bolt) to fit inside the Pill */
-.command-pill-marker + div[data-testid="stHorizontalBlock"] button {
+/* 4. Standardize Action Buttons (Mic / Bolt) to fit perfectly */
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) button {
     border-radius: 50% !important;
     width: 44px !important;
     height: 44px !important;
@@ -230,23 +221,24 @@ div[data-testid="InputInstructions"] { display: none !important; }
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    margin-bottom: 2px !important;
+    margin-bottom: 3px !important;
     transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
 
-.command-pill-marker + div[data-testid="stHorizontalBlock"] button:hover {
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) button:hover {
     background: var(--gold-glow) !important;
     border-color: var(--gold) !important;
     transform: scale(1.08) !important;
 }
 
-/* Fix font size for the Bolt Icon specifically */
-button[title="Compile Blueprint"] p {
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) button p {
     font-size: 1.4rem !important;
     margin: 0 !important;
     line-height: 1 !important;
 }
- ══════════════════════════════════════════
+
+
+/* ══════════════════════════════════════════
    STANDARD COMPONENTS (CARDS, METRICS)
 ══════════════════════════════════════════ */
 .vc-wordmark { font-family: var(--font-d); font-size: 1.3rem; font-weight: 700; color: var(--gold); letter-spacing: 0.18em; text-transform: uppercase; line-height: 1; }
