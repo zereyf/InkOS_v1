@@ -3,10 +3,9 @@ ui/styles.py — InkOS Design System
 ==========================================
 The full CSS string exported as a single constant.
 
-v5.0: THE PURE PILL ARCHITECTURE
-- Nuked deep [data-baseweb] backgrounds using universal selectors.
+v5.1: THE PURE PILL REFINEMENT
+- Specifically targeted `.stTextArea > div` to eliminate the dark grey inner box.
 - Forced gap: 0px to prevent mobile overflow.
-- Unified Text Area and Context Actions into a single, seamless component.
 """
 
 STYLES: str = """
@@ -21,7 +20,7 @@ STYLES: str = """
     --bg-deep:     #07090F;
     --bg-card:     #0B1019;
     --bg-raised:   #101520;
-    --bg-input:    #080C14;
+    --bg-input:    #080C14; /* Target Pill Background Color */
     --gold:        #C9A84C;
     --gold-dim:    #8A6E2E;
     --gold-glow:   rgba(201,168,76,0.14);
@@ -88,7 +87,11 @@ div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) > div[data-testid
 }
 
 /* 3. 🚨 TOTAL ANNIHILATION OF STREAMLIT'S GREY BOXES 🚨 */
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) [data-testid="stTextArea"] * {
+/* Target every nested div inside the text area block and strip its background/border */
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) div[data-testid="stTextArea"],
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) div[data-testid="stTextArea"] > div,
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) div[data-testid="stTextArea"] textarea,
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) div[data-baseweb="base-input"] {
     background: transparent !important;
     background-color: transparent !important;
     border: none !important;
@@ -108,7 +111,7 @@ div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) textarea {
     margin: 0 !important;
 }
 
-div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) textarea:focus { outline: none !important; }
+div[data-testid="stHorizontalBlock"]:has(.command-pill-marker) textarea:focus { outline: none !important; background-color: transparent !important;}
 div[data-testid="InputInstructions"] { display: none !important; }
 
 /* 5. Action Buttons (Mic / Send Bolt) */
