@@ -13,7 +13,7 @@ Pipeline (7 Steps):
     6. PROMPT COMPILER       → Emit model-native syntax
     7. VALIDATOR             → Sanity-check for contradictions
 
-v2.2: The Master Aesthetic Patch (Anime/Cyberpunk Override)
+v2.3: Character-Priority Semantic Mapping Patch
 """
 
 from __future__ import annotations
@@ -134,7 +134,7 @@ _PREPROCESSOR_SYSTEM_PROMPT = textwrap.dedent("""
         "action":           "<what is happening/motion>",
         "setting":          "<environment/context>",
         "mood":             "<emotional tone>",
-        "exact_text":       ["<Extract ANY specific names, letters, or words the user explicitly wants written in the output>"],
+        "exact_text":       ["<Extract ANY specific names, letters, or words the user explicitly wants written in the output. DO NOT include character names here unless explicitly asked to write their name as text>"],
         "style_cues":       ["<aesthetic/technical keywords>"]
     }
 """).strip()
@@ -200,7 +200,6 @@ class InkOSCompiler:
         lvl = max(1, min(10, int(data.get("photorealism", 5))))
         closest_lvl = min(PhotorealismLevel, key=lambda l: abs(l.value - lvl))
 
-        # Force text_required to true if exact_text was found
         requires_text = bool(data.get("text_required", False)) or len(uio.semantic_chunks.exact_text) > 0
 
         uio.intent_profile = IntentProfile(
@@ -239,31 +238,57 @@ class InkOSCompiler:
         if ip.domain in (ContentDomain.CODE_ANALYSIS, ContentDomain.TEXT_COPY, ContentDomain.AGENTIC):
             return uio 
 
-        # Gather all text to scan for style triggers
+        # Gather all text to scan for style and IP triggers
         raw_cues = " ".join(chunks.style_cues + [chunks.subject, chunks.setting, chunks.mood, uio.raw_input]).lower()
         ui_cues = " ".join(uio.constraints.must_have).lower()
         all_cues = raw_cues + " " + ui_cues
 
+        # ── PATCH V2.3: Character-Priority Semantic Mapping ──
+        SPECIALIZED_IP_TOKENS: dict[str, list[str]] = {
+            "shikamaru": [
+                "Shikamaru Nara physically present in the scene, featuring his signature spiky ponytail, mesh armor, and Konoha flak jacket",
+                "stylized silhouette of Shikamaru's shadow possession jutsu",
+                "references to Shogi pieces and tactical intelligence"
+            ],
+            "naruto": [
+                "The signature Konoha hidden leaf symbol visible in the world detailing",
+                "Naruto anime universe aesthetic cues"
+            ]
+        }
+
+        ip_injected = False
+        for ip_keyword, visual_tokens in SPECIALIZED_IP_TOKENS.items():
+            if ip_keyword in all_cues:
+                layer.art_references.extend(visual_tokens)
+                ip.photorealism = PhotorealismLevel.STYLIZED 
+                ip.domain = ContentDomain.ILLUSTRATION
+                layer.quality_boosters.append("High-end anime series visual fidelity")
+                ip_injected = True
+                
+                # If the character name accidentally got flagged as 'exact_text' to render, pull it out
+                uio.constraints.must_have = [c for c in uio.constraints.must_have if ip_keyword.upper() not in c.upper()]
+
         # ── RESTORED TASTE LAYER: The Anime & Cyberpunk Hijack ──
-        if any(w in all_cues for w in ["anime", "manga", "cel", "ghibli", "shinkai", "shikamaru", "naruto"]):
-            layer.art_references = ["Akira 1988 cel animation", "Studio Ghibli background detailing", "Makoto Shinkai volumetric lighting"]
-            layer.texture_keywords = ["2D flat colors", "inked outlines", "cel-shaded", "anime art style"]
-            # Force stylized illustration (kills photorealism)
+        if any(w in all_cues for w in ["anime", "manga", "cel", "ghibli", "shinkai"]):
+            if not ip_injected: # Only inject generic anime refs if no specific IP was found
+                layer.art_references.extend(["Akira 1988 cel animation", "Studio Ghibli background detailing", "Makoto Shinkai volumetric lighting"])
+            
+            layer.texture_keywords.extend(["2D flat colors", "inked outlines", "cel-shaded", "anime art style"])
             ip.photorealism = PhotorealismLevel.STYLIZED 
             ip.domain = ContentDomain.ILLUSTRATION
             
         elif any(w in all_cues for w in ["cyberpunk", "tech-noir", "hacker", "neon"]):
-            layer.art_references = ["Syd Mead", "Blade Runner aesthetic"]
-            layer.color_palette = ["neon cyan", "electric purple", "dark base", "RGB accents"]
+            layer.art_references.extend(["Syd Mead", "Blade Runner aesthetic"])
+            layer.color_palette.extend(["neon cyan", "electric purple", "dark base", "RGB accents"])
             
         elif ip.cinematic or "cinematic" in all_cues:
-            layer.lighting_keywords = ["Shotdeck cinematic lighting", "anamorphic flare"]
-            layer.camera_keywords = ["35mm lens", "shallow depth of field"]
-            layer.art_references = ["A24 portraiture", "Vogue editorial"]
+            layer.lighting_keywords.extend(["Shotdeck cinematic lighting", "anamorphic flare"])
+            layer.camera_keywords.extend(["35mm lens", "shallow depth of field"])
+            layer.art_references.extend(["A24 portraiture", "Vogue editorial"])
             
         elif ip.domain == ContentDomain.PRODUCT_RENDER or "ad" in all_cues or "mockup" in all_cues:
-            layer.lighting_keywords = ["studio softbox", "rim lighting"]
-            layer.art_references = ["luxury commercial macro photography", "Behance packaging design"]
+            layer.lighting_keywords.extend(["studio softbox", "rim lighting"])
+            layer.art_references.extend(["luxury commercial macro photography", "Behance packaging design"])
             ip.domain = ContentDomain.PRODUCT_RENDER
         
         uio.aesthetic_layer = layer
