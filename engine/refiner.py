@@ -1,12 +1,11 @@
 """
 engine/refiner.py - InkOS Cognitive Prompt Engine
 =================================================
-v7.0: THE OMNI-EXPERT ARCHITECTURE
-- Added: MarketingExpert (SEO, Hooks, CTAs).
-- Added: DataScienceExpert (Excel, SQL, Logic).
-- Added: ResearchExpert (Academic, Summaries).
-- Added: ProductivityExpert (Schedules, Habits).
-- Preserved: All flawless Visual DNA, Code/Copy experts, and Arabic/UI bridges.
+v7.1: THE TYPOGRAPHY & EXTRACTION PATCH
+- Fixed: Python string `.join()` bug causing spaced out letters.
+- Fixed: LLM hallucination extracting the entire prompt as text.
+- Added: Hardcoded Identity Protection for "Ameer".
+
 """
 
 from __future__ import annotations
@@ -69,6 +68,8 @@ class VisualExpert(BaseExpert):
     def assemble(self, uio: UnifiedIntentObject) -> str:
         dna = uio.style_dna
         quality = ", ".join(QUALITY_TIERS.get("studio", []))
+        
+        # The spacing bug is fixed here because exact_text is strictly a list now
         txt = f'EXACT TEXT: "{" ".join(uio.exact_text)}"' if uio.exact_text else ""
         
         if uio.target_model == TargetModel.IMAGEN3:
@@ -153,7 +154,6 @@ class ProductivityExpert(BaseExpert):
 
 class InkOSCompiler:
     def __init__(self):
-        # Register the experts
         self.experts = {
             ContentDomain.CODE_ANALYSIS: CodeExpert(),
             ContentDomain.TEXT_COPY: CopywritingExpert(),
@@ -170,7 +170,8 @@ class InkOSCompiler:
         low = raw_input.lower()
 
         # 1. SEMANTIC EXTRACTION & DOMAIN ROUTING
-        system = """Extract 'subject' and 'exact_text'. Determine 'is_visual_task' (bool).
+        system = """Extract 'subject' and 'exact_text' (MUST be a list of strings containing ONLY explicit names, titles, or quoted words meant to be written as typography. Do NOT extract the whole prompt). 
+        Determine 'is_visual_task' (bool).
         Determine 'domain' string based on these strict rules:
         - If programming/coding -> 'code_analysis'
         - If ads/social/SEO/sales -> 'marketing'
@@ -183,7 +184,16 @@ class InkOSCompiler:
         data = self._llm_call(system, raw_input)
         
         uio.subject = data.get("subject", raw_input)
-        uio.exact_text = data.get("exact_text", [])
+        
+        # THE FIX: Type Check the exact_text to prevent Python String Join Bugs
+        ext_text = data.get("exact_text", [])
+        if isinstance(ext_text, str):
+            uio.exact_text = [ext_text] if ext_text.strip() else []
+        elif isinstance(ext_text, list):
+            uio.exact_text = [str(t) for t in ext_text if t.strip()]
+        else:
+            uio.exact_text = []
+
         uio.is_visual_task = data.get("is_visual_task", False)
         
         try:
@@ -223,13 +233,23 @@ class InkOSCompiler:
     def _apply_intelligence(self, uio: UnifiedIntentObject) -> UnifiedIntentObject:
         low = uio.raw_input.lower()
         hits = 0
+        
+        # 1. Identity Protection (Ameer)
+        if "ameer" in low and not any("ameer" in t.lower() for t in uio.exact_text):
+            uio.exact_text.append("Ameer")
+            hits += 1
+
+        # 2. Character Protection (Shikamaru)
         if "shikamaru" in low:
             uio.style_dna["art_medium"] = "Dynamic 2D anime render of Shikamaru Nara (Konoha Vest)"
             uio.exact_text = [t for t in uio.exact_text if t.lower() != "shikamaru"]
             hits += 1
+            
+        # 3. Theme Protection (Cyber)
         if any(w in low for w in ["tech", "cyber", "security", "hacker"]):
             uio.style_dna["fx_elements"] = ["circuit board patterns", "data streams", "glitch distortion"]
             hits += 1
+            
         if uio.exact_text: hits += 1
         uio.intelligence_score = hits
         return uio
@@ -244,7 +264,6 @@ class InkOSCompiler:
                 pass
 
         if not uio.is_visual_task: 
-            # Smart default routing based on the new domains
             if uio.domain in [ContentDomain.CODE_ANALYSIS, ContentDomain.DATA_ANALYSIS, ContentDomain.ACADEMIC]:
                 uio.target_model = TargetModel.CLAUDE
             else:
