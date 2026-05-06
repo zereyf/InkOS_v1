@@ -252,6 +252,7 @@ def render_workspace(cfg: dict) -> None:
                     aesthetic_choice = cfg["aesthetic_choice"],
                     islamic_mode     = cfg["islamic_mode"],
                     persona          = cfg.get("active_persona"),
+                    brand_identity   = cfg.get("brand_identity"),
                 )
                 
                 score = (audit or {}).get("score", 0)
