@@ -1,31 +1,36 @@
 """
 config.py — Environment Bootstrap & Application Constants
 ==========================================================
-v3.1: Merged — WHISPER, MARCEL identity, expert personas,
-      LOGIC_FRAMEWORKS, VISUAL_DIRECTOR_PROMPT, DOMAIN_KNOWLEDGE,
-      STYLE_LIBRARY, QUALITY_TIERS, updated TARGET_GUIDES.
+v4.0: Hardened for production — Implemented Immutable Data Structures,
+      Environment Variable Overrides, and Strict Typing.
 """
 
 import os
+from types import MappingProxyType
+from typing import Optional
 from dotenv import load_dotenv
 from groq import Groq
 
-load_dotenv()
+# Load environment variables (override=True ensures cloud injection takes precedence)
+load_dotenv(override=True)
 
-# ── API CLIENT ────────────────────────────────────────────────────────────────
-_api_key: str = os.getenv("GROQ_API_KEY", "")
-client: Groq = Groq(api_key=_api_key) if _api_key else None  # type: ignore
+# ── API CLIENT BOOTSTRAP ──────────────────────────────────────────────────────
+_api_key: str = os.getenv("GROQ_API_KEY", "").strip()
 API_KEY_MISSING: bool = not bool(_api_key)
 
-# ── MODEL CONFIG ──────────────────────────────────────────────────────────────
-MODEL_ID:       str   = "llama-3.3-70b-versatile"
-AUDIO_MODEL_ID: str   = "whisper-large-v3-turbo"
-TEMPERATURE:    float = 0.3
-MAX_TOKENS:     int   = 1536
+# Strictly typed as Optional to force downstream null-checks
+client: Optional[Groq] = Groq(api_key=_api_key) if _api_key else None
+
+
+# ── ENVIRONMENT-OVERRIDABLE MODEL CONFIG ──────────────────────────────────────
+# Enables CI/CD deployments to swap models without requiring code changes.
+MODEL_ID:       str   = os.getenv("INKOS_MODEL_ID", "llama-3.3-70b-versatile")
+AUDIO_MODEL_ID: str   = os.getenv("INKOS_AUDIO_MODEL", "whisper-large-v3-turbo")
+TEMPERATURE:    float = float(os.getenv("INKOS_TEMPERATURE", "0.3"))
+MAX_TOKENS:     int   = int(os.getenv("INKOS_MAX_TOKENS", "1536"))
+
 
 # ── WHISPER GUARDRAILS ────────────────────────────────────────────────────────
-# Forces Whisper to transcribe Arabic as Arabic, English as English.
-# Prevents auto-translation hallucinations and primes InkOS vocabulary.
 WHISPER_CONTEXT_PROMPT: str = (
     "This is a voice command for InkOS. The user may speak in English or Arabic (العربية). "
     "Do NOT translate Arabic to English; transcribe it exactly in the spoken language. "
@@ -36,15 +41,17 @@ WHISPER_CONTEXT_PROMPT: str = (
 RATE_WINDOW_SECONDS: int = 60
 RATE_MAX_CALLS:      int = 10
 
-# ── QUALITY TIERS ─────────────────────────────────────────────────────────────
-QUALITY_TIERS: dict = {
+
+# ── IMMUTABLE CONFIGURATION REGISTRIES ────────────────────────────────────────
+# MappingProxyType prevents accidental cross-session mutation in Streamlit's threaded environment.
+
+QUALITY_TIERS = MappingProxyType({
     "standard": [],
     "premium":  ["ultra polished rendering", "professional composition"],
     "studio":   ["masterpiece quality", "artstation featured", "studio-grade rendering"],
-}
+})
 
-# ── STYLE DNA LIBRARY ─────────────────────────────────────────────────────────
-STYLE_LIBRARY: dict = {
+STYLE_LIBRARY = MappingProxyType({
     "anime_banner": {
         "art_medium":        "2D anime illustration",
         "render_type":       "high contrast composited wallpaper design",
@@ -63,10 +70,9 @@ STYLE_LIBRARY: dict = {
         "composition_style": "centered portrait framing",
         "design_language":   ["official anime frame", "studio key visual"],
     },
-}
+})
 
-# ── DOMAIN KNOWLEDGE ─────────────────────────────────────────────────────────
-DOMAIN_KNOWLEDGE: dict = {
+DOMAIN_KNOWLEDGE = MappingProxyType({
     "code_analysis": (
         "Strictly adhere to SOLID principles and DRY code. Provide comprehensive Big-O complexity "
         "analysis for time and space. Enforce robust error handling, edge-case mitigation, and "
@@ -99,10 +105,68 @@ DOMAIN_KNOWLEDGE: dict = {
         "into atomic, trackable daily habits. Utilize time-blocking, Pomodoro, or Eisenhower "
         "matrix principles. Focus entirely on execution and removing friction."
     ),
-}
+})
+
+TARGET_GUIDES = MappingProxyType({
+    "Manus AI": (
+        "Agentic syntax: chain steps as 'Search → Analyze → Output'. "
+        "Use explicit tool tags: [WEB_SEARCH], [CODE_EXEC]. "
+        "End with explicit success criteria."
+    ),
+    "Claude": (
+        "Structural syntax: wrap all sections in XML tags "
+        "<role>, <task>, <constraints>, <output_format>. "
+        "Trigger chain-of-thought explicitly."
+    ),
+    "ChatGPT": (
+        "Conversational syntax: open with 'You are a...', "
+        "use numbered instructions and markdown headers. "
+        "End with explicit output format request."
+    ),
+    "Midjourney/Flux": (
+        "Modular visual syntax: [Subject] :: [Environment] :: [Lens/Camera] :: [Style]. "
+        "Include mandatory parameters: --ar 16:9 --v 6.0 --style raw."
+    ),
+    "DALL-E 3": (
+        "Highly descriptive cinematic production briefs in natural language. "
+        "Focus on literal scene description, cinematic lighting, hyper-detailed textures."
+    ),
+    "Gemini (Imagen 3)": (
+        "Spatially explicit 'Spatial Blueprint' — map out zones, diegetic text, "
+        "and precise typography placement. Best for readable text in images."
+    ),
+})
+
+AESTHETIC_PRESETS = MappingProxyType({
+    "Raw (No Preset)": (
+        "Standard AI interpretation. Follow user description literally with no added flavor."
+    ),
+    "Velvet (Signature)": (
+        "Focus: Tech-Noir Minimalism. Palette: Obsidian, Matte Black, Deep Gold (#C9A84C). "
+        "Lighting: Chiaroscuro, high-contrast, cinematic amber glows."
+    ),
+    "Scholar (Traditional)": (
+        "Focus: Arabic Heritage & Calligraphy. Palette: Sandstone, Emerald, Aged Parchment. "
+        "Lighting: Natural sunlight, soft organic shadows."
+    ),
+    "Cyber-Radiant": (
+        "Focus: High-energy tech. Palette: Electric Blue, Cyber Lime, Carbon Fiber. "
+        "Lighting: Volumetric neon, sharp lens flares."
+    ),
+})
+
+# Tuples are natively immutable.
+LOGIC_FRAMEWORKS: tuple = (
+    "Professional (RACE)",
+    "Technical (Debugger)",
+    "Academic",
+    "Creative",
+    "Visual Director",
+)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MARCEL: CORE IDENTITY & EXPERT PERSONAS
+# MARCEL & EXPERT PERSONAS (Strings are natively immutable)
 # ══════════════════════════════════════════════════════════════════════════════
 
 MARCEL_IDENTITY: str = """
@@ -205,71 +269,6 @@ EXPERT_DECISION_SCIENCE: str = """
 <tone>Socratic but efficient. Rigorous, traceable, objective.</tone>
 """
 
-# ── TARGET AI DIALECT GUIDES ──────────────────────────────────────────────────
-TARGET_GUIDES: dict = {
-    "Manus AI": (
-        "Agentic syntax: chain steps as 'Search → Analyze → Output'. "
-        "Use explicit tool tags: [WEB_SEARCH], [CODE_EXEC]. "
-        "End with explicit success criteria."
-    ),
-    "Claude": (
-        "Structural syntax: wrap all sections in XML tags "
-        "<role>, <task>, <constraints>, <output_format>. "
-        "Trigger chain-of-thought explicitly."
-    ),
-    "ChatGPT": (
-        "Conversational syntax: open with 'You are a...', "
-        "use numbered instructions and markdown headers. "
-        "End with explicit output format request."
-    ),
-    "Midjourney/Flux": (
-        "Modular visual syntax: [Subject] :: [Environment] :: [Lens/Camera] :: [Style]. "
-        "Include mandatory parameters: --ar 16:9 --v 6.0 --style raw."
-    ),
-    "DALL-E 3": (
-        "Highly descriptive cinematic production briefs in natural language. "
-        "Focus on literal scene description, cinematic lighting, hyper-detailed textures."
-    ),
-    "Gemini (Imagen 3)": (
-        "Spatially explicit 'Spatial Blueprint' — map out zones, diegetic text, "
-        "and precise typography placement. Best for readable text in images."
-    ),
-}
-
-# ── AESTHETIC PRESETS ─────────────────────────────────────────────────────────
-AESTHETIC_PRESETS: dict = {
-    "Raw (No Preset)": (
-        "Standard AI interpretation. Follow user description literally with no added flavor."
-    ),
-    "Velvet (Signature)": (
-        "Focus: Tech-Noir Minimalism. Palette: Obsidian, Matte Black, Deep Gold (#C9A84C). "
-        "Lighting: Chiaroscuro, high-contrast, cinematic amber glows."
-    ),
-    "Scholar (Traditional)": (
-        "Focus: Arabic Heritage & Calligraphy. Palette: Sandstone, Emerald, Aged Parchment. "
-        "Lighting: Natural sunlight, soft organic shadows."
-    ),
-    "Cyber-Radiant": (
-        "Focus: High-energy tech. Palette: Electric Blue, Cyber Lime, Carbon Fiber. "
-        "Lighting: Volumetric neon, sharp lens flares."
-    ),
-}
-
-# ── LOGIC FRAMEWORKS ──────────────────────────────────────────────────────────
-# Single source of truth — imported by sidebar.py.
-# WHY: sidebar previously hardcoded this list inline, causing drift
-# from what config defined. One list here, imported everywhere.
-LOGIC_FRAMEWORKS: list = [
-    "Professional (RACE)",
-    "Technical (Debugger)",
-    "Academic",
-    "Creative",
-    "Visual Director",
-]
-
-# ── VISUAL DIRECTOR FRAMEWORK ─────────────────────────────────────────────────
-# Injected into the system prompt when framework == "Visual Director".
-# Activates Style DNA deconstruction instead of standard prompt architecture.
 VISUAL_DIRECTOR_PROMPT: str = """
 ACTIVE FRAMEWORK: Visual Director (Cognitive Prompt Compiler)
 Task: Deconstruct raw concepts into elite, studio-grade prompt architecture.
@@ -287,7 +286,6 @@ INPUT_MAX_CHARS:      int = 2000
 INPUT_WARN_THRESHOLD: int = 1800
 AUTO_SELECT_LABEL:    str = "⚡ Auto (CIPHER Selects)"
 
-# ── AUTO TARGET SELECTION GUIDE ───────────────────────────────────────────────
 TARGET_SELECTION_GUIDE: str = """
 Given a raw user input, determine the single best AI target from this list:
 - Claude        : structured analysis, long-form writing, coding, research, XML outputs, Arabic scholarly
