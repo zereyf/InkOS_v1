@@ -1,11 +1,9 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2: THE UX OVERHAUL
-- Killed the clunky dropdown navigation.
-- Implemented persistent, clean sidebar routing.
-- Added custom CSS to style the radio buttons like a premium SaaS menu.
-- Preserved RTL support and mobile-optimized constraints.
+v3: ARCHITECTURE ALIGNMENT
+- Cleaned up duplicate CSS (Ghost menu safely moved to styles.py).
+- Lifted 'cfg' into session state for global tab access.
 """
 
 import sys
@@ -24,59 +22,7 @@ st.markdown("""
         }
         .block-container { padding-top: 4rem !important; }
         
-        /* ── SAAS SIDEBAR NAVIGATION OVERHAUL ── */
-        div[data-testid="stSidebarNav"] {display: none;}
-        
-        /* 1. Nuke the native radio circles */
-        div[role="radiogroup"] > label > div:first-child {
-            display: none !important;
-        }
-        
-        /* 2. Style the menu item containers */
-        div[role="radiogroup"] > label {
-            width: 100% !important;
-            padding: 12px 16px !important;
-            margin-bottom: 4px !important;
-            border-radius: 4px !important;
-            background: transparent !important;
-            border-left: 3px solid transparent !important;
-            transition: all 0.2s ease !important;
-            cursor: pointer !important;
-        }
-        
-        /* 3. Typography for inactive items */
-        div[role="radiogroup"] > label p {
-            font-family: 'IBM Plex Mono', monospace !important;
-            font-size: 0.75rem !important;
-            letter-spacing: 0.15em !important;
-            color: #5D6D7E !important; /* text-muted */
-            text-transform: uppercase !important;
-            margin: 0 !important;
-            transition: color 0.2s ease !important;
-        }
-        
-        /* 4. Hover State */
-        div[role="radiogroup"] > label:hover {
-            background: rgba(201, 168, 76, 0.04) !important;
-            border-left: 3px solid rgba(201, 168, 76, 0.4) !important;
-        }
-        div[role="radiogroup"] > label:hover p {
-            color: #E2D5BC !important; /* text glow on hover */
-        }
-        
-        /* 5. Active/Selected State Magic */
-        div[role="radiogroup"] > label:has(input:checked) {
-            background: linear-gradient(90deg, rgba(201,168,76,0.12) 0%, transparent 100%) !important;
-            border-left: 3px solid #C9A84C !important;
-        }
-        
-        div[role="radiogroup"] > label:has(input:checked) p {
-            color: #C9A84C !important;
-            font-weight: 600 !important;
-            text-shadow: 0 0 10px rgba(201,168,76,0.2) !important;
-        }
-
-          /* ── LOGO WORDMARK OVERHAUL ── */
+        /* ── LOGO WORDMARK OVERHAUL ── */
         .sidebar-logo-box {
             background: linear-gradient(135deg, rgba(201,168,76,0.1) 0%, transparent 100%);
             border-left: 2px solid var(--gold);
@@ -105,7 +51,6 @@ st.markdown("""
             margin-top: 5px;
             margin-left: 2px;
         }
-
     </style>
 """, unsafe_allow_html=True)
 
@@ -171,14 +116,17 @@ with st.sidebar:
         list(nav_options.keys()), 
         label_visibility="collapsed"
     )
-    st.markdown("---")
- # Visual divider before the configuration controls
+    st.markdown("---") # Visual divider before the configuration controls
 
 # Render the rest of the sidebar configuration controls
 cfg = render_sidebar()
 
+# ── GLOBAL STATE REGISTRATION ─────────────────────────────────────────────────
+# Lift the sidebar config into the global session state.
+# Now ANY tab can access st.session_state[K.APP_CONFIG] without prop-drilling.
+st.session_state[K.APP_CONFIG] = cfg
+
 # ── MAIN CONTENT EXECUTION ────────────────────────────────────────────────────
-# The main UI is now completely clean of navigation clutter.
 if selected_nav == t("tab_workspace"):
     nav_options[selected_nav](cfg)
 else:
