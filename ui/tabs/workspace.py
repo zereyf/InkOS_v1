@@ -13,7 +13,7 @@ Responsibilities:
 
 import hashlib
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from state import K
@@ -99,7 +99,7 @@ def render_workspace(cfg: dict) -> None:
         unsafe_allow_html=True,
     )
 
-    # Active persona badge — shown when a persona is loaded
+    # Active persona badge
     active_persona = cfg.get("active_persona")
     if active_persona:
         from forge.persona_engine import get_persona_display_name
@@ -128,20 +128,6 @@ def render_workspace(cfg: dict) -> None:
     """, unsafe_allow_html=True)
 
     # ── VOICE ENGINE ──────────────────────────────────────────────────────────
-    # FIX 1: Hash-based deduplication guard.
-    #   st.audio_input returns a BytesIO object on every rerun.
-    #   BytesIO equality compares by identity not content —
-    #   two objects with identical bytes are NOT equal.
-    #   We hash the bytes with MD5 and compare hashes instead.
-    #   This guarantees each unique recording is transcribed exactly once.
-    #
-    # FIX 2: WHISPER_CONTEXT_PROMPT passed to API.
-    #   Without it Whisper auto-translates Arabic → English.
-    #   The context prompt forces transcription in the spoken language.
-    #
-    # FIX 3: Read bytes once, reuse for both hash and API call.
-    #   audio_value.read() consumes the stream — calling it twice returns
-    #   an empty bytes object on the second call.
     from config import WHISPER_CONTEXT_PROMPT, client as _audio_client
 
     st.markdown(
@@ -153,7 +139,6 @@ def render_workspace(cfg: dict) -> None:
     audio_value = st.audio_input("Record your intent", label_visibility="collapsed")
 
     if audio_value is not None:
-        # Read bytes once — stream is consumed on first read
         audio_bytes = audio_value.read()
         audio_hash  = hashlib.md5(audio_bytes).hexdigest()
 
@@ -163,13 +148,13 @@ def render_workspace(cfg: dict) -> None:
                     transcription = _audio_client.audio.transcriptions.create(
                         file=("audio.wav", audio_bytes),
                         model="whisper-large-v3-turbo",
-                        prompt=WHISPER_CONTEXT_PROMPT,   # FIX 2: language guard
+                        prompt=WHISPER_CONTEXT_PROMPT,
                         response_format="text",
                     )
                     current_text = st.session_state.get("ta_input", "")
                     new_text = f"{current_text} {transcription}".strip() if current_text else transcription
                     st.session_state["ta_input"]        = new_text
-                    st.session_state["last_audio_hash"] = audio_hash  # FIX 1: store hash
+                    st.session_state["last_audio_hash"] = audio_hash
                     st.rerun()
                 except Exception as e:
                     st.error(f"Voice Engine Error: {str(e)}")
@@ -212,8 +197,9 @@ def render_workspace(cfg: dict) -> None:
 
         elif violations:
             st.error(t("injection_blocked"))
-            st.session_state[K.SECURITY_LOG].append({
-                "time":     datetime.now().strftime("%H:%M:%S"),
+            # STRICT UTC TIMESTAMPS
+            st.session_state.setdefault(K.SECURITY_LOG, []).append({
+                "time":     datetime.now(timezone.utc).strftime("%H:%M:%S"),
                 "hash":     hashlib.md5((raw_input or "").encode()).hexdigest()[:10],
                 "patterns": violations,
             })
@@ -225,10 +211,6 @@ def render_workspace(cfg: dict) -> None:
             with st.status(t("status_processing"), expanded=True) as status:
                 st.write(t("status_mapping"))
 
-                # ── AUTO TARGET RESOLUTION ─────────────────────────────────
-                # If user left target on Auto, CIPHER analyses the input
-                # and selects the best target before refinement begins.
-                # If user manually selected a target, respect that choice.
                 resolved_target = cfg["target_model"]
 
                 if cfg["target_model"] == AUTO_SELECT_LABEL:
@@ -239,11 +221,9 @@ def render_workspace(cfg: dict) -> None:
                     st.session_state[K.AUTO_REASON] = auto_reason
                     st.write(f"✓ Target selected: **{auto_target}** — {auto_reason}")
                 else:
-                    # Clear auto state when user manually selects
                     st.session_state[K.AUTO_TARGET] = None
                     st.session_state[K.AUTO_REASON] = None
 
-                # CIPHER may fire a retry if first score < 80
                 result, audit, pattern = run_refinement_and_audit(
                     user_text        = cleaned,
                     target           = resolved_target,
@@ -252,7 +232,7 @@ def render_workspace(cfg: dict) -> None:
                     aesthetic_choice = cfg["aesthetic_choice"],
                     islamic_mode     = cfg["islamic_mode"],
                     persona          = cfg.get("active_persona"),
-                    brand_identity   = cfg.get("brand_identity"), # 🚨 FIXED: Priority 1 Audit Bug
+                    brand_identity   = cfg.get("brand_identity"), 
                 )
                 
                 score = (audit or {}).get("score", 0)
@@ -268,11 +248,12 @@ def render_workspace(cfg: dict) -> None:
                     st.session_state[K.LAST_INPUT]   = cleaned
                     st.session_state[K.LAST_PATTERN] = pattern
 
-                    st.session_state[K.HISTORY].insert(0, {
+                    # STRICT UTC TIMESTAMPS FOR HISTORY
+                    st.session_state.setdefault(K.HISTORY, []).insert(0, {
                         "id":        hashlib.md5(
-                                         f"{cleaned}{datetime.now().isoformat()}".encode()
+                                         f"{cleaned}{datetime.now(timezone.utc).isoformat()}".encode()
                                      ).hexdigest()[:8],
-                        "time":      datetime.now().strftime("%H:%M:%S"),
+                        "time":      datetime.now(timezone.utc).strftime("%H:%M:%S"),
                         "target":    resolved_target,
                         "framework": cfg["framework"],
                         "aesthetic": cfg["aesthetic_choice"],
@@ -295,7 +276,6 @@ def render_workspace(cfg: dict) -> None:
     if last_result and not last_result.startswith("[REFINEMENT ERROR]"):
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # Show CIPHER auto-selection explanation if it was used
         auto_target = st.session_state.get(K.AUTO_TARGET)
         auto_reason = st.session_state.get(K.AUTO_REASON)
         if auto_target and auto_reason:
@@ -334,11 +314,6 @@ def render_workspace(cfg: dict) -> None:
                 f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>',
                 unsafe_allow_html=True,
             )
-            # WHY text_area over st.code:
-            # st.code renders in a fixed-height non-resizable box.
-            # Users cannot easily select, copy, or read long prompts.
-            # text_area is resizable, fully selectable, and copyable.
-            # disabled=True makes it read-only while keeping it interactive.
             st.text_area(
                 "refined_output",
                 value=last_result,
@@ -351,12 +326,14 @@ def render_workspace(cfg: dict) -> None:
             st.download_button(
                 t("download_prompt"),
                 data=last_result,
+                # STRICT UTC TIMESTAMPS
                 file_name=(
                     f"vc_{cfg['target_model'].lower().replace(' ', '_')}"
-                    f"_{datetime.now().strftime('%H%M%S')}.txt"
+                    f"_{datetime.now(timezone.utc).strftime('%H%M%S')}.txt"
                 ),
                 key="btn_dl_result",
             )
+            
             # ── SAVE TO VAULT ──────────────────────────────────────────────────
             from vault.supabase_client import SUPABASE_MISSING as _SB_MISSING
             if not _SB_MISSING:
@@ -385,7 +362,6 @@ def render_workspace(cfg: dict) -> None:
                     if not vault_title.strip():
                         st.warning(t("save_vault_warning"))
                     else:
-                        # Spinner gives immediate feedback — user knows click registered
                         with st.spinner(t("saving_vault")):
                             from vault.vault_engine import save_prompt
                             audit_data   = st.session_state.get(K.LAST_AUDIT) or {}
@@ -402,7 +378,6 @@ def render_workspace(cfg: dict) -> None:
                                 islamic    = cfg.get("islamic_mode", False),
                                 aesthetic  = cfg.get("aesthetic_choice", ""),
                             )
-                        # Feedback always visible — success or failure, never silence
                         if save_err:
                             st.error(t('save_vault_error', error=save_err))
                         else:
