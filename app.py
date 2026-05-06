@@ -39,8 +39,59 @@ st.markdown("""
         margin-top: 5px; margin-left: 2px;
     }
 
-        /* 3. SAAS SIDEBAR NAVIGATION & RADIO OVERHAUL (GHOST AESTHETIC) */
+            /* 3. SAAS SIDEBAR NAVIGATION & RADIO OVERHAUL (GHOST AESTHETIC) */
     div[data-testid="stSidebarNav"] { display: none; }
+    
+    /* SURGICAL NUKE: Hide ONLY the exact div that contains the radio input/circle */
+    [data-testid="stSidebar"] [role="radiogroup"] [data-baseweb="radio"] > div:has(input[type="radio"]) {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        opacity: 0 !important;
+    }
+
+    /* ITEM CONTAINERS */
+    [data-testid="stSidebar"] [role="radiogroup"] label {
+        width: 100% !important; padding: 10px 14px !important; margin-bottom: 4px !important;
+        border-radius: 4px !important; background: transparent !important;
+        border-left: 3px solid transparent !important; transition: all 0.2s ease !important;
+        cursor: pointer !important; display: block !important;
+    }
+    
+    /* TEXT TYPOGRAPHY (Explicitly forcing display) */
+    [data-testid="stSidebar"] [role="radiogroup"] label div,
+    [data-testid="stSidebar"] [role="radiogroup"] label p,
+    [data-testid="stSidebar"] [role="radiogroup"] label span {
+        font-family: 'IBM Plex Mono', monospace !important; font-size: 0.75rem !important;
+        letter-spacing: 0.15em !important; color: #85929E !important; 
+        text-transform: uppercase !important; margin: 0 !important;
+        transition: color 0.2s ease !important; 
+        display: block !important; /* Forces visibility if inherited none */
+    }
+    
+    /* HOVER STATE */
+    [data-testid="stSidebar"] [role="radiogroup"] label:hover {
+        background: rgba(201, 168, 76, 0.04) !important;
+        border-left: 3px solid rgba(201, 168, 76, 0.4) !important;
+    }
+    [data-testid="stSidebar"] [role="radiogroup"] label:hover div,
+    [data-testid="stSidebar"] [role="radiogroup"] label:hover p,
+    [data-testid="stSidebar"] [role="radiogroup"] label:hover span { 
+        color: #E2D5BC !important; 
+    }
+    
+    /* ACTIVE/SELECTED STATE */
+    [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
+        background: linear-gradient(90deg, rgba(201,168,76,0.12) 0%, transparent 100%) !important;
+        border-left: 3px solid #C9A84C !important;
+    }
+    [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) div,
+    [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p,
+    [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) span {
+        color: #C9A84C !important; font-weight: 600 !important;
+        text-shadow: 0 0 10px rgba(201,168,76,0.2) !important;
+    }
+
     
     /* SURGICALLY KILL RADIO CIRCLES GLOBALLY */
     /* Targets the specific drawing div immediately following the hidden radio input */
