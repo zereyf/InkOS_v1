@@ -133,25 +133,20 @@ header[data-testid="stHeader"] { position: fixed !important; top: 0 !important; 
 div[data-testid="stSidebarNav"] { display: none; }
 
 /* GHOST RADIO BUTTON CLOAKING (The "Invisible Ink" Method) */
-/* Target the radio input and aggressively collapse its footprint */
+/* 1. Hide the actual input node */
 [data-testid="stSidebar"] [role="radiogroup"] input[type="radio"] {
-    position: absolute !important; 
-    opacity: 0 !important; 
-    width: 0 !important; 
-    height: 0 !important;
+    position: absolute !important; opacity: 0 !important; width: 0 !important; height: 0 !important;
 }
 
-/* Target the visual circle drawn by BaseWeb (usually an adjacent div or span) */
+/* 2. Hide any generic div/span immediately following the input (BaseWeb's circle drawing) */
 [data-testid="stSidebar"] [role="radiogroup"] input[type="radio"] + div,
-[data-testid="stSidebar"] [role="radiogroup"] input[type="radio"] + span,
+[data-testid="stSidebar"] [role="radiogroup"] input[type="radio"] + span {
+    display: none !important; opacity: 0 !important; width: 0 !important; height: 0 !important; margin: 0 !important; padding: 0 !important; border: none !important;
+}
+
+/* 3. Hide any div inside the radio container that DOES NOT contain text (fallback) */
 [data-testid="stSidebar"] [role="radiogroup"] [data-baseweb="radio"] > div:not(:last-child) {
-    display: none !important;
-    opacity: 0 !important;
-    width: 0 !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
+    display: none !important; opacity: 0 !important; width: 0 !important; height: 0 !important; margin: 0 !important; padding: 0 !important; border: none !important;
 }
 
 /* MENU ITEM CONTAINERS */
@@ -163,7 +158,6 @@ div[data-testid="stSidebarNav"] { display: none; }
 }
 
 /* TEXT TYPOGRAPHY */
-/* We target ALL text nodes inside the label, regardless of structure */
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] div,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] p,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] span {
@@ -193,7 +187,6 @@ div[data-testid="stSidebarNav"] { display: none; }
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) span {
     color: #C9A84C !important; font-weight: 600 !important; text-shadow: 0 0 10px rgba(201,168,76,0.2) !important;
 }
-
 
 /* ══════════════════════════════════════════
    HORIZONTAL LANGUAGE SWITCHER
