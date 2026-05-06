@@ -1,7 +1,7 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v9: Language switcher added at top. All labels use t() for i18n.
+v10: Fixed nested function bug. Unified language switcher logic.
 """
 
 import streamlit as st
@@ -46,27 +46,13 @@ def render_language_switcher() -> None:
     for i, lang in enumerate(LANGUAGES):
         with cols[i]:
             is_active = lang["code"] == current
-            # Active language gets gold styling via markdown badge
-            if is_active:
-                st.markdown(f"""
-                <div style="
-                    text-align:center;
-                    font-family:var(--font-m);
-                    font-size:0.7rem;
-                    color:var(--gold);
-                    border:1px solid var(--gold);
-                    border-radius:3px;
-                    padding:4px 0;
-                    background:var(--gold-glow);
-                    cursor:default;
-                ">{lang['flag']} {lang['label']}</div>
-                """, unsafe_allow_html=True)
-            else:
-                if st.button(
-                    f"{lang['flag']} {lang['label']}",
-                    key=f"lang_btn_{lang['code']}",
-                    use_container_width=True,
-                ):
+            if st.button(
+                f"{lang['flag']} {lang['label']}",
+                key=f"lang_btn_{lang['code']}",
+                use_container_width=True,
+                type="primary" if is_active else "secondary"
+            ):
+                if not is_active:
                     set_lang(lang["code"])
                     st.rerun()
 
@@ -82,27 +68,10 @@ def render_sidebar() -> SidebarConfig:
         """, unsafe_allow_html=True)
 
         # ── LANGUAGE SWITCHER ─────────────────────────────────────────────────
-        def render_language_switcher() -> None:
-    current = get_lang()
-    cols = st.columns(len(LANGUAGES))
-    for i, lang in enumerate(LANGUAGES):
-        with cols[i]:
-            is_active = lang["code"] == current
-            # Unify DOM: All items are now native buttons. 
-            # Active state triggers 'primary' CSS targeting.
-            if st.button(
-                f"{lang['flag']} {lang['label']}",
-                key=f"lang_btn_{lang['code']}",
-                use_container_width=True,
-                type="primary" if is_active else "secondary"
-            ):
-                if not is_active:
-                    set_lang(lang["code"])
-                    st.rerun()
+        render_language_switcher()
 
         # ── LOGIC CONFIGURATION ───────────────────────────────────────────────
         st.subheader(t("logic_config"))
-        # Auto option is first — when selected CIPHER picks the best target
         target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
         target_model = st.selectbox(
             t("target_dialect"),
@@ -111,7 +80,6 @@ def render_sidebar() -> SidebarConfig:
             help=t("target_help"),
         )
 
-        # Show CIPHER's auto-selection badge when auto is active
         if target_model == AUTO_SELECT_LABEL:
             auto_target = st.session_state.get(K.AUTO_TARGET)
             auto_reason = st.session_state.get(K.AUTO_REASON)
@@ -138,6 +106,7 @@ def render_sidebar() -> SidebarConfig:
                     CIPHER will analyse your input and select the best AI automatically.
                 </div>
                 """, unsafe_allow_html=True)
+                
         framework = st.selectbox(
             t("logic_framework"),
             LOGIC_FRAMEWORKS,
