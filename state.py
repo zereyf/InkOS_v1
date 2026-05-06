@@ -1,7 +1,7 @@
 """
 state.py — Session State Contract
 ===================================
-v9: Added UI_LANG key for i18n language switching.
+v10: Added APP_CONFIG key for global routing architecture.
 """
 
 import uuid
@@ -26,6 +26,7 @@ class K:
     UI_LANG        = "ui_lang"          # "en" | "ar" | "fr"
     AUTO_TARGET    = "auto_target"      # target selected by CIPHER
     AUTO_REASON    = "auto_reason"      # reason for CIPHER's selection
+    APP_CONFIG     = "app_config"       # global sidebar configuration
 
 
 _DEFAULTS: dict = {
@@ -44,6 +45,7 @@ _DEFAULTS: dict = {
     K.UI_LANG:        "en",
     K.AUTO_TARGET:    None,
     K.AUTO_REASON:    None,
+    K.APP_CONFIG:     None,
 }
 
 
