@@ -82,8 +82,23 @@ def render_sidebar() -> SidebarConfig:
         """, unsafe_allow_html=True)
 
         # ── LANGUAGE SWITCHER ─────────────────────────────────────────────────
-        render_language_switcher()
-        st.markdown("<hr>", unsafe_allow_html=True)
+        def render_language_switcher() -> None:
+    current = get_lang()
+    cols = st.columns(len(LANGUAGES))
+    for i, lang in enumerate(LANGUAGES):
+        with cols[i]:
+            is_active = lang["code"] == current
+            # Unify DOM: All items are now native buttons. 
+            # Active state triggers 'primary' CSS targeting.
+            if st.button(
+                f"{lang['flag']} {lang['label']}",
+                key=f"lang_btn_{lang['code']}",
+                use_container_width=True,
+                type="primary" if is_active else "secondary"
+            ):
+                if not is_active:
+                    set_lang(lang["code"])
+                    st.rerun()
 
         # ── LOGIC CONFIGURATION ───────────────────────────────────────────────
         st.subheader(t("logic_config"))
