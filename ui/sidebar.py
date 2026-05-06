@@ -13,11 +13,10 @@ import json
 from datetime import datetime
 from typing import TypedDict, Optional
 from state import K, get_remaining_calls
-from config import TARGET_GUIDES, AESTHETIC_PRESETS, AUTO_SELECT_LABEL
+from config import TARGET_GUIDES, AESTHETIC_PRESETS, AUTO_SELECT_LABEL, LOGIC_FRAMEWORKS
 from forge.persona_engine import STARTER_PERSONAS, get_persona_display_name
 from vault.supabase_client import SUPABASE_MISSING
 from i18n.translations import t, set_lang, get_lang, LANGUAGES, is_rtl
-from state import K
 
 
 class SidebarConfig(TypedDict):
@@ -133,7 +132,7 @@ def render_sidebar() -> SidebarConfig:
                 
         framework = st.selectbox(
             t("logic_framework"),
-            ["Professional (RACE)", "Technical (Debugger)", "Academic", "Creative", "Visual Director"],
+            LOGIC_FRAMEWORKS,
             key="sb_framework",
             help=t("framework_help"),
         )
