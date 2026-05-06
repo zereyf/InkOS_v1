@@ -84,8 +84,6 @@ _TAG_CLEANUP   = re.compile(
     r"\s*(?:===|>|\]|\*\*|###)?",
     flags=re.IGNORECASE,
 )
-
-# FIXED: Using `{3}` avoids the markdown parser clipping the code block
 _FENCE_CLEANUP = re.compile(r"`{3}(?:markdown|json|text|xml)?", flags=re.IGNORECASE)
 _JSON_HUNTER   = re.compile(r"\{[^{}]*\"score\"[^{}]*\}", flags=re.IGNORECASE)
 _THINKING_TAGS = re.compile(r"<thinking>.*?</thinking>", flags=re.DOTALL | re.IGNORECASE)
