@@ -86,5 +86,3 @@ _TAG_CLEANUP   = re.compile(
 )
 _FENCE_CLEANUP = re.compile(r"
 http://googleusercontent.com/immersive_entry_chip/0
-
-Select all, delete, paste, save. The app will boot successfully now.
