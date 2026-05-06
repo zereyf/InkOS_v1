@@ -1,12 +1,8 @@
 """
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
+v5.0: Hardened for immutable configs and Optional[Groq] typing.
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
-
-Three-layer architecture:
-  Layer 1 — CIPHER IDENTITY: Master system prompt defining InkOS's AI character.
-  Layer 2 — CHAIN-OF-THOUGHT: Reasoning before output via <thinking> tags.
-  Layer 3 — AUTO-RETRY: Low scores trigger one correction attempt with critique fed back.
 """
 
 import json
@@ -167,7 +163,8 @@ def _detect_dynamic_context(text: str) -> str:
     elif any(kw in text_lower for kw in ["prompt", "llm", "system prompt", "agent", "bot", "ai"]):
         injections.append(f"DYNAMIC EXPERT PERSONA ACTIVATED:\n{EXPERT_PROMPT_ENGINEER}")
         
-    if isinstance(DOMAIN_KNOWLEDGE, dict):
+    # FIX: Duck-typing avoids `isinstance` failure against MappingProxyType
+    if hasattr(DOMAIN_KNOWLEDGE, "items"):
         for domain, knowledge in DOMAIN_KNOWLEDGE.items():
             if domain.lower() in text_lower:
                 injections.append(f"DOMAIN KNOWLEDGE RELEVANT TO INTENT:\n{knowledge}")
@@ -239,6 +236,10 @@ def _call_cipher(
     system_prompt: str,
     user_text:     str,
 ) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
+    # FIX: Safety check for uninitialized client
+    if not client:
+         return None, None, "SYSTEM ERROR: API Client not initialized (Missing or invalid API Key)."
+         
     try:
         completion = client.chat.completions.create(
             model=MODEL_ID,
@@ -260,6 +261,10 @@ def _call_cipher(
 
 
 def detect_best_target(user_text: str) -> tuple:
+    # FIX: Safety check for uninitialized client
+    if not client:
+        return "Claude", "Defaulted to Claude — API Client not initialized."
+
     system_prompt = f"""You are CIPHER's target classification module.
 Your only task: read the user input and select the single best AI target.
 
