@@ -132,25 +132,25 @@ header[data-testid="stHeader"] { position: fixed !important; top: 0 !important; 
 
 div[data-testid="stSidebarNav"] { display: none; }
 
-/* GHOST RADIO BUTTON CLOAKING */
-[data-testid="stSidebar"] [role="radiogroup"] [data-baseweb="radio"] input[type="radio"],
-[data-testid="stSidebar"] [role="radiogroup"] [data-baseweb="radio"] input[type="radio"] + div {
-    width: 0px !important; height: 0px !important; margin: 0px !important; padding: 0px !important;
-    opacity: 0 !important; border: none !important; overflow: hidden !important;
+/* GHOST RADIO BUTTON CLOAKING (The Final Nuke) */
+/* Streamlit structures radio buttons as: <label data-baseweb="radio"> <div>[Circle]</div> <div>[Text]</div> </label> */
+/* We target ONLY the first child div (the circle) and nuke it. */
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:first-child {
+    display: none !important;
 }
 
 /* MENU ITEM CONTAINERS */
-[data-testid="stSidebar"] [role="radiogroup"] label {
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] {
     width: 100% !important; padding: 10px 14px !important; margin-bottom: 4px !important;
     border-radius: 4px !important; background: transparent !important;
     border-left: 3px solid transparent !important; transition: all 0.2s ease !important;
     cursor: pointer !important; display: block !important;
 }
 
-/* TYPOGRAPHY OVERRIDE */
-[data-testid="stSidebar"] [role="radiogroup"] label div,
-[data-testid="stSidebar"] [role="radiogroup"] label p,
-[data-testid="stSidebar"] [role="radiogroup"] label span {
+/* TEXT TYPOGRAPHY (Targeting the second child div where Streamlit puts the text) */
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:last-child,
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] p,
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] span {
     font-family: 'IBM Plex Mono', monospace !important; font-size: 0.75rem !important;
     letter-spacing: 0.15em !important; color: #85929E !important; 
     text-transform: uppercase !important; margin: 0 !important;
@@ -158,25 +158,26 @@ div[data-testid="stSidebarNav"] { display: none; }
 }
 
 /* MENU HOVER */
-[data-testid="stSidebar"] [role="radiogroup"] label:hover {
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover {
     background: rgba(201, 168, 76, 0.04) !important; border-left: 3px solid rgba(201, 168, 76, 0.4) !important;
 }
-[data-testid="stSidebar"] [role="radiogroup"] label:hover *,
-[data-testid="stSidebar"] [role="radiogroup"] label:hover p,
-[data-testid="stSidebar"] [role="radiogroup"] label:hover span { color: #E2D5BC !important; }
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover div:last-child,
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover p,
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover span { 
+    color: #E2D5BC !important; 
+}
 
 /* MENU ACTIVE */
-[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) {
     background: linear-gradient(90deg, rgba(201,168,76,0.12) 0%, transparent 100%) !important;
     border-left: 3px solid #C9A84C !important;
 }
-[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) *,
-[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p,
-[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) span {
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) div:last-child,
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) p,
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) span {
     color: #C9A84C !important; font-weight: 600 !important; text-shadow: 0 0 10px rgba(201,168,76,0.2) !important;
 }
-
-/* ══════════════════════════════════════════
+ ══════════════════════════════════════════
    HORIZONTAL LANGUAGE SWITCHER
 ══════════════════════════════════════════ */
 [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(button) {
