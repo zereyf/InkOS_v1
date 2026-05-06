@@ -27,11 +27,6 @@ MAX_RETRIES:     int = 1
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CIPHER MASTER IDENTITY SYSTEM PROMPT
-# This is the foundational prompt that defines CIPHER as an entity.
-# Prepended to every call before any framework, persona, or cognitive layer.
-# WHY a defined identity:
-#   Instructions produce mechanical output.
-#   Philosophy produces intelligent output.
 # ─────────────────────────────────────────────────────────────────────────────
 CIPHER_IDENTITY: str = """
 ╔══════════════════════════════════════════════════════════════╗
@@ -91,3 +86,5 @@ _TAG_CLEANUP   = re.compile(
 )
 _FENCE_CLEANUP = re.compile(r"
 http://googleusercontent.com/immersive_entry_chip/0
+
+Select all, delete, paste, save. The app will boot successfully now.
