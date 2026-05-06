@@ -18,6 +18,7 @@ from config import (
     AUTO_SELECT_LABEL, TARGET_SELECTION_GUIDE,
     VISUAL_DIRECTOR_PROMPT, DOMAIN_KNOWLEDGE,
     EXPERT_PROMPT_ENGINEER, EXPERT_UX_DESIGNER,
+    EXPERT_STRATEGIST, EXPERT_CYBERSECURITY,
     EXPERT_DECISION_SCIENCE
 )
 from engine.cognitive_map import detect_arabic_pattern
@@ -165,17 +166,29 @@ def _build_system_prompt(
     expert_block = ""
     domain_block = ""
     
+    # Wire Expert Personas based on framework
     if framework == "Professional (RACE)":
         expert_block = EXPERT_PROMPT_ENGINEER
     elif framework == "Creative (Chain-of-Thought)":
         expert_block = EXPERT_UX_DESIGNER
     elif framework == "Decision Audit (LUCID)":
         expert_block = EXPERT_DECISION_SCIENCE
-    
+    elif "technical" in framework.lower():
+        expert_block = EXPERT_CYBERSECURITY
+    elif "academic" in framework.lower():
+        expert_block = EXPERT_STRATEGIST
+
+    # Wire Domain Knowledge based on cognitive patterns or framework
     if "code" in cognitive.lower() or "technical" in framework.lower():
         domain_block = f"DOMAIN KNOWLEDGE: {DOMAIN_KNOWLEDGE['code_analysis']}"
-    elif "marketing" in framework.lower():
+    elif "marketing" in framework.lower() or "commercial" in cognitive.lower():
         domain_block = f"DOMAIN KNOWLEDGE: {DOMAIN_KNOWLEDGE['marketing']}"
+    elif "agent" in cognitive.lower():
+        domain_block = f"DOMAIN KNOWLEDGE: {DOMAIN_KNOWLEDGE['agentic_automation']}"
+    elif "data" in cognitive.lower():
+        domain_block = f"DOMAIN KNOWLEDGE: {DOMAIN_KNOWLEDGE['data_analysis']}"
+    elif "text" in cognitive.lower() or "copy" in cognitive.lower():
+        domain_block = f"DOMAIN KNOWLEDGE: {DOMAIN_KNOWLEDGE['text_copy']}"
 
     retry_block   = (
         f"CORRECTION REQUIRED:\n"
@@ -306,4 +319,5 @@ def run_refinement_and_audit(
         if not error_v2 and refined_v2 and audit_v2:
             if audit_v2.get("score", 0) >= score:
                 return refined_v2, audit_v2, detected
-    return refined, audit, detected
+ 
+return refined, audit, detected
