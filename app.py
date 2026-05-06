@@ -15,113 +15,82 @@ import streamlit as st
 st.set_page_config(page_title="InkOS", page_icon="⚡", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
-          <style>
-        /* Sticky Header */
-        header[data-testid="stHeader"] {
-            position: fixed !important; top: 0 !important; z-index: 9999 !important;
-        }
-        .block-container { padding-top: 4rem !important; }
-        
-        /* ── LOGO WORDMARK OVERHAUL ── */
-        .sidebar-logo-box {
-            background: linear-gradient(135deg, rgba(201,168,76,0.1) 0%, transparent 100%);
-            border-left: 2px solid var(--gold);
-            padding: 15px;
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 25px;
-            box-shadow: 10px 0 20px rgba(0,0,0,0.2);
-        }
-        .logo-text {
-            font-family: 'Cinzel', serif !important;
-            font-size: 1.4rem !important;
-            font-weight: 700 !important;
-            color: var(--gold) !important;
-            letter-spacing: 3px !important;
-            text-transform: uppercase;
-            line-height: 1;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .logo-subtext {
-            font-family: 'IBM Plex Mono', monospace !important;
-            font-size: 0.55rem !important;
-            color: var(--text-muted) !important;
-            letter-spacing: 2px !important;
-            margin-top: 5px;
-            margin-left: 2px;
-        }
+      <style>
+    /* 1. STICKY HEADER & SPACING */
+    header[data-testid="stHeader"] { position: fixed !important; top: 0 !important; z-index: 9999 !important; }
+    .block-container { padding-top: 4rem !important; }
+    
+    /* 2. LOGO WORDMARK */
+    .sidebar-logo-box {
+        background: linear-gradient(135deg, rgba(201,168,76,0.1) 0%, transparent 100%);
+        border-left: 2px solid var(--gold);
+        padding: 15px; border-radius: 0 8px 8px 0; margin-bottom: 25px;
+        box-shadow: 10px 0 20px rgba(0,0,0,0.2);
+    }
+    .logo-text {
+        font-family: 'Cinzel', serif !important; font-size: 1.4rem !important;
+        font-weight: 700 !important; color: var(--gold) !important;
+        letter-spacing: 3px !important; text-transform: uppercase;
+        line-height: 1; display: flex; align-items: center; gap: 10px;
+    }
+    .logo-subtext {
+        font-family: 'IBM Plex Mono', monospace !important; font-size: 0.55rem !important;
+        color: var(--text-muted) !important; letter-spacing: 2px !important;
+        margin-top: 5px; margin-left: 2px;
+    }
 
-        /* ── SAAS SIDEBAR NAVIGATION OVERHAUL ── */
-        div[data-testid="stSidebarNav"] {display: none;}
-        
-        /* 1. SURGICALLY HIDE ONLY THE RADIO CIRCLES */
-        /* Targets the div immediately following the hidden input (which is the custom UI circle) */
-        [data-testid="stSidebar"] [role="radiogroup"] [data-baseweb="radio"] input[type="radio"] + div {
-            display: none !important;
-        }
-        
-        /* 2. Style the menu item containers */
-        [data-testid="stSidebar"] [role="radiogroup"] label {
-            width: 100% !important;
-            padding: 10px 14px !important;
-            margin-bottom: 4px !important;
-            border-radius: 4px !important;
-            background: transparent !important;
-            border-left: 3px solid transparent !important;
-            transition: all 0.2s ease !important;
-            cursor: pointer !important;
-        }
-        
-        /* 3. Typography for items (Targeting all possible text wrappers) */
-        [data-testid="stSidebar"] [role="radiogroup"] label div,
-        [data-testid="stSidebar"] [role="radiogroup"] label p,
-        [data-testid="stSidebar"] [role="radiogroup"] label span {
-            font-family: 'IBM Plex Mono', monospace !important;
-            font-size: 0.75rem !important;
-            letter-spacing: 0.15em !important;
-            color: #5D6D7E !important; 
-            text-transform: uppercase !important;
-            margin: 0 !important;
-            transition: color 0.2s ease !important;
-        }
-        
-        /* 4. Hover State */
-        [data-testid="stSidebar"] [role="radiogroup"] label:hover {
-            background: rgba(201, 168, 76, 0.04) !important;
-            border-left: 3px solid rgba(201, 168, 76, 0.4) !important;
-        }
-        [data-testid="stSidebar"] [role="radiogroup"] label:hover div,
-        [data-testid="stSidebar"] [role="radiogroup"] label:hover p,
-        [data-testid="stSidebar"] [role="radiogroup"] label:hover span {
-            color: #E2D5BC !important; 
-        }
-        
-        /* 5. Active/Selected State Magic */
-        [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
-            background: linear-gradient(90deg, rgba(201,168,76,0.12) 0%, transparent 100%) !important;
-            border-left: 3px solid #C9A84C !important;
-        }
-        [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) div,
-        [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p,
-        [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) span {
-            color: #C9A84C !important;
-            font-weight: 600 !important;
-            text-shadow: 0 0 10px rgba(201,168,76,0.2) !important;
-        }
+    /* 3. SAAS SIDEBAR NAVIGATION OVERHAUL */
+    div[data-testid="stSidebarNav"] { display: none; }
+    
+    /* KILL RADIO CIRCLES: Targeted removal of the UI element only */
+    [data-testid="stSidebar"] [role="radiogroup"] [data-baseweb="radio"] > div:nth-child(1) {
+        display: none !important;
+    }
 
-        /* ── FORCE HORIZONTAL LANGUAGE SWITCHER ── */
-        [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(button) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 4px !important;
-        }
-        [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(button) > div {
-            min-width: 0 !important;
-            flex: 1 1 0% !important;
-        }
-    </style>
+    /* ITEM CONTAINERS */
+    [data-testid="stSidebar"] [role="radiogroup"] label {
+        width: 100% !important; padding: 10px 14px !important; margin-bottom: 4px !important;
+        border-radius: 4px !important; background: transparent !important;
+        border-left: 3px solid transparent !important; transition: all 0.2s ease !important;
+        cursor: pointer !important; display: block !important;
+    }
+    
+    /* TEXT TYPOGRAPHY (Forced visibility) */
+    [data-testid="stSidebar"] [role="radiogroup"] label div,
+    [data-testid="stSidebar"] [role="radiogroup"] label p,
+    [data-testid="stSidebar"] [role="radiogroup"] label span {
+        font-family: 'IBM Plex Mono', monospace !important; font-size: 0.75rem !important;
+        letter-spacing: 0.15em !important; color: #5D6D7E !important; 
+        text-transform: uppercase !important; margin: 0 !important;
+        transition: color 0.2s ease !important; display: inline-block !important;
+    }
+    
+    /* HOVER & ACTIVE STATES */
+    [data-testid="stSidebar"] [role="radiogroup"] label:hover {
+        background: rgba(201, 168, 76, 0.04) !important;
+        border-left: 3px solid rgba(201, 168, 76, 0.4) !important;
+    }
+    [data-testid="stSidebar"] [role="radiogroup"] label:hover * { color: #E2D5BC !important; }
+    
+    [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
+        background: linear-gradient(90deg, rgba(201,168,76,0.12) 0%, transparent 100%) !important;
+        border-left: 3px solid #C9A84C !important;
+    }
+    [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) * {
+        color: #C9A84C !important; font-weight: 600 !important;
+        text-shadow: 0 0 10px rgba(201,168,76,0.2) !important;
+    }
+
+    /* 4. HORIZONTAL LANGUAGE SWITCHER */
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(button) {
+        display: flex !important; flex-direction: row !important;
+        flex-wrap: nowrap !important; gap: 4px !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(button) > div {
+        min-width: 0 !important; flex: 1 1 0% !important;
+    }
+</style>
+
 
 
 """, unsafe_allow_html=True)
