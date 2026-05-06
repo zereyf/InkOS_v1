@@ -132,21 +132,22 @@ header[data-testid="stHeader"] { position: fixed !important; top: 0 !important; 
 
 div[data-testid="stSidebarNav"] { display: none; }
 
-/* GHOST RADIO BUTTON CLOAKING (The "Invisible Ink" Method) */
-/* 1. Hide the actual input node */
+/* GHOST RADIO BUTTON CLOAKING (Content-Aware Filter) */
+/* 1. Kill the native radio input entirely */
 [data-testid="stSidebar"] [role="radiogroup"] input[type="radio"] {
-    position: absolute !important; opacity: 0 !important; width: 0 !important; height: 0 !important;
+    display: none !important;
 }
 
-/* 2. Hide any generic div/span immediately following the input (BaseWeb's circle drawing) */
-[data-testid="stSidebar"] [role="radiogroup"] input[type="radio"] + div,
-[data-testid="stSidebar"] [role="radiogroup"] input[type="radio"] + span {
-    display: none !important; opacity: 0 !important; width: 0 !important; height: 0 !important; margin: 0 !important; padding: 0 !important; border: none !important;
+/* 2. Kill the circle: Hide any div inside the radio label that DOES NOT contain a paragraph or span */
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:not(:has(p)):not(:has(span)) {
+    display: none !important;
 }
 
-/* 3. Hide any div inside the radio container that DOES NOT contain text (fallback) */
-[data-testid="stSidebar"] [role="radiogroup"] [data-baseweb="radio"] > div:not(:last-child) {
-    display: none !important; opacity: 0 !important; width: 0 !important; height: 0 !important; margin: 0 !important; padding: 0 !important; border: none !important;
+/* 3. Save the text: Force visibility on the specific div that DOES contain the text */
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:has(p),
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:has(span) {
+    display: block !important;
+    width: 100% !important;
 }
 
 /* MENU ITEM CONTAINERS */
@@ -157,21 +158,19 @@ div[data-testid="stSidebarNav"] { display: none; }
     cursor: pointer !important; display: block !important;
 }
 
-/* TEXT TYPOGRAPHY */
-[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] div,
+/* TEXT TYPOGRAPHY (Targeting the actual text nodes) */
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] p,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] span {
     font-family: 'IBM Plex Mono', monospace !important; font-size: 0.75rem !important;
     letter-spacing: 0.15em !important; color: #85929E !important; 
     text-transform: uppercase !important; margin: 0 !important;
-    transition: color 0.2s ease !important; visibility: visible !important; opacity: 1 !important;
+    transition: color 0.2s ease !important; display: block !important;
 }
 
 /* MENU HOVER */
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover {
     background: rgba(201, 168, 76, 0.04) !important; border-left: 3px solid rgba(201, 168, 76, 0.4) !important;
 }
-[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover div,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover p,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover span { 
     color: #E2D5BC !important; 
@@ -182,11 +181,11 @@ div[data-testid="stSidebarNav"] { display: none; }
     background: linear-gradient(90deg, rgba(201,168,76,0.12) 0%, transparent 100%) !important;
     border-left: 3px solid #C9A84C !important;
 }
-[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) div,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) p,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) span {
     color: #C9A84C !important; font-weight: 600 !important; text-shadow: 0 0 10px rgba(201,168,76,0.2) !important;
 }
+
 
 /* ══════════════════════════════════════════
    HORIZONTAL LANGUAGE SWITCHER
