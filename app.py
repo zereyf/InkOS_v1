@@ -1,9 +1,7 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v4: ARCHITECTURE ALIGNMENT
-- Completely removed inline CSS. All styling delegated to ui/styles.py.
-- Lifted 'cfg' into session state for global tab access.
+v5: Restored Navigation Menu Order
 """
 
 import sys
@@ -31,27 +29,13 @@ if API_KEY_MISSING:
     st.stop()
 
 init_session_state()
-
-# Inject centralized styling ONLY once
 st.markdown(STYLES, unsafe_allow_html=True)
 
-# ── RTL MODE ──────────────────────────────────────────────────────────────────
 if is_rtl():
-    st.markdown("""
-    <script>
-        const app = window.parent.document.querySelector('.stApp');
-        if (app) app.classList.add('rtl-mode');
-    </script>
-    """, unsafe_allow_html=True)
+    st.markdown("<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.add('rtl-mode');</script>", unsafe_allow_html=True)
 else:
-    st.markdown("""
-    <script>
-        const app = window.parent.document.querySelector('.stApp');
-        if (app) app.classList.remove('rtl-mode');
-    </script>
-    """, unsafe_allow_html=True)
+    st.markdown("<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.remove('rtl-mode');</script>", unsafe_allow_html=True)
 
-# ── PERSISTENT SIDEBAR NAVIGATION ─────────────────────────────────────────────
 nav_options = {
     t("tab_workspace"):     render_workspace,
     t("tab_archive"):       render_archive,
@@ -62,26 +46,22 @@ nav_options = {
     t("tab_guide"):         render_guide,
 }
 
-# Render sidebar and capture config
-cfg = render_sidebar()
-
-# ── GLOBAL STATE REGISTRATION ─────────────────────────────────────────────────
-st.session_state[K.APP_CONFIG] = cfg
-
-# ── MAIN CONTENT EXECUTION ────────────────────────────────────────────────────
-if cfg:
-    selected_nav = st.session_state.get(K.APP_CONFIG, {}).get("target_model", "") # Fallback safety
-    # We retrieve the actual selected nav from the radio button in the sidebar (which is now in styles)
-    # Wait, the radio button needs to exist. We moved it to sidebar.py in previous patches. 
-
-# Re-implementing the missing radio button securely inside app.py's sidebar context
+# 1. Render the top Navigation FIRST
 with st.sidebar:
     selected_nav = st.radio(
         "Navigation", 
         list(nav_options.keys()), 
         label_visibility="collapsed"
     )
+    st.markdown("---")
 
+# 2. Render the rest of the sidebar config below it
+cfg = render_sidebar()
+
+# 3. Store config globally
+st.session_state[K.APP_CONFIG] = cfg
+
+# 4. Execute selected tab
 if selected_nav == t("tab_workspace"):
     nav_options[selected_nav](cfg)
 else:
