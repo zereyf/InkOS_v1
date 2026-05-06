@@ -1,7 +1,7 @@
 """
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
-v5.0: Hardened for immutable configs and Optional[Groq] typing.
+v6.0: Two-Tier Quality Gate (Structural Validator + Adversarial Evaluator).
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
 """
 
@@ -18,61 +18,181 @@ from engine.cognitive_map import detect_arabic_pattern
 from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
 from forge.persona_engine import inject_persona
 
-RETRY_THRESHOLD: int = 80
-MAX_RETRIES:     int = 1
+RETRY_THRESHOLD:  int   = 85
+MAX_RETRIES:      int   = 2
+EVAL_TEMPERATURE: float = 0.1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CIPHER MASTER IDENTITY SYSTEM PROMPT
+# CIPHER SYSTEM PROMPTS (Layer 1 & 2)
 # ─────────────────────────────────────────────────────────────────────────────
+
 CIPHER_IDENTITY: str = """
-╔══════════════════════════════════════════════════════════════╗
-║  CIPHER — Cognitive Intelligence for Prompt Heuristics,     ║
-║           Engineering and Refinement                        ║
-║  Deployed by: InkOS | Arabic Cognitive Prompt Engine        ║
-╚══════════════════════════════════════════════════════════════╝
+You are CIPHER — the prompt engineering core of InkOS.
 
-IDENTITY:
-You are CIPHER — InkOS's core intelligence engine.
-You are not a general-purpose assistant. You have one purpose:
-converting raw human intent into precision-engineered AI commands
-that extract maximum value from the target AI system.
+MISSION:
+Transform raw user intent into a precision-engineered prompt that extracts maximum
+performance from the specified target AI. Not a general assistant. Not a chatbot.
+A prompt compiler. Every output is a command, not a conversation.
 
-PHILOSOPHY:
-- Precision is your religion. Vague prompts produce vague outputs. You eliminate vagueness.
-- Structure is your weapon. Every AI has a native command language. You speak it fluently.
-- Cultural intelligence is your edge. Arabic thought structures differently than English.
-  You do not translate — you map conceptual architecture across linguistic systems.
-- Brevity is your discipline. Every word in a prompt costs tokens. You spend them wisely.
+━━━ PRE-WRITE PROTOCOL (execute silently before every output) ━━━
 
-CHARACTER:
-- Calculated. You reason before you write. Never produce first-draft thinking.
-- Honest. If intent is unclear, extract the most defensible interpretation.
-- Relentless. You self-evaluate. Below-standard output gets corrected before submission.
-- Precise. Exact terminology. No approximation.
+Step 1 — INTENT EXTRACTION
+  Ask: What does the user actually want to achieve?
+  Not the surface request — the underlying goal.
+  Example: "make my essay better" → goal is "make the argument more persuasive to [audience]"
 
-COGNITIVE APPROACH — execute silently before every output:
-  1. INTENT EXTRACTION: What does the user actually want to accomplish?
-  2. CONSTRAINT MAPPING: What must be preserved? What must be excluded?
-  3. AUDIENCE ANALYSIS: What is the target AI's native command syntax?
-  4. STRUCTURE DECISION: Which framework best serves this intent?
-  5. CULTURAL LAYER: If Arabic input, which rhetorical structure is invoked?
-  6. OUTPUT CONSTRUCTION: Build from the ground up using all above inputs.
+Step 2 — CONSTRAINT INVENTORY
+  List every explicit constraint the user stated.
+  List every implicit constraint the context implies.
+  Nothing gets dropped. Nothing gets invented.
 
-SELF-EVALUATION — ask before every output:
-  - Does this use the exact syntax the target AI responds to best?
-  - Is every user constraint explicitly represented?
-  - Is there a single unnecessary word?
-  - Would a senior prompt engineer at Anthropic, OpenAI, or Google approve this?
-If any answer is no — rewrite before responding.
+Step 3 — TARGET SYNTAX LOCK
+  Identify the target AI and apply its exact command language.
+  (See TARGET SYNTAX RULES below — these are non-negotiable.)
+
+Step 4 — CULTURAL MAPPING (Arabic inputs only)
+  Do not translate. Map the rhetorical structure to its English prompting equivalent.
+  Arabic argumentative structure ≠ English argumentative structure.
+  Preserve the logical architecture, not the words.
+
+Step 5 — CONSTRUCTION
+  Build the prompt from the ground up using Steps 1–4.
+  Every sentence must serve a function. Cut the rest.
+
+━━━ TARGET SYNTAX RULES ━━━
+
+These are not suggestions. If the target requires XML and you don't use XML,
+the prompt has failed regardless of what it says.
+
+  Claude →
+    Required: <role>, <task>, <constraints>, <output_format> XML tags
+    Required: Explicit chain-of-thought instruction
+    Tone: Analytical, structured, rewards depth
+
+  ChatGPT →
+    Required: Opens with "You are a [specific role]..."
+    Required: Instructions as numbered list
+    Required: Output format stated explicitly at the end
+    Tone: Conversational framing, clear markdown structure
+
+  Manus AI →
+    Required: Numbered action chain (Step 1 → Step 2 → Step 3...)
+    Required: Tool tags where applicable: [WEB_SEARCH] [CODE_EXEC] [FILE_READ] [WRITE_FILE]
+    Required: Explicit success criteria at the end
+    Tone: Operational, precise, agent-ready
+
+  Midjourney/Flux →
+    Required: [Subject] :: [Environment] :: [Lens/Camera] :: [Style/Mood]
+    Required: Technical parameters: --ar [ratio] --v 6.0 --style raw
+    No prose. No sentences. Modular tokens only.
+
+  DALL-E 3 →
+    Required: Natural language. Full sentences. Cinematic scene description.
+    Required: Explicit lighting, texture, camera angle, color palette
+    Forbidden: :: separators, --parameters, Midjourney syntax
+
+  Gemini (Imagen 3) →
+    Required: Spatial blueprint format — describe zones of the image explicitly
+    Required: Typography placement, font style, exact text content verbatim
+    Required: Background/foreground separation
+    Use when: The image must contain readable text
+
+━━━ SELF-CHECK (run before outputting) ━━━
+
+  ✓ Did I use the exact required syntax for the target AI?
+  ✓ Is every constraint from Step 2 present in the output?
+  ✓ Is there a single word that serves no function?
+  ✓ If someone else read this cold, would the intent be unambiguous?
+
+If any answer is NO — rewrite. Do not output the failing version.
 """
 
-CIPHER_REASONING_LAYER: str = """
-REASONING PROTOCOL:
-Before writing the refined prompt, execute your cognitive approach internally.
-Use <thinking>...</thinking> tags for your reasoning process.
-The user sees only the final refined prompt — not the thinking block.
-Reasoning before writing is not optional. It is what produces precision.
+CIPHER_EVALUATOR_PROMPT: str = """
+You are an independent prompt quality auditor. You work for InkOS.
+
+CRITICAL: You did NOT write the prompt you are evaluating.
+Your job is to find what is wrong with it — not to confirm it is good.
+Be adversarial. Be precise. Be honest.
+
+You will receive three things:
+  1. ORIGINAL INPUT — what the user wanted
+  2. TARGET AI — which AI this prompt is written for
+  3. REFINED PROMPT — the output to evaluate
+
+━━━ EVALUATION PROTOCOL ━━━
+
+STEP 1 — SYNTAX CHECK (0–40 points: precision)
+  Verify the prompt uses the exact required syntax for the target AI.
+  Check mechanically — not impressionistically.
+
+  Claude requires:    <role>, <task>, <constraints>, <output_format> XML tags
+  ChatGPT requires:   "You are a [role]..." opener + numbered instructions
+  Manus AI requires:  Numbered steps + [TOOL] tags + success criteria
+  Midjourney requires: :: separators + --ar parameter + --v parameter
+  DALL-E 3 requires:  Natural prose, NO :: separators, NO -- parameters
+  Gemini requires:    Spatial zone description + explicit text content
+
+  Scoring:
+    All required elements present and correct → 40
+    1 element missing or wrong format         → 25
+    2+ elements missing or wrong format       → 10
+    Completely wrong syntax for target        → 0
+
+STEP 2 — ALIGNMENT CHECK (0–40 points: alignment)
+  Read the ORIGINAL INPUT. List every requirement the user stated.
+  Then check: does the refined prompt address each one?
+
+  Count matched requirements / total requirements.
+  Multiply by 40. Round to nearest integer.
+
+  Example: user stated 4 requirements, prompt addresses 3 → (3/4) × 40 = 30 pts
+
+  Also check for hallucinated constraints — requirements the user never stated
+  that appeared in the refined prompt. Each hallucination deducts 5 pts.
+
+STEP 3 — EFFICIENCY CHECK (0–20 points: efficiency)
+  Read the refined prompt and find:
+  - Any sentence that could be removed without losing meaning → -5 pts each
+  - Any word that is pure filler ("please", "make sure to", "importantly") → -2 pts each
+  - Start from 20 and deduct. Minimum 0.
+
+STEP 4 — CRITIQUE
+  Write ONE sentence that identifies the single most important failure.
+  If no failures exist, state what makes it strong.
+  Be specific. "Lacks precision" is not a critique. "Missing <constraints> XML tag for Claude target" is.
+
+━━━ OUTPUT FORMAT ━━━
+
+Output only valid JSON. No preamble. No explanation. No markdown.
+
+{
+  "score": <sum of all three sections, 0–100>,
+  "precision": <0–40>,
+  "alignment": <0–40>,
+  "efficiency": <0–20>,
+  "critique": "<one specific sentence>"
+}
 """
+
+CIPHER_OUTPUT_CONTRACT: str = """
+━━━ OUTPUT FORMAT ━━━
+
+Rule 1: Write the refined prompt. Nothing before it. Nothing after it except the JSON below.
+Rule 2: No labels, no headers, no fences, no "Here is your refined prompt:".
+Rule 3: On the very next line after the prompt, output exactly this JSON structure:
+
+{"score": <0-100>, "critique": "<one sentence>", "precision": <0-40>, "alignment": <0-40>, "efficiency": <0-20>}
+
+Rule 4: The JSON must be on one line. No line breaks inside it.
+Rule 5: Score yourself honestly using these weights:
+  precision  → Did I use the exact required syntax for the target AI? (0–40)
+  alignment  → Did I preserve every constraint the user stated? (0–40)
+  efficiency → Is every word earning its place? (0–20)
+"""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CORE PARSING & VALIDATION ENGINE
+# ─────────────────────────────────────────────────────────────────────────────
 
 _TAG_CLEANUP   = re.compile(
     r"(?:===|<|\[|\*\*|###)\s*"
@@ -82,12 +202,18 @@ _TAG_CLEANUP   = re.compile(
 )
 _FENCE_CLEANUP = re.compile(r"`{3}(?:markdown|json|text|xml)?", flags=re.IGNORECASE)
 _JSON_HUNTER   = re.compile(r"\{[^{}]*\"score\"[^{}]*\}", flags=re.IGNORECASE)
-_THINKING_TAGS = re.compile(r"<thinking>.*?</thinking>", flags=re.DOTALL | re.IGNORECASE)
 
 _FALLBACK_AUDIT: dict = {
     "score": 0, "critique": "Audit parse error — refinement succeeded.",
     "precision": 0, "alignment": 0, "efficiency": 0,
 }
+
+
+def make_fallback_audit(critique: str) -> dict:
+    """Helper to generate a clean fallback audit dict."""
+    audit = dict(_FALLBACK_AUDIT)
+    audit["critique"] = critique
+    return audit
 
 
 def _escape_html(text: str) -> str:
@@ -109,13 +235,8 @@ def _clamp_audit(raw: dict) -> dict:
     }
 
 
-def _strip_thinking(text: str) -> str:
-    return _THINKING_TAGS.sub("", text).strip()
-
-
 def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
     cleaned    = _FENCE_CLEANUP.sub("", raw).strip()
-    cleaned    = _strip_thinking(cleaned)
     json_match = _JSON_HUNTER.search(cleaned)
     if not json_match:
         return None, None
@@ -126,10 +247,177 @@ def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
     try:
         audit = _clamp_audit(json.loads(json_match.group(0)))
     except Exception:
-        audit = dict(_FALLBACK_AUDIT)
-        audit["critique"] = "Refinement succeeded. Audit JSON malformed."
+        audit = make_fallback_audit("Refinement succeeded. Writer self-audit JSON malformed.")
     return refined, audit
 
+
+def validate_structure(refined: str, target: str) -> Tuple[bool, str]:
+    """
+    Deterministic structural validation. No LLM. No API call.
+    Returns (passed: bool, failure_reason: str).
+    If passed is False, trigger a retry with failure_reason as the critique.
+    """
+    text = refined.strip()
+
+    if len(text) < 60:
+        return False, "Output is too short to be a valid prompt. Expand with full intent and constraints."
+
+    if any(phrase in text.lower() for phrase in [
+        "here is your refined prompt",
+        "here's the refined prompt",
+        "i have refined",
+        "the following prompt",
+        "below is",
+    ]):
+        return False, "Output contains meta-commentary. Remove all preamble — output the prompt directly."
+
+    if target == "Claude":
+        required_tags = ["<role>", "<task>", "<constraints>", "<output_format>"]
+        missing = [tag for tag in required_tags if tag not in text.lower()]
+        if missing:
+            return False, f"Claude target requires XML tags. Missing: {', '.join(missing)}"
+
+    elif target == "ChatGPT":
+        has_role_opener = bool(re.search(r'^you are (a|an|the)\b', text, re.I | re.MULTILINE))
+        if not has_role_opener:
+            return False, "ChatGPT target requires 'You are a [role]...' as the opening line."
+        has_numbered = bool(re.search(r'^\s*\d+[\.\)]\s+', text, re.MULTILINE))
+        if not has_numbered:
+            return False, "ChatGPT target requires numbered instructions."
+
+    elif target == "Manus AI":
+        has_steps = bool(re.search(r'\bstep\s+\d+\b', text, re.I))
+        has_tool_tags = bool(re.search(r'\[(WEB_SEARCH|CODE_EXEC|FILE_READ|WRITE_FILE)\]', text))
+        if not has_steps:
+            return False, "Manus AI target requires numbered step chain (Step 1, Step 2...)."
+        if not has_tool_tags:
+            return False, "Manus AI target requires explicit tool tags: [WEB_SEARCH], [CODE_EXEC], etc."
+
+    elif target == "Midjourney/Flux":
+        has_separators = "::" in text
+        has_ar_param = bool(re.search(r'--ar\s+\d+:\d+', text))
+        if not has_separators:
+            return False, "Midjourney target requires :: separators between prompt segments."
+        if not has_ar_param:
+            return False, "Midjourney target requires --ar parameter (e.g. --ar 16:9)."
+
+    elif target == "DALL-E 3":
+        has_mj_syntax = "::" in text or bool(re.search(r'--\w+', text))
+        if has_mj_syntax:
+            return False, "DALL-E 3 uses natural prose only. Remove :: separators and -- parameters."
+        if len(text.split()) < 30:
+            return False, "DALL-E 3 prompts need rich descriptive prose. Expand the scene description."
+
+    elif target == "Gemini (Imagen 3)":
+        has_zone_description = any(word in text.lower() for word in [
+            "foreground", "background", "center", "left", "right",
+            "top", "bottom", "zone", "positioned", "placed"
+        ])
+        if not has_zone_description:
+            return False, "Gemini target requires spatial zone description (foreground, background, center, etc.)."
+
+    return True, ""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LLM API WRAPPERS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _call_evaluator(original_input: str, target: str, refined_prompt: str) -> dict:
+    """Independent evaluation call using adversarial framing."""
+    if not client:
+        return make_fallback_audit("Evaluator skipped — API client not initialized.")
+
+    eval_user_content = (
+        f"ORIGINAL INPUT:\n{original_input}\n\n"
+        f"TARGET AI: {target}\n\n"
+        f"REFINED PROMPT TO EVALUATE:\n{refined_prompt}"
+    )
+
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=[
+                {"role": "system", "content": CIPHER_EVALUATOR_PROMPT},
+                {"role": "user",   "content": eval_user_content},
+            ],
+            response_format={"type": "json_object"},
+            temperature=EVAL_TEMPERATURE,
+            max_tokens=200,
+        )
+        raw = json.loads(completion.choices[0].message.content)
+        return _clamp_audit(raw)
+    except Exception as e:
+        return make_fallback_audit(f"Evaluator call failed: {str(e)[:60]}")
+
+
+def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
+    if not client:
+         return None, None, "SYSTEM ERROR: API Client not initialized (Missing or invalid API Key)."
+         
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": f"[[INPUT_START]]\n{user_text}\n[[INPUT_END]]"},
+            ],
+            temperature=TEMPERATURE,
+            max_tokens=MAX_TOKENS,
+        )
+        raw = completion.choices[0].message.content
+    except Exception as e:
+        return None, None, str(e)
+
+    refined, audit = _parse_output(raw)
+    if refined is None:
+        return None, None, f"Parse failed. Raw:\n{raw[:300]}"
+    return refined, audit, None
+
+
+def detect_best_target(user_text: str) -> tuple:
+    if not client:
+        return "Claude", "Defaulted to Claude — API Client not initialized."
+
+    system_prompt = f"""You are CIPHER's target classification module.
+Your only task: read the user input and select the single best AI target.
+
+{TARGET_SELECTION_GUIDE}
+
+Output ONLY valid JSON. No preamble. No explanation.
+{{"target": "<exact target name>", "reason": "<one sentence max>"}}
+
+Valid target names (use exactly): Claude, ChatGPT, Manus AI, Midjourney/Flux, DALL-E 3
+"""
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": user_text[:500]},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.1,
+            max_tokens=100,
+        )
+        raw = json.loads(completion.choices[0].message.content)
+        target = str(raw.get("target", "Claude")).strip()
+        reason = str(raw.get("reason", "")).strip()
+
+        if target not in TARGET_GUIDES:
+            target = "Claude"
+            reason = "Defaulted to Claude — unrecognized target in response."
+
+        return target, reason
+
+    except Exception as e:
+        err_msg = str(e)[:60]
+        return "Claude", f"Auto-selection failed ({err_msg}). Defaulted to Claude."
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONTEXT BUILDERS & PIPELINE EXECUTION
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _build_brand_block(brand_identity: Optional[dict]) -> str:
     if not brand_identity:
@@ -163,7 +451,6 @@ def _detect_dynamic_context(text: str) -> str:
     elif any(kw in text_lower for kw in ["prompt", "llm", "system prompt", "agent", "bot", "ai"]):
         injections.append(f"DYNAMIC EXPERT PERSONA ACTIVATED:\n{EXPERT_PROMPT_ENGINEER}")
         
-    # FIX: Duck-typing avoids `isinstance` failure against MappingProxyType
     if hasattr(DOMAIN_KNOWLEDGE, "items"):
         for domain, knowledge in DOMAIN_KNOWLEDGE.items():
             if domain.lower() in text_lower:
@@ -204,7 +491,6 @@ def _build_system_prompt(
 
     parts = [
         CIPHER_IDENTITY,
-        CIPHER_REASONING_LAYER,
         persona_block,
         brand_block,
         dynamic_context,
@@ -215,90 +501,9 @@ def _build_system_prompt(
         cognitive,
         ISLAMIC_CONTEXT_LAYER if islamic else "",
         retry_block,
-        "",
-        "MANDATORY AUDIT RUBRIC:",
-        "1. PRECISION (40pts): Exact native syntax of target AI.",
-        "   Claude=XML tags. Manus=Agent-step chains. ChatGPT=Numbered role instructions.",
-        "2. ALIGNMENT (40pts): Every element of user intent preserved. Nothing dropped.",
-        "3. EFFICIENCY (20pts): Every word earns its place. No preamble. No filler.",
-        "QUALITY GATE: If honest score < 90, rewrite before outputting.",
-        "CIPHER does not submit mediocre work.",
-        "",
-        "OUTPUT FORMAT:",
-        "Write the refined prompt first. Then on a new line output the audit JSON.",
-        "No markdown fences. No preamble. No explanation.",
-        '{"score": <0-100>, "critique": "<one precise sentence>", "precision": <0-40>, "alignment": <0-40>, "efficiency": <0-20>}',
+        CIPHER_OUTPUT_CONTRACT
     ]
     return "\n".join(filter(None, parts))
-
-
-def _call_cipher(
-    system_prompt: str,
-    user_text:     str,
-) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
-    # FIX: Safety check for uninitialized client
-    if not client:
-         return None, None, "SYSTEM ERROR: API Client not initialized (Missing or invalid API Key)."
-         
-    try:
-        completion = client.chat.completions.create(
-            model=MODEL_ID,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": f"[[INPUT_START]]\n{user_text}\n[[INPUT_END]]"},
-            ],
-            temperature=TEMPERATURE,
-            max_tokens=MAX_TOKENS,
-        )
-        raw = completion.choices[0].message.content
-    except Exception as e:
-        return None, None, str(e)
-
-    refined, audit = _parse_output(raw)
-    if refined is None:
-        return None, None, f"Parse failed. Raw:\n{raw[:300]}"
-    return refined, audit, None
-
-
-def detect_best_target(user_text: str) -> tuple:
-    # FIX: Safety check for uninitialized client
-    if not client:
-        return "Claude", "Defaulted to Claude — API Client not initialized."
-
-    system_prompt = f"""You are CIPHER's target classification module.
-Your only task: read the user input and select the single best AI target.
-
-{TARGET_SELECTION_GUIDE}
-
-Output ONLY valid JSON. No preamble. No explanation.
-{{"target": "<exact target name>", "reason": "<one sentence max>"}}
-
-Valid target names (use exactly): Claude, ChatGPT, Manus AI, Midjourney/Flux, DALL-E 3
-"""
-    try:
-        completion = client.chat.completions.create(
-            model=MODEL_ID,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": user_text[:500]},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.1,
-            max_tokens=100,
-        )
-        raw = json.loads(completion.choices[0].message.content)
-        target = str(raw.get("target", "Claude")).strip()
-        reason = str(raw.get("reason", "")).strip()
-
-        if target not in TARGET_GUIDES:
-            target = "Claude"
-            reason = "Defaulted to Claude — unrecognized target in response."
-
-        return target, reason
-
-    except Exception as e:
-        err_msg = str(e)[:60]
-        return "Claude", f"Auto-selection failed ({err_msg}). Defaulted to Claude."
 
 
 def run_refinement_and_audit(
@@ -311,6 +516,9 @@ def run_refinement_and_audit(
     persona:          Optional[dict] = None,
     brand_identity:   Optional[dict] = None,
 ) -> Tuple[str, dict, Optional[dict]]:
+    """
+    Full refinement pipeline with real quality control.
+    """
     detected: Optional[dict] = None
     cognitive: str = ""
 
@@ -337,32 +545,63 @@ def run_refinement_and_audit(
 
     dynamic_ctx = _detect_dynamic_context(user_text)
 
-    sys_prompt = _build_system_prompt(
-        target, framework, cognitive,
-        islamic_mode, aesthetic_choice, persona,
-        retry_critique=None,
-        brand_identity=brand_identity,
-        dynamic_context=dynamic_ctx,
-    )
-    refined, audit, error = _call_cipher(sys_prompt, user_text)
+    best_refined: Optional[str] = None
+    best_audit:   Optional[dict] = None
+    retry_critique: Optional[str] = None
 
-    if error:
-        return f"[CIPHER ERROR]: {error}", dict(_FALLBACK_AUDIT), None
-
-    score = audit.get("score", 0) if audit else 0
-
-    if score < RETRY_THRESHOLD and audit and audit.get("critique"):
-        retry_prompt = _build_system_prompt(
-            target, framework, cognitive,
-            islamic_mode, aesthetic_choice, persona,
-            retry_critique=audit["critique"],
-            brand_identity=brand_identity,
-            dynamic_context=dynamic_ctx,
+    for attempt in range(MAX_RETRIES + 1):
+        sys_prompt = _build_system_prompt(
+            target           = target,
+            framework        = framework,
+            cognitive        = cognitive,
+            islamic          = islamic_mode,
+            aesthetic_choice = aesthetic_choice,
+            persona          = persona,
+            retry_critique   = retry_critique,
+            brand_identity   = brand_identity,
+            dynamic_context  = dynamic_ctx,
         )
-        refined_v2, audit_v2, error_v2 = _call_cipher(retry_prompt, user_text)
 
-        if not error_v2 and refined_v2 and audit_v2:
-            if audit_v2.get("score", 0) >= score:
-                return refined_v2, audit_v2, detected
+        refined, self_audit, error = _call_cipher(sys_prompt, user_text)
 
-    return refined, audit, detected
+        if error:
+            break
+
+        struct_passed, struct_reason = validate_structure(refined, target)
+
+        if not struct_passed:
+            retry_critique = struct_reason
+            
+            # Save the structurally failing prompt in case we run out of retries
+            if best_refined is None:
+                best_refined = refined
+                best_audit = self_audit or make_fallback_audit(struct_reason)
+
+            if attempt < MAX_RETRIES:
+                continue
+            else:
+                best_audit = self_audit or make_fallback_audit(struct_reason)
+                best_audit["critique"] = f"Structural Fail: {struct_reason}"
+                break
+
+        audit = _call_evaluator(user_text, target, refined)
+        score = audit.get("score", 0)
+
+        current_best = best_audit.get("score", -1) if best_audit else -1
+        if score > current_best:
+            best_refined = refined
+            best_audit   = audit
+
+        if score >= RETRY_THRESHOLD:
+            return best_refined, best_audit, detected
+
+        retry_critique = audit.get("critique", "Output did not meet quality threshold.")
+
+    if best_refined is None:
+        return (
+            "[CIPHER ERROR]: All attempts failed to produce valid output.",
+            make_fallback_audit("All refinement attempts failed."),
+            None,
+        )
+
+    return best_refined, best_audit, detected
