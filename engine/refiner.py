@@ -15,7 +15,11 @@ from typing import Optional, Tuple
 from config import (
     client, TARGET_GUIDES, MODEL_ID, TEMPERATURE,
     MAX_TOKENS, AESTHETIC_PRESETS,
-    AUTO_SELECT_LABEL, TARGET_SELECTION_GUIDE
+    AUTO_SELECT_LABEL, TARGET_SELECTION_GUIDE,
+    VISUAL_DIRECTOR_PROMPT, DOMAIN_KNOWLEDGE,
+    EXPERT_PROMPT_ENGINEER, EXPERT_UX_DESIGNER,
+    EXPERT_STRATEGIST, EXPERT_CYBERSECURITY,
+    EXPERT_DECISION_SCIENCE
 )
 from engine.cognitive_map import detect_arabic_pattern
 from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
@@ -178,6 +182,33 @@ def _build_system_prompt(
     )
     persona_block = inject_persona(persona, target)
     brand_block   = _build_brand_block(brand_identity)
+    
+    # FIX Bug 4: Visual Director Prompt Injection
+    framework_block = f"ACTIVE FRAMEWORK: {framework}"
+    if framework == "Visual Director":
+        framework_block = f"{framework_block}\n{VISUAL_DIRECTOR_PROMPT}"
+
+    # FIX Bug 5 & 8: Expert Personas & Domain Knowledge Injection
+    # We'll map frameworks or detected patterns to expert personas and domain knowledge.
+    expert_block = ""
+    domain_block = ""
+    
+    # Simple mapping logic for expert personas (Bug 8)
+    if framework == "Professional (RACE)":
+        expert_block = EXPERT_PROMPT_ENGINEER
+    elif framework == "Creative (Chain-of-Thought)":
+        expert_block = EXPERT_UX_DESIGNER
+    elif framework == "Technical (Zero-Shot)":
+        expert_block = EXPERT_CYBERSECURITY
+    
+    # Simple keyword-based domain knowledge injection (Bug 5)
+    # This can be expanded based on actual user text in _call_cipher if needed, 
+    # but here we provide a baseline based on the selected framework/persona.
+    if "code" in cognitive.lower() or "technical" in framework.lower():
+        domain_block = f"DOMAIN KNOWLEDGE: {DOMAIN_KNOWLEDGE['code_analysis']}"
+    elif "marketing" in framework.lower():
+        domain_block = f"DOMAIN KNOWLEDGE: {DOMAIN_KNOWLEDGE['marketing']}"
+
     retry_block   = (
         f"CORRECTION REQUIRED:\n"
         f"Previous attempt scored below quality threshold.\n"
@@ -188,9 +219,11 @@ def _build_system_prompt(
     parts = [
         CIPHER_IDENTITY,
         CIPHER_REASONING_LAYER,
+        expert_block, # Added Expert Persona (Bug 8)
         persona_block,
         brand_block,
-        f"ACTIVE FRAMEWORK: {framework}",
+        domain_block, # Added Domain Knowledge (Bug 5)
+        framework_block, # Updated with Visual Director (Bug 4)
         f"TARGET AI DIALECT: {target}",
         f"DIALECT SYNTAX GUIDE: {TARGET_GUIDES.get(target, '')}",
         style,
@@ -236,7 +269,6 @@ def _call_cipher(
     if refined is None:
         return None, None, f"Parse failed. Raw:\n{raw[:300]}"
     return refined, audit, None
-
 
 
 def detect_best_target(user_text: str) -> tuple:
