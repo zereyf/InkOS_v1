@@ -1,11 +1,7 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v2.1: THE DYNAMIC IDENTITY PATCH
-- Promoted 'Islamic Mode' out of Aesthetic and into Logic Configuration.
-- Language switcher remains at the top. 
-- Cleaned up visual hierarchy.
-- Injected 'brand_identity' into the SidebarConfig payload for dynamic routing.
+v9: Language switcher added at top. All labels use t() for i18n.
 """
 
 import streamlit as st
@@ -26,7 +22,6 @@ class SidebarConfig(TypedDict):
     islamic_mode:     bool
     aesthetic_choice: str
     active_persona:   Optional[dict]
-    brand_identity:   Optional[dict] # <--- DYNAMIC IDENTITY INJECTION
 
 
 def _load_user_personas(user_hash: str) -> list:
@@ -92,7 +87,6 @@ def render_sidebar() -> SidebarConfig:
 
         # ── LOGIC CONFIGURATION ───────────────────────────────────────────────
         st.subheader(t("logic_config"))
-        
         # Auto option is first — when selected CIPHER picks the best target
         target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
         target_model = st.selectbox(
@@ -129,31 +123,18 @@ def render_sidebar() -> SidebarConfig:
                     CIPHER will analyse your input and select the best AI automatically.
                 </div>
                 """, unsafe_allow_html=True)
-                
         framework = st.selectbox(
             t("logic_framework"),
             LOGIC_FRAMEWORKS,
             key="sb_framework",
             help=t("framework_help"),
         )
-        
         source_lang = st.radio(
             t("linguistic_source"),
             ["English", "Arabic (العربية)"],
             key="sb_lang",
             help=t("lang_help"),
         )
-
-        # ── ISLAMIC MODE (Moved up to Logic Configuration) ────────────────────
-        islamic_mode = st.toggle(t("islamic_mode"), value=False, key="sb_islamic")
-        if islamic_mode:
-            st.markdown(f"""
-            <div class="islamic-badge">
-                <span class="status-dot green"></span>{t('islamic_active')}<br>
-                {t('islamic_sharia')}<br>
-                {t('islamic_citation')}
-            </div>
-            """, unsafe_allow_html=True)
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -217,8 +198,17 @@ def render_sidebar() -> SidebarConfig:
             options=list(AESTHETIC_PRESETS.keys()),
             key="sb_aesthetic",
             help=t("aesthetic_help"),
-            label_visibility="collapsed"
         )
+
+        islamic_mode = st.toggle(t("islamic_mode"), value=False, key="sb_islamic")
+        if islamic_mode:
+            st.markdown(f"""
+            <div class="islamic-badge">
+                <span class="status-dot green"></span>{t('islamic_active')}<br>
+                {t('islamic_sharia')}<br>
+                {t('islamic_citation')}
+            </div>
+            """, unsafe_allow_html=True)
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -260,5 +250,4 @@ def render_sidebar() -> SidebarConfig:
         islamic_mode     = islamic_mode,
         aesthetic_choice = aesthetic_choice,
         active_persona   = active_persona,
-        brand_identity   = st.session_state.get("brand_identity") # <--- DYNAMIC IDENTITY INJECTION
     )
