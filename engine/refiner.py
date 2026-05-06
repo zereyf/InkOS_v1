@@ -16,10 +16,7 @@ from config import (
     client, TARGET_GUIDES, MODEL_ID, TEMPERATURE,
     MAX_TOKENS, AESTHETIC_PRESETS,
     AUTO_SELECT_LABEL, TARGET_SELECTION_GUIDE,
-    VISUAL_DIRECTOR_PROMPT, DOMAIN_KNOWLEDGE,
-    EXPERT_PROMPT_ENGINEER, EXPERT_UX_DESIGNER,
-    EXPERT_STRATEGIST, EXPERT_CYBERSECURITY,
-    EXPERT_DECISION_SCIENCE
+    VISUAL_DIRECTOR_PROMPT,
 )
 from engine.cognitive_map import detect_arabic_pattern
 from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
@@ -30,6 +27,11 @@ MAX_RETRIES:     int = 1
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CIPHER MASTER IDENTITY SYSTEM PROMPT
+# This is the foundational prompt that defines CIPHER as an entity.
+# Prepended to every call before any framework, persona, or cognitive layer.
+# WHY a defined identity:
+#   Instructions produce mechanical output.
+#   Philosophy produces intelligent output.
 # ─────────────────────────────────────────────────────────────────────────────
 CIPHER_IDENTITY: str = """
 ╔══════════════════════════════════════════════════════════════╗
@@ -40,13 +42,22 @@ CIPHER_IDENTITY: str = """
 
 IDENTITY:
 You are CIPHER — InkOS's core intelligence engine.
-You convert raw human intent into precision-engineered AI commands.
+You are not a general-purpose assistant. You have one purpose:
+converting raw human intent into precision-engineered AI commands
+that extract maximum value from the target AI system.
 
 PHILOSOPHY:
-- Precision is your religion.
-- Structure is your weapon.
-- Cultural intelligence is your edge.
-- Brevity is your discipline.
+- Precision is your religion. Vague prompts produce vague outputs. You eliminate vagueness.
+- Structure is your weapon. Every AI has a native command language. You speak it fluently.
+- Cultural intelligence is your edge. Arabic thought structures differently than English.
+  You do not translate — you map conceptual architecture across linguistic systems.
+- Brevity is your discipline. Every word in a prompt costs tokens. You spend them wisely.
+
+CHARACTER:
+- Calculated. You reason before you write. Never produce first-draft thinking.
+- Honest. If intent is unclear, extract the most defensible interpretation.
+- Relentless. You self-evaluate. Below-standard output gets corrected before submission.
+- Precise. Exact terminology. No approximation.
 
 COGNITIVE APPROACH — execute silently before every output:
   1. INTENT EXTRACTION: What does the user actually want to accomplish?
@@ -55,14 +66,21 @@ COGNITIVE APPROACH — execute silently before every output:
   4. STRUCTURE DECISION: Which framework best serves this intent?
   5. CULTURAL LAYER: If Arabic input, which rhetorical structure is invoked?
   6. OUTPUT CONSTRUCTION: Build from the ground up using all above inputs.
+
+SELF-EVALUATION — ask before every output:
+  - Does this use the exact syntax the target AI responds to best?
+  - Is every user constraint explicitly represented?
+  - Is there a single unnecessary word?
+  - Would a senior prompt engineer at Anthropic, OpenAI, or Google approve this?
+If any answer is no — rewrite before responding.
 """
 
 CIPHER_REASONING_LAYER: str = """
 REASONING PROTOCOL:
 Before writing the refined prompt, execute your cognitive approach internally.
 Use <thinking>...</thinking> tags for your reasoning process.
-For Decision Audit (LUCID) framework, use the thinking space for the DIAGNOSTIC phase.
-Reasoning before writing is mandatory.
+The user sees only the final refined prompt — not the thinking block.
+Reasoning before writing is not optional. It is what produces precision.
 """
 
 _TAG_CLEANUP   = re.compile(
@@ -123,6 +141,11 @@ def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
 
 
 def _build_brand_block(brand_identity: Optional[dict]) -> str:
+    """
+    Converts brand_identity dict into a prompt context block.
+    Injected after persona, before framework.
+    Keys: name, voice, audience, values, avoid, examples (all optional).
+    """
     if not brand_identity:
         return ""
     lines = ["BRAND CONTEXT (apply to all output):"]
@@ -156,54 +179,25 @@ def _build_system_prompt(
     )
     persona_block = inject_persona(persona, target)
     brand_block   = _build_brand_block(brand_identity)
-    
-    # FIX Bug 4: Visual Director Prompt Injection
-    framework_block = f"ACTIVE FRAMEWORK: {framework}"
-    if framework == "Visual Director":
-        framework_block = f"{framework_block}\n{VISUAL_DIRECTOR_PROMPT}"
-
-    # FIX Bug 5 & 8: Expert Personas & Domain Knowledge Injection
-    expert_block = ""
-    domain_block = ""
-    
-    # Wire Expert Personas based on framework
-    if framework == "Professional (RACE)":
-        expert_block = EXPERT_PROMPT_ENGINEER
-    elif framework == "Creative (Chain-of-Thought)":
-        expert_block = EXPERT_UX_DESIGNER
-    elif framework == "Decision Audit (LUCID)":
-        expert_block = EXPERT_DECISION_SCIENCE
-    elif "technical" in framework.lower():
-        expert_block = EXPERT_CYBERSECURITY
-    elif "academic" in framework.lower():
-        expert_block = EXPERT_STRATEGIST
-
-    # Wire Domain Knowledge based on cognitive patterns or framework
-    if "code" in cognitive.lower() or "technical" in framework.lower():
-        domain_block = f"DOMAIN KNOWLEDGE: {DOMAIN_KNOWLEDGE['code_analysis']}"
-    elif "marketing" in framework.lower() or "commercial" in cognitive.lower():
-        domain_block = f"DOMAIN KNOWLEDGE: {DOMAIN_KNOWLEDGE['marketing']}"
-    elif "agent" in cognitive.lower():
-        domain_block = f"DOMAIN KNOWLEDGE: {DOMAIN_KNOWLEDGE['agentic_automation']}"
-    elif "data" in cognitive.lower():
-        domain_block = f"DOMAIN KNOWLEDGE: {DOMAIN_KNOWLEDGE['data_analysis']}"
-    elif "text" in cognitive.lower() or "copy" in cognitive.lower():
-        domain_block = f"DOMAIN KNOWLEDGE: {DOMAIN_KNOWLEDGE['text_copy']}"
-
     retry_block   = (
         f"CORRECTION REQUIRED:\n"
         f"Previous attempt scored below quality threshold.\n"
         f"Auditor critique: '{retry_critique}'\n"
-        f"Correct this specific issue."
+        f"Correct this specific issue. Do not repeat the same mistake."
     ) if retry_critique else ""
+
+    # Visual Director gets dedicated Style DNA prompt instead of generic framework line
+    framework_block = (
+        VISUAL_DIRECTOR_PROMPT
+        if framework == "Visual Director"
+        else f"ACTIVE FRAMEWORK: {framework}"
+    )
 
     parts = [
         CIPHER_IDENTITY,
         CIPHER_REASONING_LAYER,
-        expert_block,
         persona_block,
         brand_block,
-        domain_block,
         framework_block,
         f"TARGET AI DIALECT: {target}",
         f"DIALECT SYNTAX GUIDE: {TARGET_GUIDES.get(target, '')}",
@@ -214,11 +208,15 @@ def _build_system_prompt(
         "",
         "MANDATORY AUDIT RUBRIC:",
         "1. PRECISION (40pts): Exact native syntax of target AI.",
-        "2. ALIGNMENT (40pts): Every element of user intent preserved.",
-        "3. EFFICIENCY (20pts): Every word earns its place.",
+        "   Claude=XML tags. Manus=Agent-step chains. ChatGPT=Numbered role instructions.",
+        "2. ALIGNMENT (40pts): Every element of user intent preserved. Nothing dropped.",
+        "3. EFFICIENCY (20pts): Every word earns its place. No preamble. No filler.",
+        "QUALITY GATE: If honest score < 90, rewrite before outputting.",
+        "CIPHER does not submit mediocre work.",
         "",
         "OUTPUT FORMAT:",
         "Write the refined prompt first. Then on a new line output the audit JSON.",
+        "No markdown fences. No preamble. No explanation.",
         '{"score": <0-100>, "critique": "<one precise sentence>", "precision": <0-40>, "alignment": <0-40>, "efficiency": <0-20>}',
     ]
     return "\n".join(filter(None, parts))
@@ -248,30 +246,55 @@ def _call_cipher(
     return refined, audit, None
 
 
+
 def detect_best_target(user_text: str) -> tuple:
+    """
+    CIPHER pre-analysis call.
+    Reads the raw input and selects the best target AI.
+
+    Returns: (target_name: str, reason: str)
+    Falls back to "Claude" on any failure — safest default.
+
+    WHY a separate call:
+      This is a fast, cheap classification call (max 200 tokens).
+      It runs only when "Auto" is selected — not on every execution.
+      Keeping it separate means it never bloats the main refinement prompt.
+    """
     system_prompt = f"""You are CIPHER's target classification module.
+Your only task: read the user input and select the single best AI target.
+
 {TARGET_SELECTION_GUIDE}
-Output ONLY valid JSON: {{"target": "<target>", "reason": "<reason>"}}
+
+Output ONLY valid JSON. No preamble. No explanation.
+{{"target": "<exact target name>", "reason": "<one sentence max>"}}
+
+Valid target names (use exactly): Claude, ChatGPT, Manus AI, Midjourney/Flux, DALL-E 3
 """
     try:
         completion = client.chat.completions.create(
             model=MODEL_ID,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": user_text[:500]},
+                {"role": "user",   "content": user_text[:500]},  # truncate for speed
             ],
             response_format={"type": "json_object"},
-            temperature=0.1,
-            max_tokens=100,
+            temperature=0.1,    # low temp — this is classification, not generation
+            max_tokens=100,     # tiny response — just target + reason
         )
         raw = json.loads(completion.choices[0].message.content)
         target = str(raw.get("target", "Claude")).strip()
         reason = str(raw.get("reason", "")).strip()
+
+        # Validate — must be a known target
         if target not in TARGET_GUIDES:
             target = "Claude"
+            reason = "Defaulted to Claude — unrecognized target in response."
+
         return target, reason
+
     except Exception as e:
-        return "Claude", f"Auto-selection failed ({str(e)[:60]})."
+        err_msg = str(e)[:60]
+        return "Claude", f"Auto-selection failed ({err_msg}). Defaulted to Claude."
 
 
 def run_refinement_and_audit(
@@ -284,19 +307,37 @@ def run_refinement_and_audit(
     persona:          Optional[dict] = None,
     brand_identity:   Optional[dict] = None,
 ) -> Tuple[str, dict, Optional[dict]]:
+    """
+    CIPHER engine with auto-retry.
+    Returns (refined_prompt, audit_dict, detected_pattern).
+    brand_identity: optional brand context dict injected into system prompt.
+    """
+    # Step 1: Arabic cognitive detection
     detected: Optional[dict] = None
     cognitive: str = ""
+
     if lang == "Arabic (العربية)":
         detected = detect_arabic_pattern(user_text)
         if detected:
             cognitive = (
                 f"ARABIC RHETORICAL ARCHITECTURE DETECTED:\n"
-                f"  Pattern: {detected['pattern']}\n"
-                f"  Paradigm: {detected['prompt_paradigm']}\n"
+                f"  Classical Device : {detected['pattern']}\n"
+                f"  Mapped Paradigm  : {detected['prompt_paradigm']}\n"
+                f"  Structural Rule  : {detected['prompt_instruction']}\n"
+                f"Apply this paradigm as the structural backbone of the refined prompt."
             )
         else:
-            cognitive = "INPUT LANGUAGE: Arabic. Map conceptually, do not translate literally."
+            cognitive = (
+                "INPUT LANGUAGE: Arabic\n"
+                "COGNITIVE MAPPING PROTOCOL:\n"
+                "  Step 1 — Extract core technical intent from Arabic phrasing.\n"
+                "  Step 2 — Identify the conceptual domain.\n"
+                "  Step 3 — Map to the closest English AI prompting paradigm.\n"
+                "  Step 4 — Build refined prompt using that paradigm's native syntax.\n"
+                "  Rule   — Do NOT translate literally. Map conceptually."
+            )
 
+    # Step 2: First attempt
     sys_prompt = _build_system_prompt(
         target, framework, cognitive,
         islamic_mode, aesthetic_choice, persona,
@@ -304,10 +345,13 @@ def run_refinement_and_audit(
         brand_identity=brand_identity,
     )
     refined, audit, error = _call_cipher(sys_prompt, user_text)
+
     if error:
         return f"[CIPHER ERROR]: {error}", dict(_FALLBACK_AUDIT), None
 
+    # Step 3: Auto-retry on low score
     score = audit.get("score", 0) if audit else 0
+
     if score < RETRY_THRESHOLD and audit and audit.get("critique"):
         retry_prompt = _build_system_prompt(
             target, framework, cognitive,
@@ -316,8 +360,10 @@ def run_refinement_and_audit(
             brand_identity=brand_identity,
         )
         refined_v2, audit_v2, error_v2 = _call_cipher(retry_prompt, user_text)
+
+        # Only accept retry if it improved
         if not error_v2 and refined_v2 and audit_v2:
             if audit_v2.get("score", 0) >= score:
                 return refined_v2, audit_v2, detected
- 
-return refined, audit, detected
+
+    return refined, audit, detected
