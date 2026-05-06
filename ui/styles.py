@@ -132,11 +132,26 @@ header[data-testid="stHeader"] { position: fixed !important; top: 0 !important; 
 
 div[data-testid="stSidebarNav"] { display: none; }
 
-/* GHOST RADIO BUTTON CLOAKING (The Final Nuke) */
-/* Streamlit structures radio buttons as: <label data-baseweb="radio"> <div>[Circle]</div> <div>[Text]</div> </label> */
-/* We target ONLY the first child div (the circle) and nuke it. */
-[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:first-child {
+/* GHOST RADIO BUTTON CLOAKING (The "Invisible Ink" Method) */
+/* Target the radio input and aggressively collapse its footprint */
+[data-testid="stSidebar"] [role="radiogroup"] input[type="radio"] {
+    position: absolute !important; 
+    opacity: 0 !important; 
+    width: 0 !important; 
+    height: 0 !important;
+}
+
+/* Target the visual circle drawn by BaseWeb (usually an adjacent div or span) */
+[data-testid="stSidebar"] [role="radiogroup"] input[type="radio"] + div,
+[data-testid="stSidebar"] [role="radiogroup"] input[type="radio"] + span,
+[data-testid="stSidebar"] [role="radiogroup"] [data-baseweb="radio"] > div:not(:last-child) {
     display: none !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
 }
 
 /* MENU ITEM CONTAINERS */
@@ -147,8 +162,9 @@ div[data-testid="stSidebarNav"] { display: none; }
     cursor: pointer !important; display: block !important;
 }
 
-/* TEXT TYPOGRAPHY (Targeting the second child div where Streamlit puts the text) */
-[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:last-child,
+/* TEXT TYPOGRAPHY */
+/* We target ALL text nodes inside the label, regardless of structure */
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] div,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] p,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] span {
     font-family: 'IBM Plex Mono', monospace !important; font-size: 0.75rem !important;
@@ -161,7 +177,7 @@ div[data-testid="stSidebarNav"] { display: none; }
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover {
     background: rgba(201, 168, 76, 0.04) !important; border-left: 3px solid rgba(201, 168, 76, 0.4) !important;
 }
-[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover div:last-child,
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover div,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover p,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover span { 
     color: #E2D5BC !important; 
@@ -172,12 +188,14 @@ div[data-testid="stSidebarNav"] { display: none; }
     background: linear-gradient(90deg, rgba(201,168,76,0.12) 0%, transparent 100%) !important;
     border-left: 3px solid #C9A84C !important;
 }
-[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) div:last-child,
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) div,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) p,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) span {
     color: #C9A84C !important; font-weight: 600 !important; text-shadow: 0 0 10px rgba(201,168,76,0.2) !important;
 }
- ══════════════════════════════════════════
+
+
+/* ══════════════════════════════════════════
    HORIZONTAL LANGUAGE SWITCHER
 ══════════════════════════════════════════ */
 [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(button) {
