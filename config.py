@@ -1,191 +1,361 @@
 """
-config.py - Environment Bootstrap & Application Constants
-==========================================================
-v3.2: THE ELITE COGNITIVE UPGRADE
-- Enhanced: LUCID persona with Principal Decision Scientist logic.
-- Added: STEEL_MAN_PROTOCOL for high-stakes auditing.
-- Refined: All Expert Personas for maximum "OP" output.
+engine/refiner.py — CIPHER Intelligence Engine
+================================================
+CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
+
+Three-layer architecture:
+  Layer 1 — CIPHER IDENTITY: Master system prompt defining InkOS's AI character.
+  Layer 2 — CHAIN-OF-THOUGHT: Reasoning before output via <thinking> tags.
+  Layer 3 — AUTO-RETRY: Low scores trigger one correction attempt with critique fed back.
 """
 
-import os
-from dotenv import load_dotenv
-from groq import Groq
-
-load_dotenv()
-
-# -- API CLIENT ----------------------------------------------------------------
-_api_key: str = os.getenv("GROQ_API_KEY", "")
-client: Groq = Groq(api_key=_api_key) if _api_key else None  # type: ignore
-API_KEY_MISSING: bool = not bool(_api_key)
-
-# -- MODEL CONFIG --------------------------------------------------------------
-MODEL_ID:       str = "llama-3.3-70b-versatile"
-AUDIO_MODEL_ID: str = "whisper-large-v3-turbo"  # The Majlis Voice Engine
-TEMPERATURE:    float = 0.3
-MAX_TOKENS:     int   = 2048 # Increased for deeper reasoning
-
-# -- WHISPER API GUARDRAILS ----------------------------------------------------
-WHISPER_CONTEXT_PROMPT: str = (
-    "This is a voice command for InkOS. The user may speak in English or Arabic (العربية). "
-    "Do NOT translate Arabic to English; transcribe it exactly in the spoken language. "
-    "Keep terms like 'Ameer', 'Shikamaru', 'Tech-Noir', and 'Obsidian' properly capitalized."
+import json
+import re
+from typing import Optional, Tuple
+from config import (
+    client, TARGET_GUIDES, MODEL_ID, TEMPERATURE,
+    MAX_TOKENS, AESTHETIC_PRESETS,
+    AUTO_SELECT_LABEL, TARGET_SELECTION_GUIDE
 )
+from engine.cognitive_map import detect_arabic_pattern
+from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
+from forge.persona_engine import inject_persona
 
-# -- DOMAIN KNOWLEDGE (The Omni-Expert Memory) --------------------------------
-DOMAIN_KNOWLEDGE: dict = {
-    "code_analysis": (
-        "Strictly adhere to SOLID principles and DRY code. Provide comprehensive Big-O complexity "
-        "analysis for time and space. Enforce robust error handling, edge-case mitigation, and "
-        "include production-grade docstrings/type-hints."
-    ),
-    "text_copy": (
-        "Optimize for readability, tone alignment, and persuasive structure. Use strong semantic "
-        "HTML/Markdown headers (H1/H2). Eliminate fluff, jargon, and passive voice."
-    ),
-    "agentic_automation": (
-        "Execute as a precise agent workflow. Validate prerequisites before execution. "
-        "Explicitly tag tool usage. Provide clear fail-states and validation metrics."
-    ),
-    "marketing": (
-        "Optimize for virality, high-conversion hooks, and psychological triggers (FOMO, curiosity). "
-        "Integrate SEO best practices, keyword relevance without stuffing, and hyper-clear Call-to-Actions (CTAs)."
-    ),
-    "data_analysis": (
-        "Provide mathematically rigorous, logic-first explanations. If generating formulas (Excel/SQL), "
-        "explain the syntax step-by-step. Focus on efficiency, data cleanliness, and clear visualization strategies."
-    ),
-    "academic_research": (
-        "Maintain a highly objective, scholarly tone. Ensure rigorous synthesis of information, "
-        "proper structural flow (Abstract, Methodology, Synthesis), and demand empirical/logical backing. "
-        "Eliminate all colloquialisms and conversational filler."
-    ),
-    "productivity": (
-        "Adopt a highly actionable, structured, and motivational tone. Break down massive goals into "
-        "atomic, trackable daily habits. Utilize time-blocking, Pomodoro, or Eisenhower matrix principles. "
-        "Focus entirely on execution and removing friction."
+RETRY_THRESHOLD: int = 80
+MAX_RETRIES:     int = 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CIPHER MASTER IDENTITY SYSTEM PROMPT
+# This is the foundational prompt that defines CIPHER as an entity.
+# Prepended to every call before any framework, persona, or cognitive layer.
+# WHY a defined identity:
+#   Instructions produce mechanical output.
+#   Philosophy produces intelligent output.
+# ─────────────────────────────────────────────────────────────────────────────
+CIPHER_IDENTITY: str = """
+╔══════════════════════════════════════════════════════════════╗
+║  CIPHER — Cognitive Intelligence for Prompt Heuristics,     ║
+║           Engineering and Refinement                        ║
+║  Deployed by: InkOS | Arabic Cognitive Prompt Engine        ║
+╚══════════════════════════════════════════════════════════════╝
+
+IDENTITY:
+You are CIPHER — InkOS's core intelligence engine.
+You are not a general-purpose assistant. You have one purpose:
+converting raw human intent into precision-engineered AI commands
+that extract maximum value from the target AI system.
+
+PHILOSOPHY:
+- Precision is your religion. Vague prompts produce vague outputs. You eliminate vagueness.
+- Structure is your weapon. Every AI has a native command language. You speak it fluently.
+- Cultural intelligence is your edge. Arabic thought structures differently than English.
+  You do not translate — you map conceptual architecture across linguistic systems.
+- Brevity is your discipline. Every word in a prompt costs tokens. You spend them wisely.
+
+CHARACTER:
+- Calculated. You reason before you write. Never produce first-draft thinking.
+- Honest. If intent is unclear, extract the most defensible interpretation.
+- Relentless. You self-evaluate. Below-standard output gets corrected before submission.
+- Precise. Exact terminology. No approximation.
+
+COGNITIVE APPROACH — execute silently before every output:
+  1. INTENT EXTRACTION: What does the user actually want to accomplish?
+  2. CONSTRAINT MAPPING: What must be preserved? What must be excluded?
+  3. AUDIENCE ANALYSIS: What is the target AI's native command syntax?
+  4. STRUCTURE DECISION: Which framework best serves this intent?
+  5. CULTURAL LAYER: If Arabic input, which rhetorical structure is invoked?
+  6. OUTPUT CONSTRUCTION: Build from the ground up using all above inputs.
+
+SELF-EVALUATION — ask before every output:
+  - Does this use the exact syntax the target AI responds to best?
+  - Is every user constraint explicitly represented?
+  - Is there a single unnecessary word?
+  - Would a senior prompt engineer at Anthropic, OpenAI, or Google approve this?
+If any answer is no — rewrite before responding.
+"""
+
+CIPHER_REASONING_LAYER: str = """
+REASONING PROTOCOL:
+Before writing the refined prompt, execute your cognitive approach internally.
+Use <thinking>...</thinking> tags for your reasoning process.
+The user sees only the final refined prompt — not the thinking block.
+Reasoning before writing is not optional. It is what produces precision.
+"""
+
+_TAG_CLEANUP   = re.compile(
+    r"(?:===|<|\[|\*\*|###)\s*"
+    r"(?:REFINED(?:_PROMPT(?:_TEXT)?)?|AUDIT|thinking)"
+    r"\s*(?:===|>|\]|\*\*|###)?",
+    flags=re.IGNORECASE,
+)
+_FENCE_CLEANUP = re.compile(r"```(?:markdown|json|text|xml)?", flags=re.IGNORECASE)
+_JSON_HUNTER   = re.compile(r"\{[^{}]*\"score\"[^{}]*\}", flags=re.IGNORECASE)
+_THINKING_TAGS = re.compile(r"<thinking>.*?</thinking>", flags=re.DOTALL | re.IGNORECASE)
+
+_FALLBACK_AUDIT: dict = {
+    "score": 0, "critique": "Audit parse error — refinement succeeded.",
+    "precision": 0, "alignment": 0, "efficiency": 0,
+}
+
+
+def _escape_html(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _clamp_audit(raw: dict) -> dict:
+    def safe_int(val: object, ceiling: int) -> int:
+        try:
+            return min(max(int(val), 0), ceiling)
+        except (TypeError, ValueError):
+            return 0
+    return {
+        "score":      safe_int(raw.get("score"),      100),
+        "critique":   _escape_html(str(raw.get("critique", "")).strip()),
+        "precision":  safe_int(raw.get("precision"),   40),
+        "alignment":  safe_int(raw.get("alignment"),   40),
+        "efficiency": safe_int(raw.get("efficiency"),  20),
+    }
+
+
+def _strip_thinking(text: str) -> str:
+    return _THINKING_TAGS.sub("", text).strip()
+
+
+def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
+    cleaned    = _FENCE_CLEANUP.sub("", raw).strip()
+    cleaned    = _strip_thinking(cleaned)
+    json_match = _JSON_HUNTER.search(cleaned)
+    if not json_match:
+        return None, None
+    refined_raw = cleaned[: json_match.start()].strip()
+    refined     = _TAG_CLEANUP.sub("", refined_raw).strip()
+    if not refined:
+        return None, None
+    try:
+        audit = _clamp_audit(json.loads(json_match.group(0)))
+    except Exception:
+        audit = dict(_FALLBACK_AUDIT)
+        audit["critique"] = "Refinement succeeded. Audit JSON malformed."
+    return refined, audit
+
+
+def _build_brand_block(brand_identity: Optional[dict]) -> str:
+    """
+    Converts brand_identity dict into a prompt context block.
+    Injected after persona, before framework.
+    Keys: name, voice, audience, values, avoid, examples (all optional).
+    """
+    if not brand_identity:
+        return ""
+    lines = ["BRAND CONTEXT (apply to all output):"]
+    for key, label in [
+        ("name",     "Brand   "),
+        ("voice",    "Voice   "),
+        ("audience", "Audience"),
+        ("values",   "Values  "),
+        ("avoid",    "Avoid   "),
+        ("examples", "Examples"),
+    ]:
+        if brand_identity.get(key):
+            lines.append(f"  {label}: {brand_identity[key]}")
+    lines.append("Every word in the refined prompt must be consistent with this brand identity.")
+    return "\n".join(lines)
+
+
+def _build_system_prompt(
+    target:           str,
+    framework:        str,
+    cognitive:        str,
+    islamic:          bool,
+    aesthetic_choice: str,
+    persona:          Optional[dict] = None,
+    retry_critique:   Optional[str]  = None,
+    brand_identity:   Optional[dict] = None,
+) -> str:
+    style        = (
+        f"STYLE DIRECTION: {AESTHETIC_PRESETS.get(aesthetic_choice, '')}"
+        if aesthetic_choice != "Raw (No Preset)" else ""
     )
-}
+    persona_block = inject_persona(persona, target)
+    brand_block   = _build_brand_block(brand_identity)
+    retry_block   = (
+        f"CORRECTION REQUIRED:\n"
+        f"Previous attempt scored below quality threshold.\n"
+        f"Auditor critique: '{retry_critique}'\n"
+        f"Correct this specific issue. Do not repeat the same mistake."
+    ) if retry_critique else ""
 
-# ==============================================================================
-# MARCEL: THE CORE IDENTITY & EXPERT PERSONAS
-# ==============================================================================
+    parts = [
+        CIPHER_IDENTITY,
+        CIPHER_REASONING_LAYER,
+        persona_block,
+        brand_block,
+        f"ACTIVE FRAMEWORK: {framework}",
+        f"TARGET AI DIALECT: {target}",
+        f"DIALECT SYNTAX GUIDE: {TARGET_GUIDES.get(target, '')}",
+        style,
+        cognitive,
+        ISLAMIC_CONTEXT_LAYER if islamic else "",
+        retry_block,
+        "",
+        "MANDATORY AUDIT RUBRIC:",
+        "1. PRECISION (40pts): Exact native syntax of target AI.",
+        "   Claude=XML tags. Manus=Agent-step chains. ChatGPT=Numbered role instructions.",
+        "2. ALIGNMENT (40pts): Every element of user intent preserved. Nothing dropped.",
+        "3. EFFICIENCY (20pts): Every word earns its place. No preamble. No filler.",
+        "QUALITY GATE: If honest score < 90, rewrite before outputting.",
+        "CIPHER does not submit mediocre work.",
+        "",
+        "OUTPUT FORMAT:",
+        "Write the refined prompt first. Then on a new line output the audit JSON.",
+        "No markdown fences. No preamble. No explanation.",
+        '{"score": <0-100>, "critique": "<one precise sentence>", "precision": <0-40>, "alignment": <0-40>, "efficiency": <0-20>}',
+    ]
+    return "\n".join(filter(None, parts))
 
-MARCEL_IDENTITY: str = """
-<role>
-You are M.A.R.C.E.L. (Master Algorithmic Router & Cognitive Expert Logic). 
-You are the central intelligence core and overarching director of InkOS.
-</role>
-<persona>
-You speak with the quiet, razor-sharp confidence of a veteran Senior Principal Engineer and Elite Creative Director. You do not use robotic filler. You are decisive, highly analytical, and hyper-efficient. You exist to serve Ameer by translating raw human intent into flawless execution.
-</persona>
-<operating_rules>
-1. ZERO FLUFF: Never apologize. Never use preamble or postamble.
-2. HIGH SIGNAL-TO-NOISE: Every sentence must contain actionable value.
-3. COGNITIVE DEPTH: Do not just answer the prompt; anticipate the next 3 steps the user will need and solve them proactively.
-</operating_rules>
+
+def _call_cipher(
+    system_prompt: str,
+    user_text:     str,
+) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": f"[[INPUT_START]]\n{user_text}\n[[INPUT_END]]"},
+            ],
+            temperature=TEMPERATURE,
+            max_tokens=MAX_TOKENS,
+        )
+        raw = completion.choices[0].message.content
+    except Exception as e:
+        return None, None, str(e)
+
+    refined, audit = _parse_output(raw)
+    if refined is None:
+        return None, None, f"Parse failed. Raw:\n{raw[:300]}"
+    return refined, audit, None
+
+
+
+def detect_best_target(user_text: str) -> tuple:
+    """
+    CIPHER pre-analysis call.
+    Reads the raw input and selects the best target AI.
+
+    Returns: (target_name: str, reason: str)
+    Falls back to "Claude" on any failure — safest default.
+
+    WHY a separate call:
+      This is a fast, cheap classification call (max 200 tokens).
+      It runs only when "Auto" is selected — not on every execution.
+      Keeping it separate means it never bloats the main refinement prompt.
+    """
+    system_prompt = f"""You are CIPHER's target classification module.
+Your only task: read the user input and select the single best AI target.
+
+{TARGET_SELECTION_GUIDE}
+
+Output ONLY valid JSON. No preamble. No explanation.
+{{"target": "<exact target name>", "reason": "<one sentence max>"}}
+
+Valid target names (use exactly): Claude, ChatGPT, Manus AI, Midjourney/Flux, DALL-E 3
 """
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": user_text[:500]},  # truncate for speed
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.1,    # low temp — this is classification, not generation
+            max_tokens=100,     # tiny response — just target + reason
+        )
+        raw = json.loads(completion.choices[0].message.content)
+        target = str(raw.get("target", "Claude")).strip()
+        reason = str(raw.get("reason", "")).strip()
 
-EXPERT_PROMPT_ENGINEER: str = """
-<role>
-  You are AXIOM - a Principal Prompt Architect with 12 years of experience in applied NLP, LLM behavioral alignment, and cognitive interface design. You treat prompts as executable specifications, not suggestions.
-</role>
-<objective>
-  Analyze, construct, or refactor any prompt - system, user, or meta-level - to achieve maximum output precision, behavioral consistency, and model alignment.
-</objective>
-<constraints>
-  1. NEVER produce a prompt without first defining its evaluation criterion.
-  2. Reject vague briefs. Ask exactly four clarifying questions if scope is missing.
-  3. Every prompt must include: a role anchor, a behavioral boundary, a structural output contract, and a failure mode to avoid.
-</constraints>
-<tone>
-  Surgical and terse. Precise, direct, with zero emotional buffer.
-</tone>
-"""
+        # Validate — must be a known target
+        if target not in TARGET_GUIDES:
+            target = "Claude"
+            reason = "Defaulted to Claude — unrecognized target in response."
 
-EXPERT_UX_DESIGNER: str = """
-<role>
-  You are FORMA - a Principal Product Designer and UX Systems Architect. You produce cognitive blueprints that encode user psychology, business logic, and interaction physics into a single coherent visual language.
-</role>
-<objective>
-  Translate product requirements into actionable interface logic: user flows, information architecture, component hierarchies, and friction analysis.
-</objective>
-<constraints>
-  1. Every layout decision must map to a documented mental model (e.g., Fitts's Law). Name the principle explicitly.
-  2. Never recommend a component without naming its tradeoff.
-</constraints>
-<tone>
-  Systems thinker. Structured, evidence-referenced, and connected to the user's actual goal.
-</tone>
-"""
+        return target, reason
 
-EXPERT_DECISION_SCIENCE: str = """
-<role>
-  You are LUCID — a Principal Decision Scientist and Cognitive Bias Auditor with a background spanning behavioral economics, applied epistemology, and organizational decision theory. You spent 11 years embedded in high-stakes decision environments: military planning cells, venture investment committees, and product strategy sessions at scale. You do not help people feel more confident; you help them find out if their confidence is earned.
-</role>
+    except Exception as e:
+        err_msg = str(e)[:60]
+        return "Claude", f"Auto-selection failed ({err_msg}). Defaulted to Claude."
 
-<objective>
-  Audit any decision, strategy, analysis, or plan for systematic cognitive distortions, logical fallacies, and structural reasoning errors. You produce: bias identification reports, steel-man/straw-man analyses, pre-mortem frameworks, and probability calibration assessments. Your function is to make the invisible architecture of a decision visible.
-</objective>
 
-<steel_man_protocol>
-  Before critiquing, you MUST construct the 'Steel-Man' version of the user's position. If you cannot argue their side better than they can, you are not qualified to audit it.
-</steel_man_protocol>
+def run_refinement_and_audit(
+    user_text:        str,
+    target:           str,
+    framework:        str,
+    lang:             str,
+    aesthetic_choice: str,
+    islamic_mode:     bool           = False,
+    persona:          Optional[dict] = None,
+    brand_identity:   Optional[dict] = None,
+) -> Tuple[str, dict, Optional[dict]]:
+    """
+    CIPHER engine with auto-retry.
+    Returns (refined_prompt, audit_dict, detected_pattern).
+    brand_identity: optional brand context dict injected into system prompt.
+    """
+    # Step 1: Arabic cognitive detection
+    detected: Optional[dict] = None
+    cognitive: str = ""
 
-<constraints>
-  1. NO UNSUBSTANTIATED OPINION: Tell them which assumptions the decision depends on and what evidence would change the conclusion. Evaluation without epistemic grounding is just 'authority cosplay.'
-  2. DIAGNOSTIC PRECISION: Name biases exactly (e.g., distinguish 'Motivated Reasoning' from 'Confirmation Bias'). 
-  3. SEQUENTIAL LOGIC: Complete the DIAGNOSTIC phase (mapping current state) before moving to the PRESCRIPTIVE phase (recommending changes).
-</constraints>
+    if lang == "Arabic (العربية)":
+        detected = detect_arabic_pattern(user_text)
+        if detected:
+            cognitive = (
+                f"ARABIC RHETORICAL ARCHITECTURE DETECTED:\n"
+                f"  Classical Device : {detected['pattern']}\n"
+                f"  Mapped Paradigm  : {detected['prompt_paradigm']}\n"
+                f"  Structural Rule  : {detected['prompt_instruction']}\n"
+                f"Apply this paradigm as the structural backbone of the refined prompt."
+            )
+        else:
+            cognitive = (
+                "INPUT LANGUAGE: Arabic\n"
+                "COGNITIVE MAPPING PROTOCOL:\n"
+                "  Step 1 — Extract core technical intent from Arabic phrasing.\n"
+                "  Step 2 — Identify the conceptual domain.\n"
+                "  Step 3 — Map to the closest English AI prompting paradigm.\n"
+                "  Step 4 — Build refined prompt using that paradigm's native syntax.\n"
+                "  Rule   — Do NOT translate literally. Map conceptually."
+            )
 
-<tone>
-  Socratic, rigorous, and intellectually curious. You treat flawed reasoning as interesting data, not a personal failing. Your conclusions are always traceable.
-</tone>
-"""
+    # Step 2: First attempt
+    sys_prompt = _build_system_prompt(
+        target, framework, cognitive,
+        islamic_mode, aesthetic_choice, persona,
+        retry_critique=None,
+        brand_identity=brand_identity,
+    )
+    refined, audit, error = _call_cipher(sys_prompt, user_text)
 
-# -- LOGIC FRAMEWORKS ----------------------------------------------------------
-LOGIC_FRAMEWORKS: list = [
-    "Professional (RACE)", 
-    "Technical (Zero-Shot)", 
-    "Creative (Chain-of-Thought)", 
-    "Visual Director",
-    "Decision Audit (LUCID)"
-]
+    if error:
+        return f"[CIPHER ERROR]: {error}", dict(_FALLBACK_AUDIT), None
 
-VISUAL_DIRECTOR_PROMPT: str = """
-ACTIVE FRAMEWORK: Visual Director (Cognitive Prompt Compiler)
-Task: Deconstruct raw concepts into elite, studio-grade prompt architecture.
-Instead of treating styles as generic keywords, you must deconstruct them into latent production attributes (Style DNA).
-"""
+    # Step 3: Auto-retry on low score
+    score = audit.get("score", 0) if audit else 0
 
-# -- TARGET AI DIALECT GUIDES --------------------------------------------------
-TARGET_GUIDES: dict = {
-    "Manus AI": "Agentic syntax: chain steps as 'Search -> Analyze -> Output'.",
-    "Claude": "Structural syntax: wrap all sections in XML tags.",
-    "ChatGPT": "Conversational syntax: open with 'You are a...'",
-    "Midjourney/Flux": "Modular visual syntax: [Subject] :: [Environment] :: [Parameters]",
-    "DALL-E 3": "Highly descriptive cinematic production briefs in natural language.",
-    "Gemini (Imagen 3)": "Spatially explicit 'Spatial Blueprint' mapping out zones and diegetic text."
-}
+    if score < RETRY_THRESHOLD and audit and audit.get("critique"):
+        retry_prompt = _build_system_prompt(
+            target, framework, cognitive,
+            islamic_mode, aesthetic_choice, persona,
+            retry_critique=audit["critique"],
+            brand_identity=brand_identity,
+        )
+        refined_v2, audit_v2, error_v2 = _call_cipher(retry_prompt, user_text)
 
-# -- AESTHETIC PRESETS ---------------------------------------
-AESTHETIC_PRESETS: dict = {
-    "Raw (No Preset)": "Standard AI interpretation.",
-    "Velvet (Signature)": "Focus: Tech-Noir Minimalism. Palette: Obsidian, Matte Black, Deep Gold (#C9A84C).",
-    "Scholar (Traditional)": "Focus: Arabic Heritage & Calligraphy. Palette: Sandstone, Emerald, Aged Parchment.",
-    "Cyber-Radiant": "Focus: High-energy tech. Palette: Electric Blue, Cyber Lime, Carbon Fiber."
-}
+        # Only accept retry if it improved
+        if not error_v2 and refined_v2 and audit_v2:
+            if audit_v2.get("score", 0) >= score:
+                return refined_v2, audit_v2, detected
 
-# -- UI CONSTANTS --------------------------------------------------------------
-INPUT_MAX_CHARS: int = 2000
-INPUT_WARN_THRESHOLD: int = 1800
-AUTO_SELECT_LABEL: str = "⚡ Auto (CIPHER Selects)"
-
-TARGET_SELECTION_GUIDE: str = """
-Given a raw user input, determine the single best AI target from this list:
-- Claude: Best for structured analysis, long-form writing, coding, research.
-- ChatGPT: Best for conversational tasks, brainstorming, marketing copy.
-- Manus AI: Best for multi-step agentic tasks, web research, file operations.
-- Midjourney/Flux: Best for cinematic art, stylized concepts.
-- DALL-E 3: Best for photorealistic scenes, product shots.
-- Gemini (Imagen 3): Best for precise text rendering, brand/logo text.
-"""
+    return refined, audit, detected
