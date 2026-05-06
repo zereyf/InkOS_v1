@@ -81,14 +81,38 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(201,168,76,0.2) !important;
     }
 
-    /* 4. HORIZONTAL LANGUAGE SWITCHER */
+        /* 4. HORIZONTAL LANGUAGE SWITCHER (RIGID ALIGNMENT) */
     [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(button) {
         display: flex !important; flex-direction: row !important;
-        flex-wrap: nowrap !important; gap: 4px !important;
+        flex-wrap: nowrap !important; gap: 6px !important;
+        align-items: center !important; margin-bottom: 10px !important;
     }
+    
     [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(button) > div {
         min-width: 0 !important; flex: 1 1 0% !important;
     }
+
+    /* Enforce identical geometry across all button states */
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button {
+        height: 36px !important; margin: 0 !important; padding: 0 !important;
+        display: flex !important; align-items: center !important; justify-content: center !important;
+        border: 1px solid var(--text-dim) !important; background: transparent !important;
+        font-family: var(--font-m) !important; font-size: 0.7rem !important; color: var(--text-muted) !important;
+        border-radius: 4px !important; transition: none !important; /* Disables click/hover vertical shift */
+    }
+
+    /* Target active state via Streamlit's 'primary' kind attribute */
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button[kind="primary"] {
+        border: 1px solid var(--gold) !important;
+        background: var(--gold-glow) !important;
+        color: var(--gold) !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button[kind="secondary"]:hover {
+        border: 1px solid var(--gold-border) !important;
+        color: var(--text) !important;
+    }
+
 </style>
 
 
