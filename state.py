@@ -1,13 +1,14 @@
 """
 state.py — Session State Contract
 ===================================
-v10: Added APP_CONFIG key for global routing architecture.
+v11: Sealed memory leaks, enforced deepcopy isolation, and UTC standard.
 """
 
 import uuid
 import hashlib
+from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 import streamlit as st
-from datetime import datetime, timedelta
 
 
 class K:
@@ -50,27 +51,49 @@ _DEFAULTS: dict = {
 
 
 def init_session_state() -> None:
+    """Idempotent initialization of required state keys."""
     for key, default in _DEFAULTS.items():
         if key not in st.session_state:
-            st.session_state[key] = list(default) if isinstance(default, list) else default
-    if st.session_state[K.USER_HASH] is None:
+            # Deepcopy ensures mutable defaults (lists, dicts) do not share memory references
+            st.session_state[key] = deepcopy(default)
+            
+    if st.session_state.get(K.USER_HASH) is None:
         raw_id = str(uuid.uuid4())
         st.session_state[K.USER_HASH] = hashlib.sha256(raw_id.encode()).hexdigest()[:32]
 
 
 def reset_session() -> None:
+    """Nuclear reset: flushes entire state except explicitly preserved keys."""
     preserved_hash = st.session_state.get(K.USER_HASH)
     preserved_lang = st.session_state.get(K.UI_LANG, "en")
-    for key, default in _DEFAULTS.items():
-        st.session_state[key] = list(default) if isinstance(default, list) else default
+    
+    # Aggressively clear to destroy orphaned keys from third-party widgets
+    st.session_state.clear()
+    
+    init_session_state()
     st.session_state[K.USER_HASH] = preserved_hash
-    st.session_state[K.UI_LANG]   = preserved_lang   # preserve language on reset
+    st.session_state[K.UI_LANG]   = preserved_lang
 
 
 def get_remaining_calls(window_seconds: int = 60, max_calls: int = 10) -> int:
-    now = datetime.now()
-    active = [
+    """Calculates remaining quota and executes garbage collection on expired timestamps."""
+    now = datetime.now(timezone.utc)
+    
+    # Prune timestamps outside the rolling window
+    valid_timestamps = [
         t for t in st.session_state.get(K.TIMESTAMPS, [])
         if t > now - timedelta(seconds=window_seconds)
     ]
-    return max(0, max_calls - len(active))
+    
+    # GARBAGE COLLECTION: Overwrite state to prevent infinite array memory leak
+    st.session_state[K.TIMESTAMPS] = valid_timestamps
+    
+    return max(0, max_calls - len(valid_timestamps))
+
+
+def record_api_call() -> None:
+    """Standardized utility to record a rate-limited action."""
+    if K.TIMESTAMPS not in st.session_state:
+        st.session_state[K.TIMESTAMPS] = []
+    st.session_state[K.TIMESTAMPS].append(datetime.now(timezone.utc))
+
