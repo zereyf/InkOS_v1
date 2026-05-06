@@ -128,14 +128,14 @@ def render_workspace(cfg: dict) -> None:
     """, unsafe_allow_html=True)
 
     # ── VOICE ENGINE ──────────────────────────────────────────────────────────
-    # FIX 1: Hash-based deduplication guard.
+    # FIX Bug 6: Hash-based deduplication guard.
     #   st.audio_input returns a BytesIO object on every rerun.
     #   BytesIO equality compares by identity not content —
     #   two objects with identical bytes are NOT equal.
     #   We hash the bytes with MD5 and compare hashes instead.
     #   This guarantees each unique recording is transcribed exactly once.
     #
-    # FIX 2: WHISPER_CONTEXT_PROMPT passed to API.
+    # FIX Bug 7: WHISPER_CONTEXT_PROMPT passed to API.
     #   Without it Whisper auto-translates Arabic → English.
     #   The context prompt forces transcription in the spoken language.
     #
@@ -163,13 +163,13 @@ def render_workspace(cfg: dict) -> None:
                     transcription = _audio_client.audio.transcriptions.create(
                         file=("audio.wav", audio_bytes),
                         model="whisper-large-v3-turbo",
-                        prompt=WHISPER_CONTEXT_PROMPT,   # FIX 2: language guard
+                        prompt=WHISPER_CONTEXT_PROMPT,   # FIX Bug 7: language guard
                         response_format="text",
                     )
                     current_text = st.session_state.get("ta_input", "")
                     new_text = f"{current_text} {transcription}".strip() if current_text else transcription
                     st.session_state["ta_input"]        = new_text
-                    st.session_state["last_audio_hash"] = audio_hash  # FIX 1: store hash
+                    st.session_state["last_audio_hash"] = audio_hash  # FIX Bug 6: store hash
                     st.rerun()
                 except Exception as e:
                     st.error(f"Voice Engine Error: {str(e)}")
@@ -257,3 +257,152 @@ def render_workspace(cfg: dict) -> None:
                 score = (audit or {}).get("score", 0)
                 retry_msg = " (retry applied)" if score >= 80 else ""
                 st.write(t("status_compiling") + retry_msg)
+
+                if not result.startswith("[REFINEMENT ERROR]"):
+                    st.write(t("status_done"))
+                    status.update(label=t("status_complete"), state="complete", expanded=False)
+
+                    st.session_state[K.LAST_RESULT]  = result
+                    st.session_state[K.LAST_AUDIT]   = audit
+                    st.session_state[K.LAST_INPUT]   = cleaned
+                    st.session_state[K.LAST_PATTERN] = pattern
+
+                    st.session_state[K.HISTORY].insert(0, {
+                        "id":        hashlib.md5(
+                                         f"{cleaned}{datetime.now().isoformat()}".encode()
+                                     ).hexdigest()[:8],
+                        "time":      datetime.now().strftime("%H:%M:%S"),
+                        "target":    resolved_target,
+                        "framework": cfg["framework"],
+                        "aesthetic": cfg["aesthetic_choice"],
+                        "input":     cleaned,
+                        "output":    result,
+                        "score":     audit.get("score", 0),
+                        "pattern":   pattern["pattern"] if pattern else None,
+                        "islamic":   cfg["islamic_mode"],
+                    })
+                else:
+                    status.update(label=t("status_error"), state="error", expanded=False)
+                    st.error(result)
+
+    # ── RESULTS ────────────────────────────────────────────────────────────────
+    last_result  = st.session_state.get(K.LAST_RESULT)
+    last_audit   = st.session_state.get(K.LAST_AUDIT) or {}
+    last_input   = st.session_state.get(K.LAST_INPUT) or ""
+    last_pattern = st.session_state.get(K.LAST_PATTERN)
+
+    if last_result and not last_result.startswith("[REFINEMENT ERROR]"):
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+        # Show CIPHER auto-selection explanation if it was used
+        auto_target = st.session_state.get(K.AUTO_TARGET)
+        auto_reason = st.session_state.get(K.AUTO_REASON)
+        if auto_target and auto_reason:
+            st.markdown(f"""
+            <div style="
+                display:inline-flex;align-items:center;gap:8px;
+                background:rgba(201,168,76,0.07);
+                border:1px solid rgba(201,168,76,0.25);
+                border-radius:3px;padding:5px 14px;
+                font-family:var(--font-m);font-size:0.65rem;
+                color:var(--gold);margin-bottom:12px;
+            ">
+                <span class="status-dot"></span>
+                CIPHER auto-selected: <strong>{auto_target}</strong>
+                &nbsp;—&nbsp;
+                <span style="color:var(--text-muted);">{auto_reason}</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+        left, right = st.columns([1, 2], gap="large")
+
+        with left:
+            _render_score_block(last_audit, last_pattern)
+
+        with right:
+            st.markdown(
+                f'<div class="vc-header" style="font-size:0.6rem;">{t("original_intent")}</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<div class="vc-card" style="font-size:0.8rem;line-height:1.75;min-height:72px;">'
+                f'{_escape(last_input)}</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>',
+                unsafe_allow_html=True,
+            )
+            # WHY text_area over st.code:
+            # st.code renders in a fixed-height non-resizable box.
+            # Users cannot easily select, copy, or read long prompts.
+            # text_area is resizable, fully selectable, and copyable.
+            # disabled=True makes it read-only while keeping it interactive.
+            st.text_area(
+                "refined_output",
+                value=last_result,
+                height=220,
+                disabled=False,
+                label_visibility="collapsed",
+                key="refined_output_area",
+                help=t("refined_help"),
+            )
+            st.download_button(
+                t("download_prompt"),
+                data=last_result,
+                file_name=(
+                    f"vc_{cfg['target_model'].lower().replace(' ', '_')}"
+                    f"_{datetime.now().strftime('%H%M%S')}.txt"
+                ),
+                key="btn_dl_result",
+            )
+            # ── SAVE TO VAULT ──────────────────────────────────────────────────
+            from vault.supabase_client import SUPABASE_MISSING as _SB_MISSING
+            if not _SB_MISSING:
+                st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+                st.markdown(
+                    f'<div class="vc-header" style="font-size:0.6rem;margin-top:4px;">{t("save_to_vault")}</div>',
+                    unsafe_allow_html=True,
+                )
+                v1, v2 = st.columns([3, 2])
+                with v1:
+                    vault_title = st.text_input(
+                        "Title",
+                        placeholder=t("vault_title_ph"),
+                        key="vault_title_input",
+                        label_visibility="collapsed",
+                    )
+                with v2:
+                    vault_tags = st.text_input(
+                        "Tags",
+                        placeholder=t("vault_tags_ph"),
+                        key="vault_tags_input",
+                        label_visibility="collapsed",
+                    )
+                if st.button(t("save_vault_btn"), use_container_width=True, key="btn_save_vault"):
+                    if not vault_title.strip():
+                        st.warning(t("save_vault_warning"))
+                    else:
+                        # Spinner gives immediate feedback — user knows click registered
+                        with st.spinner(t("saving_vault")):
+                            from vault.vault_engine import save_prompt
+                            audit_data   = st.session_state.get(K.LAST_AUDIT) or {}
+                            pattern_data = st.session_state.get(K.LAST_PATTERN)
+                            _, save_err = save_prompt(
+                                user_hash  = st.session_state.get(K.USER_HASH, ""),
+                                title      = vault_title,
+                                tags       = vault_tags,
+                                content    = last_result,
+                                target     = cfg.get("target_model", ""),
+                                framework  = cfg.get("framework", ""),
+                                score      = audit_data.get("score", 0),
+                                pattern    = pattern_data["pattern"] if pattern_data else "",
+                                islamic    = cfg.get("islamic_mode", False),
+                                aesthetic  = cfg.get("aesthetic_choice", ""),
+                            )
+                        # Feedback always visible — success or failure, never silence
+                        if save_err:
+                            st.error(t('save_vault_error', error=save_err))
+                        else:
+                            st.session_state[K.VAULT_STATS] = {}
+                            st.success(t('save_vault_success', title=vault_title))
