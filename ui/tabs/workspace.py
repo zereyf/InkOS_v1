@@ -128,14 +128,14 @@ def render_workspace(cfg: dict) -> None:
     """, unsafe_allow_html=True)
 
     # ── VOICE ENGINE ──────────────────────────────────────────────────────────
-    # FIX Bug 6: Hash-based deduplication guard.
+    # FIX 1: Hash-based deduplication guard.
     #   st.audio_input returns a BytesIO object on every rerun.
     #   BytesIO equality compares by identity not content —
     #   two objects with identical bytes are NOT equal.
     #   We hash the bytes with MD5 and compare hashes instead.
     #   This guarantees each unique recording is transcribed exactly once.
     #
-    # FIX Bug 7: WHISPER_CONTEXT_PROMPT passed to API.
+    # FIX 2: WHISPER_CONTEXT_PROMPT passed to API.
     #   Without it Whisper auto-translates Arabic → English.
     #   The context prompt forces transcription in the spoken language.
     #
@@ -163,13 +163,13 @@ def render_workspace(cfg: dict) -> None:
                     transcription = _audio_client.audio.transcriptions.create(
                         file=("audio.wav", audio_bytes),
                         model="whisper-large-v3-turbo",
-                        prompt=WHISPER_CONTEXT_PROMPT,   # FIX Bug 7: language guard
+                        prompt=WHISPER_CONTEXT_PROMPT,   # FIX 2: language guard
                         response_format="text",
                     )
                     current_text = st.session_state.get("ta_input", "")
                     new_text = f"{current_text} {transcription}".strip() if current_text else transcription
                     st.session_state["ta_input"]        = new_text
-                    st.session_state["last_audio_hash"] = audio_hash  # FIX Bug 6: store hash
+                    st.session_state["last_audio_hash"] = audio_hash  # FIX 1: store hash
                     st.rerun()
                 except Exception as e:
                     st.error(f"Voice Engine Error: {str(e)}")
@@ -252,7 +252,6 @@ def render_workspace(cfg: dict) -> None:
                     aesthetic_choice = cfg["aesthetic_choice"],
                     islamic_mode     = cfg["islamic_mode"],
                     persona          = cfg.get("active_persona"),
-                    brand_identity   = cfg.get("brand_identity"),
                 )
                 
                 score = (audit or {}).get("score", 0)
@@ -380,6 +379,7 @@ def render_workspace(cfg: dict) -> None:
                         key="vault_tags_input",
                         label_visibility="collapsed",
                     )
+
                 if st.button(t("save_vault_btn"), use_container_width=True, key="btn_save_vault"):
                     if not vault_title.strip():
                         st.warning(t("save_vault_warning"))
