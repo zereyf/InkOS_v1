@@ -1,7 +1,7 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v12.0: Master Build. Fixed the Persona Overwrite bug via synchronized Callbacks.
+v13.0: Fixed Streamlit Widget Key desync. Bidirectional binding achieved.
 """
 
 import streamlit as st
@@ -134,6 +134,10 @@ def render_sidebar() -> SidebarConfig:
         if current_persona not in all_names:
             current_persona = "None"
 
+        # 🐛 CRITICAL WIDGET SYNC: Forcibly overwrite the widget's internal state to match global memory
+        if st.session_state.get("sb_persona") != current_persona:
+            st.session_state["sb_persona"] = current_persona
+
         # 2. Callback to safely update memory ONLY when the dropdown is manually clicked
         def _sb_persona_changed():
             sel = st.session_state.sb_persona
@@ -144,11 +148,10 @@ def render_sidebar() -> SidebarConfig:
             else:
                 st.session_state[K.ACTIVE_PERSONA] = next((p for p in user_personas if p["name"] == sel), None)
 
-        # 3. Render dropdown, locked to the global memory index
+        # 3. Render dropdown (no need for index= now, it reads from the key)
         st.selectbox(
             "Persona Select",
             options=all_names,
-            index=all_names.index(current_persona),
             key="sb_persona",
             on_change=_sb_persona_changed,
             label_visibility="collapsed",
