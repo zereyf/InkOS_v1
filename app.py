@@ -1,7 +1,7 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v5: Restored Navigation Menu Order
+v6: Integrated Identity Persistence & Boot Sequence
 """
 
 import sys
@@ -28,7 +28,23 @@ if API_KEY_MISSING:
     st.error("SYSTEM ERROR: GROQ_API_KEY not found in environment.")
     st.stop()
 
+# ── INITIALIZE STATE & IDENTITY ─────────────────────────────────────────────
 init_session_state()
+
+# 🔗 Proactive Sync: Ensure URL always reflects current Terminal ID
+current_sid = st.session_state.get(K.USER_HASH)
+if current_sid:
+    st.query_params["sid"] = current_sid
+
+# ── INITIAL BOOT SEQUENCE (One-time Toast) ──────────────────────────────────
+if "boot_complete" not in st.session_state:
+    if "GUEST_" in current_sid:
+        st.toast("InkOS System Initialized. Running in Volatile Mode.", icon="📡")
+    else:
+        st.toast(f"Identity Latched: {current_sid}", icon="🔐")
+    st.session_state["boot_complete"] = True
+
+# ── RENDER STYLES & RTL ──────────────────────────────────────────────────────
 st.markdown(STYLES, unsafe_allow_html=True)
 
 if is_rtl():
