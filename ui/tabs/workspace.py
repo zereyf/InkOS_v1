@@ -132,20 +132,42 @@ def render_workspace(cfg: dict) -> None:
         </div>
     """, unsafe_allow_html=True)
 
-    # 🧬 COMMAND MACROS (Clickable DNA Status Bar)
+      # 🧬 COMMAND MACROS (Clickable DNA Status Bar)
     current_sid = str(st.session_state.get(K.USER_HASH, ""))
     if "GUEST_" not in current_sid.upper():
-        st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); letter-spacing:1px; margin-bottom:8px; text-transform:uppercase;">DNA Macro Injectors</div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); letter-spacing:1px; margin-bottom:4px; text-transform:uppercase;">DNA Macro Injectors</div>', unsafe_allow_html=True)
         
+        # ── CSS INJECTION: Force horizontal mobile columns ──
+        st.markdown('<div class="macro-anchor"></div>', unsafe_allow_html=True)
+        st.markdown("""
+        <style>
+        /* Target the column block immediately following the anchor */
+        .macro-anchor + div[data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            gap: 6px !important;
+        }
+        .macro-anchor + div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            min-width: 31% !important;
+        }
+        /* Make the buttons themselves slightly more compact */
+        .macro-anchor + div[data-testid="stHorizontalBlock"] button {
+            padding: 0.2rem 0.1rem !important;
+            font-size: 0.75rem !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        # ────────────────────────────────────────────────────
+
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.button("⚡ /INK", on_click=_inject_macro, args=("/ink",), use_container_width=True, help="Inject AmeerInk Creative DNA")
+            st.button("⚡ /INK", on_click=_inject_macro, args=("/ink",), use_container_width=True, help="Creative DNA")
         with c2:
-            st.button("👁️ /INTEL", on_click=_inject_macro, args=("/intel",), use_container_width=True, help="Inject Tech Observer DNA")
+            st.button("♦️ /INTEL", on_click=_inject_macro, args=("/intel",), use_container_width=True, help="Observer DNA")
         with c3:
-            st.button("⚖️ /HIKMAH", on_click=_inject_macro, args=("/hikmah",), use_container_width=True, help="Inject Scholar & Linguist DNA")
+            st.button("🔶️ /HIKMAH", on_click=_inject_macro, args=("/hikmah",), use_container_width=True, help="Scholar DNA")
         
         st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+
 
     # ── PERSONA STATUS ────────────────────────────────────────────────────────
     active_persona = cfg.get("active_persona")
