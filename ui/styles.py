@@ -324,7 +324,38 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 }
 
 
+/*
+
 /* ══════════════════════════════════════════
+   LEVEL 4 FIX: TOAST NOTIFICATIONS (TERMINAL ALERTS)
+══════════════════════════════════════════ */
+[data-testid="stToast"] {
+    background: linear-gradient(135deg, var(--bg-card) 0%, #05070A 100%) !important;
+    border: 1px solid var(--gold-border) !important;
+    border-left: 3px solid var(--gold) !important;
+    border-radius: 3px !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.6), 0 0 15px rgba(201,168,76,0.05) !important;
+}
+
+/* Toast Text Styling */
+[data-testid="stToast"] div {
+    font-family: var(--font-m) !important;
+    font-size: 0.75rem !important;
+    color: var(--text) !important;
+    letter-spacing: 0.05em !important;
+}
+
+/* Toast Close Button */
+[data-testid="stToast"] button {
+    color: var(--text-muted) !important;
+    transition: color 0.2s ease !important;
+}
+[data-testid="stToast"] button:hover {
+    color: var(--danger) !important;
+    background: transparent !important;
+}
+
+ ══════════════════════════════════════════
    MOBILE OVERRIDES & MISC
 ══════════════════════════════════════════ */
 @media (max-width: 768px) {
