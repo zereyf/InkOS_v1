@@ -1,8 +1,8 @@
 """
 state.py — Session State Contract
 ===================================
-v15.0: Advanced DNA & Identity Preservation.
-       Integrated Muse Trigger, VelvetCodex, and Team Rei tactical data.
+v20.0: Terminal DNA Refactor.
+       Integrated INK, INTEL, and HIKMAH architectural payloads.
 """
 
 import uuid
@@ -33,10 +33,10 @@ class K:
     AUTO_REASON    = "auto_reason"      
     APP_CONFIG     = "app_config"
     
-    # 🧪 ADVANCED DNA KEYS
-    MUSE_DNA       = "muse_dna"         # AmeerInk Visual DNA
-    VELVET_DNA     = "velvet_dna"       # Technical Auditing DNA
-    REI_DNA        = "rei_dna"          # Team Rei Tactical DNA
+    # 🧪 ADVANCED DNA KEYS (The AmeerInk Trifecta)
+    INK_DNA        = "ink_dna"          # AmeerInk Visuals & Branding
+    INTEL_DNA      = "intel_dna"        # Tech Observer & Forensics
+    HIKMAH_DNA     = "hikmah_dna"       # Arabic Linguistics & Islamic Scholarship
 
 
 _DEFAULTS: dict = {
@@ -61,17 +61,20 @@ _DEFAULTS: dict = {
     K.APP_CONFIG:      None,
 
     # 🧪 INITIALIZING ADVANCED DNA (Forensic Pre-load)
-    K.MUSE_DNA: (
-        "AESTHETIC: Chiaroscuro lighting, tech-noir cyberpunk vibes, minimalist framing. "
-        "COLOR: Obsidian and Gold. STYLE: High-contrast digital photography, 8k resolution, cinematic atmosphere."
+    K.INK_DNA: (
+        "ROLE: Creative Director. AESTHETIC: Chiaroscuro lighting, tech-noir minimalist vibes. "
+        "COLOR: Obsidian and Gold. STYLE: High-contrast digital photography, 8k resolution. "
+        "IDENTITY: AmeerInk Brand."
     ),
-    K.VELVET_DNA: (
-        "PROTOCOL: VelvetCodex. FOCUS: Forensic code auditing, security vulnerability detection, "
-        "and logical leak analysis. TONE: Authoritative and challenging."
+    K.INTEL_DNA: (
+        "ROLE: Tech Observer. FOCUS: AI trends, Cybersecurity, and Tech News. "
+        "METHOD: Forensic analysis of tech shifts, objective reporting, "
+        "and authoritative insights. TONE: Critical, sharp, and highly analytical."
     ),
-    K.REI_DNA: (
-        "TEAM: Rei. ROSTER: Ascendant (Captain), Emrys (Roam), Dethrine (Gold), Phantom (Exp), Aizen (Mage). "
-        "FOCUS: MLBB Meta-strategy and competitive tactical anthems."
+    K.HIKMAH_DNA: (
+        "ROLE: Academic Scholar. FOCUS: Arabic Linguistics (Balagha, Nahw) & Islamic Scholarship (Sharia, Ethics). "
+        "METHOD: High-fidelity pedagogical clarity, evidence-based citations from Sunnah/Quran, "
+        "and academic ijtihad logic. TONE: Reverent, objective, and deeply scholarly."
     ),
 }
 
@@ -105,9 +108,9 @@ def reset_session() -> None:
         K.LOCKOUT_UNTIL:   st.session_state.get(K.LOCKOUT_UNTIL),
         
         # 🧪 Preserve your personal branding/logic
-        K.MUSE_DNA:        st.session_state.get(K.MUSE_DNA),
-        K.VELVET_DNA:      st.session_state.get(K.VELVET_DNA),
-        K.REI_DNA:         st.session_state.get(K.REI_DNA),
+        K.INK_DNA:         st.session_state.get(K.INK_DNA),
+        K.INTEL_DNA:       st.session_state.get(K.INTEL_DNA),
+        K.HIKMAH_DNA:      st.session_state.get(K.HIKMAH_DNA),
     }
     
     st.session_state.clear()
