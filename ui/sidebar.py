@@ -2,6 +2,7 @@
 ui/sidebar.py — Sidebar Rendering
 ====================================
 v13.0: Fixed Streamlit Widget Key desync. Bidirectional binding achieved.
+       Includes Level 4 Power User UI (Expert Toggle & High-Fidelity Tooltips).
 """
 
 import streamlit as st
@@ -22,6 +23,7 @@ class SidebarConfig(TypedDict):
     islamic_mode:     bool
     aesthetic_choice: str
     active_persona:   Optional[dict]
+    expert_mode:      bool  # 🐛 INJECTED FOR EXPERT MODE
 
 
 def _load_user_personas(user_hash: str) -> list:
@@ -73,7 +75,7 @@ def render_sidebar() -> SidebarConfig:
             "Target AI Model", 
             options=target_options,
             key="sb_target",
-            help="Select the AI you are prompting. CIPHER will adapt the syntax perfectly for this model.",
+            help="Select the target AI. CIPHER maps intent to specific syntax: strict XML for Claude, conversational structures for ChatGPT, and parameter-heavy tokens for Midjourney.",
         )
 
         if target_model == AUTO_SELECT_LABEL:
@@ -107,14 +109,14 @@ def render_sidebar() -> SidebarConfig:
             t("logic_framework", fallback="Logic Framework"),
             LOGIC_FRAMEWORKS,
             key="sb_framework",
-            help="Defines the structural boundaries of the generated prompt.",
+            help="Forces the AI's cognitive boundary. 'RACE' enforces Role-Action-Context-Execution. 'Technical' forces a Chain-of-Thought <thinking> block before generating code.",
         )
         
         source_lang = st.radio(
             "Input Language",
             ["English", "Arabic (العربية)"],
             key="sb_lang",
-            help="The language of your raw intent. Arabic inputs engage the cognitive mapping layer.",
+            help="Language of raw intent. Arabic engages the Cognitive Mapping Layer to preserve rhetorical authority and structural rules, avoiding literal robotic translation.",
         )
 
         st.markdown("<hr>", unsafe_allow_html=True)
@@ -155,7 +157,7 @@ def render_sidebar() -> SidebarConfig:
             key="sb_persona",
             on_change=_sb_persona_changed,
             label_visibility="collapsed",
-            help="A.I.Z.E.N. handles default routing. Select an Expert Persona for strict, domain-specific logic.",
+            help="Injects 'Expert DNA'. A.I.Z.E.N is the default routing core. Select Motoko for Cyber-Security or Shikamaru for Tactical Strategy.",
         )
 
         # 4. Display the badge based purely on global memory
@@ -180,13 +182,13 @@ def render_sidebar() -> SidebarConfig:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── AESTHETIC ─────────────────────────────────────────────────────────
+        # ── AESTHETIC & EXPERT MODE ───────────────────────────────────────────
         st.subheader(t("aesthetic_dir", fallback="Aesthetic Direction"))
         aesthetic_choice = st.selectbox(
             t("aesthetic_preset", fallback="Preset"),
             options=list(AESTHETIC_PRESETS.keys()),
             key="sb_aesthetic",
-            help="Only affects prompts generated for Midjourney/Flux and DALL-E 3.",
+            help="Cinematographer protocol. Injects specific focal lengths, lighting models, and textures exclusively into Midjourney, Flux, or DALL-E outputs.",
         )
 
         islamic_mode = st.toggle(t("islamic_mode", fallback="Islamic Professional Mode"), value=False, key="sb_islamic")
@@ -198,6 +200,13 @@ def render_sidebar() -> SidebarConfig:
                 {t('islamic_citation', fallback='Requires strict citations')}
             </div>
             """, unsafe_allow_html=True)
+            
+        expert_mode = st.toggle(
+            "Enable Expert Diagnostics", 
+            value=False, 
+            key="sb_expert", 
+            help="POWER USER: Bypasses standard UI to expose the raw CIPHER JSON audit payload and enables direct manual editing of the compiled prompt."
+        )
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -239,4 +248,5 @@ def render_sidebar() -> SidebarConfig:
         islamic_mode     = islamic_mode,
         aesthetic_choice = aesthetic_choice,
         active_persona   = active_persona_state,
+        expert_mode      = expert_mode,
     )
