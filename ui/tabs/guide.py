@@ -199,7 +199,7 @@ def render_guide() -> None:
         )
 
         _feature_card(
-            icon  = "👁️",
+            icon  = "♦️",
             name  = "/INTEL DNA",
             tab   = "WORKSPACE",
             what  = "Tech Observer & Forensic Analysis.",
@@ -209,7 +209,7 @@ def render_guide() -> None:
         )
 
         _feature_card(
-            icon  = "⚖️",
+            icon  = "🔶️",
             name  = "/HIKMAH DNA",
             tab   = "WORKSPACE",
             what  = "Scholarly Research & Linguistics.",
