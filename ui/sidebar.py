@@ -1,8 +1,8 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v13.0: Fixed Streamlit Widget Key desync. Bidirectional binding achieved.
-       Includes Level 4 Power User UI (Expert Toggle & High-Fidelity Tooltips).
+v14.0: Integrated Terminal Identity HUD for Persistent Latching.
+       Includes Level 4 Expert Diagnostics & Multi-Language Support.
 """
 
 import streamlit as st
@@ -23,7 +23,7 @@ class SidebarConfig(TypedDict):
     islamic_mode:     bool
     aesthetic_choice: str
     active_persona:   Optional[dict]
-    expert_mode:      bool  # 🐛 INJECTED FOR EXPERT MODE
+    expert_mode:      bool
 
 
 def _load_user_personas(user_hash: str) -> list:
@@ -67,6 +67,36 @@ def render_sidebar() -> SidebarConfig:
         # ── LANGUAGE SWITCHER ─────────────────────────────────────────────────
         render_language_switcher()
 
+        # ── TERMINAL IDENTITY HUD (NEW) ───────────────────────────────────────
+        st.markdown(f'<div class="vc-header" style="font-size:0.55rem; color:var(--text-muted); margin-top:14px;">TERMINAL IDENTITY</div>', unsafe_allow_html=True)
+        
+        current_sid = st.session_state.get(K.USER_HASH, "UNKNOWN")
+        
+        # Display current ID in a mono-font block
+        st.code(current_sid, language=None)
+        
+        new_sid = st.text_input(
+            "Identity Latch", 
+            placeholder="Enter key (e.g. AMEER_01)", 
+            key="sid_input_sidebar", 
+            label_visibility="collapsed",
+            help="Latch a custom Access Key to preserve your Vault and History across sessions."
+        )
+        
+        if st.button("LATCH IDENTITY", use_container_width=True, key="btn_latch_sid"):
+            clean_new_sid = new_sid.strip()
+            if clean_new_sid and clean_new_sid != current_sid:
+                st.session_state[K.USER_HASH] = clean_new_sid
+                st.query_params["sid"] = clean_new_sid
+                st.toast(f"Identity Latched: {clean_new_sid}", icon="🔐")
+                st.rerun()
+            elif clean_new_sid == current_sid:
+                st.info("Identity already latched.")
+            else:
+                st.warning("Provide a valid Access Key.")
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+
         # ── LOGIC CONFIGURATION ───────────────────────────────────────────────
         st.subheader(t("logic_config", fallback="Logic Configuration"))
         target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
@@ -95,15 +125,6 @@ def render_sidebar() -> SidebarConfig:
                     <span style="color:var(--text-muted);">{auto_reason}</span>
                 </div>
                 """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div style="
-                    font-family:var(--font-m);font-size:0.62rem;
-                    color:var(--text-muted);padding:6px 0;
-                ">
-                    CIPHER will analyse your intent and pick the best AI target.
-                </div>
-                """, unsafe_allow_html=True)
                 
         framework = st.selectbox(
             t("logic_framework", fallback="Logic Framework"),
@@ -116,31 +137,26 @@ def render_sidebar() -> SidebarConfig:
             "Input Language",
             ["English", "Arabic (العربية)"],
             key="sb_lang",
-            help="Language of raw intent. Arabic engages the Cognitive Mapping Layer to preserve rhetorical authority and structural rules, avoiding literal robotic translation.",
+            help="Language of raw intent. Arabic engages the Cognitive Mapping Layer to preserve rhetorical authority and structural rules.",
         )
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── PERSONA SELECTOR (SYNCHRONIZED) ───────────────────────────────────
+        # ── PERSONA SELECTOR ──────────────────────────────────────────────────
         st.subheader(t("active_persona", fallback="Active Persona"))
 
         user_hash     = st.session_state.get(K.USER_HASH, "")
         user_personas = _load_user_personas(user_hash)
 
-        starter_names = list(STARTER_PERSONAS.keys())
-        user_names    = [p["name"] for p in user_personas]
-        all_names     = starter_names + user_names
+        all_names = list(STARTER_PERSONAS.keys()) + [p["name"] for p in user_personas]
 
-        # 1. Fetch exactly what is in global memory right now
         current_persona = get_persona_display_name(st.session_state.get(K.ACTIVE_PERSONA))
         if current_persona not in all_names:
             current_persona = "None"
 
-        # 🐛 CRITICAL WIDGET SYNC: Forcibly overwrite the widget's internal state to match global memory
         if st.session_state.get("sb_persona") != current_persona:
             st.session_state["sb_persona"] = current_persona
 
-        # 2. Callback to safely update memory ONLY when the dropdown is manually clicked
         def _sb_persona_changed():
             sel = st.session_state.sb_persona
             if sel == "None":
@@ -150,19 +166,16 @@ def render_sidebar() -> SidebarConfig:
             else:
                 st.session_state[K.ACTIVE_PERSONA] = next((p for p in user_personas if p["name"] == sel), None)
 
-        # 3. Render dropdown (no need for index= now, it reads from the key)
         st.selectbox(
             "Persona Select",
             options=all_names,
             key="sb_persona",
             on_change=_sb_persona_changed,
             label_visibility="collapsed",
-            help="Injects 'Expert DNA'. A.I.Z.E.N is the default routing core. Select Motoko for Cyber-Security or Shikamaru for Tactical Strategy.",
+            help="Injects 'Expert DNA'. Select a Persona for strict, domain-specific logic.",
         )
 
-        # 4. Display the badge based purely on global memory
         active_persona_state = st.session_state.get(K.ACTIVE_PERSONA)
-
         if active_persona_state:
             st.markdown(f"""
             <div style="
@@ -188,7 +201,6 @@ def render_sidebar() -> SidebarConfig:
             t("aesthetic_preset", fallback="Preset"),
             options=list(AESTHETIC_PRESETS.keys()),
             key="sb_aesthetic",
-            help="Cinematographer protocol. Injects specific focal lengths, lighting models, and textures exclusively into Midjourney, Flux, or DALL-E outputs.",
         )
 
         islamic_mode = st.toggle(t("islamic_mode", fallback="Islamic Professional Mode"), value=False, key="sb_islamic")
@@ -196,17 +208,11 @@ def render_sidebar() -> SidebarConfig:
             st.markdown(f"""
             <div class="islamic-badge">
                 <span class="status-dot green"></span>{t('islamic_active', fallback='Active')}<br>
-                {t('islamic_sharia', fallback='Sharia Compliant')}<br>
-                {t('islamic_citation', fallback='Requires strict citations')}
+                {t('islamic_sharia', fallback='Sharia Compliant')}
             </div>
             """, unsafe_allow_html=True)
             
-        expert_mode = st.toggle(
-            "Enable Expert Diagnostics", 
-            value=False, 
-            key="sb_expert", 
-            help="POWER USER: Bypasses standard UI to expose the raw CIPHER JSON audit payload and enables direct manual editing of the compiled prompt."
-        )
+        expert_mode = st.toggle("Enable Expert Diagnostics", value=False, key="sb_expert")
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -230,11 +236,7 @@ def render_sidebar() -> SidebarConfig:
         if st.session_state.get(K.HISTORY):
             st.download_button(
                 t("export_archive", fallback="Export Archive"),
-                data=json.dumps(
-                    st.session_state[K.HISTORY],
-                    ensure_ascii=False,
-                    indent=2,
-                ),
+                data=json.dumps(st.session_state[K.HISTORY], ensure_ascii=False, indent=2),
                 file_name=f"inkos_archive_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
                 mime="application/json",
                 use_container_width=True,
