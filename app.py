@@ -39,9 +39,9 @@ if current_sid:
 # ── INITIAL BOOT SEQUENCE (One-time Toast) ──────────────────────────────────
 if "boot_complete" not in st.session_state:
     if "GUEST_" in current_sid:
-        st.toast("InkOS System Initialized. Running in Volatile Mode.", icon="📡")
+        st.toast("InkOS System Initialized. Running in Ghost Mode.", icon="📡")
     else:
-        st.toast(f"Identity Latched: {current_sid}", icon="🔐")
+        st.toast(f"Identity Locked: {current_sid}", icon="🔐")
     st.session_state["boot_complete"] = True
 
 # ── RENDER STYLES & RTL ──────────────────────────────────────────────────────
