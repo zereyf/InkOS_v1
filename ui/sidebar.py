@@ -1,7 +1,7 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v10: Fixed nested function bug. Unified language switcher logic.
+v11: Fixed confusing UX labels and added clarification tooltips per audit.
 """
 
 import streamlit as st
@@ -36,11 +36,6 @@ def _load_user_personas(user_hash: str) -> list:
 
 
 def render_language_switcher() -> None:
-    """
-    Three flag buttons at the top of the sidebar.
-    Active language is highlighted with gold border.
-    Clicking switches language and reruns the app.
-    """
     current = get_lang()
     cols = st.columns(len(LANGUAGES))
     for i, lang in enumerate(LANGUAGES):
@@ -71,13 +66,15 @@ def render_sidebar() -> SidebarConfig:
         render_language_switcher()
 
         # ── LOGIC CONFIGURATION ───────────────────────────────────────────────
-        st.subheader(t("logic_config"))
+        st.subheader(t("logic_config", fallback="Logic Configuration"))
         target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
+        
+        # AUDIT FIX: Renamed from "Target Dialect" to "Target AI Model"
         target_model = st.selectbox(
-            t("target_dialect"),
+            "Target AI Model", 
             options=target_options,
             key="sb_target",
-            help=t("target_help"),
+            help="Select the AI you are prompting. CIPHER will adapt the syntax perfectly for this model.",
         )
 
         if target_model == AUTO_SELECT_LABEL:
@@ -103,27 +100,29 @@ def render_sidebar() -> SidebarConfig:
                     font-family:var(--font-m);font-size:0.62rem;
                     color:var(--text-muted);padding:6px 0;
                 ">
-                    CIPHER will analyse your input and select the best AI automatically.
+                    CIPHER will analyse your intent and pick the best AI target.
                 </div>
                 """, unsafe_allow_html=True)
                 
         framework = st.selectbox(
-            t("logic_framework"),
+            t("logic_framework", fallback="Logic Framework"),
             LOGIC_FRAMEWORKS,
             key="sb_framework",
-            help=t("framework_help"),
+            help="Defines the structural boundaries of the generated prompt.",
         )
+        
+        # AUDIT FIX: Renamed from "Linguistic Source" to "Input Language"
         source_lang = st.radio(
-            t("linguistic_source"),
+            "Input Language",
             ["English", "Arabic (العربية)"],
             key="sb_lang",
-            help=t("lang_help"),
+            help="The language of your raw intent. Arabic inputs engage the cognitive mapping layer.",
         )
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
         # ── PERSONA SELECTOR ──────────────────────────────────────────────────
-        st.subheader(t("active_persona"))
+        st.subheader(t("active_persona", fallback="Active Persona"))
 
         user_hash     = st.session_state.get(K.USER_HASH, "")
         user_personas = _load_user_personas(user_hash)
@@ -137,12 +136,12 @@ def render_sidebar() -> SidebarConfig:
             current_persona = "None"
 
         selected_name = st.selectbox(
-            t("active_persona"),
+            "Persona Select",
             options=all_names,
             index=all_names.index(current_persona),
             key="sb_persona",
             label_visibility="collapsed",
-            help=t("persona_help"),
+            help="A.I.Z.E.N. handles default routing. Select an Expert Persona for strict, domain-specific logic.",
         )
 
         if selected_name == "None":
@@ -176,21 +175,21 @@ def render_sidebar() -> SidebarConfig:
         st.markdown("<hr>", unsafe_allow_html=True)
 
         # ── AESTHETIC ─────────────────────────────────────────────────────────
-        st.subheader(t("aesthetic_dir"))
+        st.subheader(t("aesthetic_dir", fallback="Aesthetic Direction"))
         aesthetic_choice = st.selectbox(
-            t("aesthetic_preset"),
+            t("aesthetic_preset", fallback="Preset"),
             options=list(AESTHETIC_PRESETS.keys()),
             key="sb_aesthetic",
-            help=t("aesthetic_help"),
+            help="Only affects prompts generated for Midjourney/Flux and DALL-E 3.",
         )
 
-        islamic_mode = st.toggle(t("islamic_mode"), value=False, key="sb_islamic")
+        islamic_mode = st.toggle(t("islamic_mode", fallback="Islamic Professional Mode"), value=False, key="sb_islamic")
         if islamic_mode:
             st.markdown(f"""
             <div class="islamic-badge">
-                <span class="status-dot green"></span>{t('islamic_active')}<br>
-                {t('islamic_sharia')}<br>
-                {t('islamic_citation')}
+                <span class="status-dot green"></span>{t('islamic_active', fallback='Active')}<br>
+                {t('islamic_sharia', fallback='Sharia Compliant')}<br>
+                {t('islamic_citation', fallback='Requires strict citations')}
             </div>
             """, unsafe_allow_html=True)
 
@@ -202,26 +201,26 @@ def render_sidebar() -> SidebarConfig:
 
         m1, m2 = st.columns(2)
         with m1:
-            st.metric(t("session_runs"), total_runs)
+            st.metric(t("session_runs", fallback="Runs"), total_runs)
         with m2:
-            st.metric(t("session_remaining"), remaining)
+            st.metric(t("session_remaining", fallback="Remaining"), remaining)
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        if st.button(t("reset_session"), use_container_width=True, key="btn_reset"):
+        if st.button(t("reset_session", fallback="Reset Session"), use_container_width=True, key="btn_reset"):
             from state import reset_session
             reset_session()
             st.rerun()
 
         if st.session_state.get(K.HISTORY):
             st.download_button(
-                t("export_archive"),
+                t("export_archive", fallback="Export Archive"),
                 data=json.dumps(
                     st.session_state[K.HISTORY],
                     ensure_ascii=False,
                     indent=2,
                 ),
-                file_name=f"inkos_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
+                file_name=f"inkos_archive_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
                 mime="application/json",
                 use_container_width=True,
                 key="btn_export_sidebar",
