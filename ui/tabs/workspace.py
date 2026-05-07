@@ -1,9 +1,8 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v6.1: Fixed the "Lagging Output" Streamlit widget state bug.
-Tab 1: Input stream, live pattern preview, execution, results display.
-Includes Level 3 Agentic Clarification Loop & Level 4 Expert Mode UI.
+v7.0: Integrated Identity Latching HUD & Volatile Session Intercept.
+      Includes Level 3 Agentic Loop & Level 4 Expert Mode UI.
 """
 
 import hashlib
@@ -23,6 +22,33 @@ from i18n.translations import t
 def _escape(text: str) -> str:
     """XSS-safe HTML rendering of user-supplied strings."""
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _render_guest_warning():
+    """Obsidian-style warning for unlatched Terminal Identities."""
+    if "GUEST_" in st.session_state.get(K.USER_HASH, ""):
+        st.markdown(f"""
+        <div class="vc-card" style="border-color:var(--danger); background:rgba(169,50,38,0.05); margin-bottom:20px; padding:16px;">
+            <div style="display:flex; align-items:center; gap:14px;">
+                <span class="status-dot" style="background:var(--danger); animation: pulse-red 1.5s infinite; box-shadow: 0 0 10px var(--danger);"></span>
+                <div style="font-family:var(--font-m); font-size:0.75rem;">
+                    <strong style="color:var(--danger); letter-spacing:1px; text-transform:uppercase;">Session Volatile</strong><br>
+                    <span style="color:var(--text-muted);">Current identity is temporary. Prompt history and Vault assets will be purged upon browser refresh or timeout.</span>
+                </div>
+            </div>
+            <div style="margin-top:12px; font-size:0.65rem; color:var(--text-dim); font-style:italic; border-top: 1px solid rgba(169,50,38,0.15); padding-top:8px;">
+                → Use the <b>Terminal Identity</b> module in the sidebar to latch a permanent Access Key and secure your data.
+            </div>
+        </div>
+        
+        <style>
+            @keyframes pulse-red {{
+                0% {{ box-shadow: 0 0 0 0px rgba(169, 50, 38, 0.7); }}
+                70% {{ box-shadow: 0 0 0 10px rgba(169, 50, 38, 0); }}
+                100% {{ box-shadow: 0 0 0 0px rgba(169, 50, 38, 0); }}
+            }}
+        </style>
+        """, unsafe_allow_html=True)
 
 
 def _render_pattern_card(pattern: dict, label: str = None) -> None:
@@ -84,6 +110,9 @@ def _render_score_block(audit: dict, pattern: Optional[dict]) -> None:
 
 
 def render_workspace(cfg: dict) -> None:
+    # ── VOLATILE INTERCEPT ────────────────────────────────────────────────────
+    _render_guest_warning()
+
     st.markdown(
         f'<div class="vc-header"><span class="status-dot"></span>{t("workspace_header")}</div>',
         unsafe_allow_html=True,
