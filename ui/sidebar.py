@@ -67,35 +67,47 @@ def render_sidebar() -> SidebarConfig:
         # ── LANGUAGE SWITCHER ─────────────────────────────────────────────────
         render_language_switcher()
 
-        # ── TERMINAL IDENTITY HUD (NEW) ───────────────────────────────────────
+            # ── TERMINAL IDENTITY HUD ─────────────────────────────────────────────
         st.markdown(f'<div class="vc-header" style="font-size:0.55rem; color:var(--text-muted); margin-top:14px;">TERMINAL IDENTITY</div>', unsafe_allow_html=True)
         
         current_sid = st.session_state.get(K.USER_HASH, "UNKNOWN")
+        is_guest = "GUEST_" in current_sid
         
-        # Display current ID in a mono-font block
+        # Display current ID in a clean block
         st.code(current_sid, language=None)
         
-        new_sid = st.text_input(
-            "Identity Memory", 
-            placeholder="Enter key (e.g. AMEER_01)", 
-            key="sid_input_sidebar", 
-            label_visibility="collapsed",
-            help="Latch a custom Access Key to preserve your Vault and History across sessions."
-        )
+        # 🟢 If it's a GUEST, show the input box to encourage "Saving"
+        if is_guest:
+            new_sid = st.text_input(
+                "Identity Latch", 
+                placeholder="Enter an ID to save your data...", 
+                key="sid_input_sidebar", 
+                label_visibility="collapsed"
+            )
+            
+            if st.button("SAVE IDENTITY", use_container_width=True, key="btn_latch_sid"):
+                if new_sid.strip():
+                    st.session_state[K.USER_HASH] = new_sid.strip()
+                    st.query_params["sid"] = new_sid.strip()
+                    st.toast(f"Identity Saved: {new_sid.strip()}", icon="🔐")
+                    st.rerun()
         
-        if st.button("LATCH IDENTITY", use_container_width=True, key="btn_latch_sid"):
-            clean_new_sid = new_sid.strip()
-            if clean_new_sid and clean_new_sid != current_sid:
-                st.session_state[K.USER_HASH] = clean_new_sid
-                st.query_params["sid"] = clean_new_sid
-                st.toast(f"Identity Locked: {clean_new_sid}", icon="🔐")
+        # 🔵 If it's a REAL ID (like Ameer), hide the box and show a "Switch" button
+        else:
+            st.markdown(f"""
+                <div style="font-size:0.62rem; color:var(--gold); margin-bottom:10px;">
+                    ✓ Identity Secured & Saved
+                </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button("Switch Identity / Logout", use_container_width=True, key="btn_logout_sid"):
+                # Clear the ID and the URL, then rerun
+                st.session_state[K.USER_HASH] = None 
+                st.query_params.clear()
                 st.rerun()
-            elif clean_new_sid == current_sid:
-                st.info("Identity already latched.")
-            else:
-                st.warning("Provide a valid Access Key.")
 
         st.markdown("<hr>", unsafe_allow_html=True)
+)
 
         # ── LOGIC CONFIGURATION ───────────────────────────────────────────────
         st.subheader(t("logic_config", fallback="Logic Configuration"))
