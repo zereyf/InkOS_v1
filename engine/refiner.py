@@ -3,7 +3,7 @@ engine/refiner.py — CIPHER Intelligence Engine
 ================================================
 v8.0: Master Build. Added Cognitive Formatting Engine, 
       Forced Chain-of-Thought (CoT), and Framework Blueprints.
-      Includes Level 3 Agentic Clarification Loop.
+      Includes Level 3 Agentic Clarification Loop & Token Limit Defenses.
 """
 
 import json
@@ -353,6 +353,10 @@ def _call_evaluator(original_input: str, target: str, refined_prompt: str) -> di
                 "critique": "Evaluator Rate Limited (429). System assigned a safety pass to preserve output.",
                 "precision": 40, "alignment": 35, "efficiency": 11
             }
+        # 🛡️ DEFENSE: Catch token overload for the evaluator specifically
+        if "context_length" in err_str.lower() or "too many tokens" in err_str.lower() or "maximum context" in err_str.lower():
+            return make_fallback_audit("Evaluator bypassed: Refined prompt exceeds engine token limits.")
+            
         return make_fallback_audit(f"Evaluator call failed: {err_str[:60]}")
 
 
@@ -372,6 +376,10 @@ def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Opt
         )
         raw = completion.choices[0].message.content
     except Exception as e:
+        err_str = str(e).lower()
+        # 🛡️ DEFENSE: Catch massive copy-pastes before they crash the UI
+        if "context_length" in err_str or "too many tokens" in err_str or "maximum context" in err_str:
+            return None, None, "[CIPHER OVERLOAD]: Input exceeds maximum token capacity. Please condense your intent."
         return None, None, str(e)
 
     refined, audit = _parse_output(raw)
