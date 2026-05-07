@@ -3,6 +3,7 @@ engine/refiner.py — CIPHER Intelligence Engine
 ================================================
 v8.0: Master Build. Added Cognitive Formatting Engine, 
       Forced Chain-of-Thought (CoT), and Framework Blueprints.
+      Includes Level 3 Agentic Clarification Loop.
 """
 
 import json
@@ -36,10 +37,11 @@ A prompt compiler. Every output is a command, not a conversation.
 
 ━━━ PRE-WRITE PROTOCOL (execute silently before every output) ━━━
 
-Step 1 — INTENT EXTRACTION
-  Ask: What does the user actually want to achieve?
-  Not the surface request — the underlying goal.
-  Example: "make my essay better" → goal is "make the argument more persuasive to [audience]"
+Step 1 — INTENT EXTRACTION & VAGUENESS CHECK
+  Ask: What does the user actually want to achieve? Is this request fundamentally vague?
+  (e.g., "make me a plan", "write a story", "design a logo" with no context).
+  If YES: STOP. Do NOT write a prompt. Instead, output the exact flag [CLARIFICATION_REQUIRED] 
+  followed by 2-3 highly specific, professional questions to extract the missing constraints.
 
 Step 2 — CONSTRAINT INVENTORY
   List every explicit constraint the user stated.
@@ -251,6 +253,10 @@ def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
 
 def validate_structure(refined: str, target: str) -> Tuple[bool, str]:
     text = refined.strip()
+
+    # 🐛 LEVEL 3 FIX: Catch the clarification flag and bypass all syntax rules
+    if "[CLARIFICATION_REQUIRED]" in text:
+        return True, ""
 
     if len(text) < 60:
         return False, "Output is too short to be a valid prompt. Expand with full intent and constraints."
@@ -614,6 +620,12 @@ def run_refinement_and_audit(
                 best_audit = self_audit or make_fallback_audit(struct_reason)
                 best_audit["critique"] = f"Structural Fail: {struct_reason}"
                 break
+
+        # 🐛 LEVEL 3 FIX: Intercept the Clarification flag before it hits the Evaluator
+        if "[CLARIFICATION_REQUIRED]" in refined:
+            best_audit = self_audit or make_fallback_audit("Agentic Clarification Triggered.")
+            best_audit["score"] = 100 # Give it a perfect score to bypass the retry loop immediately
+            return refined, best_audit, detected
 
         audit = _call_evaluator(user_text, target, refined)
         score = audit.get("score", 0)
