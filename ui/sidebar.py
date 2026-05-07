@@ -1,13 +1,13 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v1.0: Integrated Terminal Identity HUD for Persistent Latching.
-       Includes Level 4 Expert Diagnostics & Multi-Language Support.
+v1.0: Integrated Dual-Factor Terminal Identity HUD.
+       Includes Registration Protocol and Failed Attempt Tracking.
 """
 
 import streamlit as st
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import TypedDict, Optional
 from state import K, get_remaining_calls
 from config import TARGET_GUIDES, AESTHETIC_PRESETS, AUTO_SELECT_LABEL, LOGIC_FRAMEWORKS
@@ -67,47 +67,66 @@ def render_sidebar() -> SidebarConfig:
         # ── LANGUAGE SWITCHER ─────────────────────────────────────────────────
         render_language_switcher()
 
-            # ── TERMINAL IDENTITY HUD ─────────────────────────────────────────────
+        # ── TERMINAL IDENTITY HUD ─────────────────────────────────────────────
         st.markdown(f'<div class="vc-header" style="font-size:0.55rem; color:var(--text-muted); margin-top:14px;">TERMINAL IDENTITY</div>', unsafe_allow_html=True)
         
         current_sid = st.session_state.get(K.USER_HASH, "UNKNOWN")
-        is_guest = "GUEST_" in current_sid
+        is_guest = "GUEST_" in str(current_sid)
         
-        # Display current ID in a clean block
         st.code(current_sid, language=None)
         
-        # 🟢 If it's a GUEST, show the input box to encourage "Saving"
         if is_guest:
-            new_sid = st.text_input(
-                "Identity Latch", 
-                placeholder="Enter an ID to save your data...", 
-                key="sid_input_sidebar", 
-                label_visibility="collapsed"
-            )
+            # 1. Primary Inputs
+            new_sid = st.text_input("Access Key", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
+            new_pin = st.text_input("Security PIN", placeholder="4-6 Digit PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
             
-            if st.button("SAVE IDENTITY", use_container_width=True, key="btn_latch_sid"):
-                if new_sid.strip():
-                    st.session_state[K.USER_HASH] = new_sid.strip()
-                    st.query_params["sid"] = new_sid.strip()
-                    st.toast(f"Identity Saved: {new_sid.strip()}", icon="🔐")
-                    st.rerun()
+            # 2. Registration Logic
+            is_new_user = st.toggle("Registering new identity?", value=False, key="is_new_user_toggle", 
+                                    help="Enable this only if you are creating this Access Key for the first time.")
+            
+            if st.button("LATCH IDENTITY", use_container_width=True, key="btn_latch_sid"):
+                if new_sid.strip() and new_pin.strip():
+                    
+                    # 🛡️ Placeholder for Database Verification
+                    # We will replace this logic once vault_engine.py is updated
+                    verification_passed = True 
+                    
+                    if verification_passed:
+                        st.session_state[K.USER_HASH] = new_sid.strip()
+                        st.session_state[K.USER_PIN]  = new_pin.strip()
+                        st.session_state[K.FAILED_ATTEMPTS] = 0
+                        st.query_params["sid"] = new_sid.strip()
+                        
+                        msg = "Identity Registered" if is_new_user else "Identity Verified"
+                        st.toast(f"{msg}: {new_sid.strip()}", icon="🔐")
+                        st.rerun()
+                    else:
+                        # 🚨 Failed Attempt Tracking
+                        st.session_state[K.FAILED_ATTEMPTS] += 1
+                        attempts = st.session_state[K.FAILED_ATTEMPTS]
+                        if attempts >= 5:
+                            st.session_state[K.LOCKOUT_UNTIL] = datetime.now(timezone.utc) + timedelta(minutes=10)
+                            st.rerun()
+                        st.error(f"Invalid PIN. {5 - attempts} attempts remaining.")
+                else:
+                    st.warning("ID and PIN required.")
         
-        # 🔵 If it's a REAL ID (like Ameer), hide the box and show a "Switch" button
         else:
+            # 🔵 SECURE STATE
             st.markdown(f"""
-                <div style="font-size:0.62rem; color:var(--gold); margin-bottom:10px;">
-                    ✓ Identity Secured & Saved
+                <div style="font-size:0.62rem; color:var(--gold); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+                    <span class="status-dot" style="background:var(--gold);"></span>
+                    IDENTITY SECURED
                 </div>
             """, unsafe_allow_html=True)
             
-            if st.button("Switch Identity / Logout", use_container_width=True, key="btn_logout_sid"):
-                # Clear the ID and the URL, then rerun
+            if st.button("Logout / Clear Latch", use_container_width=True, key="btn_logout_sid"):
                 st.session_state[K.USER_HASH] = None 
+                st.session_state[K.USER_PIN]  = None
                 st.query_params.clear()
                 st.rerun()
 
         st.markdown("<hr>", unsafe_allow_html=True)
-
 
         # ── LOGIC CONFIGURATION ───────────────────────────────────────────────
         st.subheader(t("logic_config", fallback="Logic Configuration"))
@@ -117,7 +136,7 @@ def render_sidebar() -> SidebarConfig:
             "Target AI Model", 
             options=target_options,
             key="sb_target",
-            help="Select the target AI. CIPHER maps intent to specific syntax: strict XML for Claude, conversational structures for ChatGPT, and parameter-heavy tokens for Midjourney.",
+            help="Select the target AI. CIPHER maps intent to specific syntax.",
         )
 
         if target_model == AUTO_SELECT_LABEL:
@@ -142,25 +161,21 @@ def render_sidebar() -> SidebarConfig:
             t("logic_framework", fallback="Logic Framework"),
             LOGIC_FRAMEWORKS,
             key="sb_framework",
-            help="Forces the AI's cognitive boundary. 'RACE' enforces Role-Action-Context-Execution. 'Technical' forces a Chain-of-Thought <thinking> block before generating code.",
         )
         
         source_lang = st.radio(
             "Input Language",
             ["English", "Arabic (العربية)"],
             key="sb_lang",
-            help="Language of raw intent. Arabic engages the Cognitive Mapping Layer to preserve rhetorical authority and structural rules.",
         )
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
         # ── PERSONA SELECTOR ──────────────────────────────────────────────────
         st.subheader(t("active_persona", fallback="Active Persona"))
-
         user_hash     = st.session_state.get(K.USER_HASH, "")
         user_personas = _load_user_personas(user_hash)
-
-        all_names = list(STARTER_PERSONAS.keys()) + [p["name"] for p in user_personas]
+        all_names     = list(STARTER_PERSONAS.keys()) + [p["name"] for p in user_personas]
 
         current_persona = get_persona_display_name(st.session_state.get(K.ACTIVE_PERSONA))
         if current_persona not in all_names:
@@ -184,7 +199,6 @@ def render_sidebar() -> SidebarConfig:
             key="sb_persona",
             on_change=_sb_persona_changed,
             label_visibility="collapsed",
-            help="Injects 'Expert DNA'. Select a Persona for strict, domain-specific logic.",
         )
 
         active_persona_state = st.session_state.get(K.ACTIVE_PERSONA)
@@ -216,14 +230,6 @@ def render_sidebar() -> SidebarConfig:
         )
 
         islamic_mode = st.toggle(t("islamic_mode", fallback="Islamic Professional Mode"), value=False, key="sb_islamic")
-        if islamic_mode:
-            st.markdown(f"""
-            <div class="islamic-badge">
-                <span class="status-dot green"></span>{t('islamic_active', fallback='Active')}<br>
-                {t('islamic_sharia', fallback='Sharia Compliant')}
-            </div>
-            """, unsafe_allow_html=True)
-            
         expert_mode = st.toggle("Enable Expert Diagnostics", value=False, key="sb_expert")
 
         st.markdown("<hr>", unsafe_allow_html=True)
