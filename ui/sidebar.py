@@ -1,7 +1,7 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v14.0: Integrated Terminal Identity HUD for Persistent Latching.
+v1.0: Integrated Terminal Identity HUD for Persistent Latching.
        Includes Level 4 Expert Diagnostics & Multi-Language Support.
 """
 
@@ -76,7 +76,7 @@ def render_sidebar() -> SidebarConfig:
         st.code(current_sid, language=None)
         
         new_sid = st.text_input(
-            "Identity Latch", 
+            "Identity Memory", 
             placeholder="Enter key (e.g. AMEER_01)", 
             key="sid_input_sidebar", 
             label_visibility="collapsed",
@@ -88,7 +88,7 @@ def render_sidebar() -> SidebarConfig:
             if clean_new_sid and clean_new_sid != current_sid:
                 st.session_state[K.USER_HASH] = clean_new_sid
                 st.query_params["sid"] = clean_new_sid
-                st.toast(f"Identity Latched: {clean_new_sid}", icon="🔐")
+                st.toast(f"Identity Locked: {clean_new_sid}", icon="🔐")
                 st.rerun()
             elif clean_new_sid == current_sid:
                 st.info("Identity already latched.")
