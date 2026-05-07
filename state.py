@@ -1,7 +1,8 @@
 """
 state.py — Session State Contract
 ===================================
-v1.0: Security Vault Integration (PIN, Failed Attempts, and Lockout Logic).
+v15.0: Advanced DNA & Identity Preservation.
+       Integrated Muse Trigger, VelvetCodex, and Team Rei tactical data.
 """
 
 import uuid
@@ -20,17 +21,22 @@ class K:
     LAST_INPUT     = "last_input"
     LAST_PATTERN   = "last_pattern"
     USER_HASH      = "user_hash"
-    USER_PIN       = "user_pin"         # 🛡️ NEW: Verified Security PIN
-    FAILED_ATTEMPTS = "failed_attempts" # 🛡️ NEW: Counter for Self-Destruct logic
-    LOCKOUT_UNTIL  = "lockout_until"    # 🛡️ NEW: Timestamp for system lockout
+    USER_PIN       = "user_pin"
+    FAILED_ATTEMPTS = "failed_attempts"
+    LOCKOUT_UNTIL  = "lockout_until"
     VAULT_SEARCH   = "vault_search"
     VAULT_STATS    = "vault_stats"
     ACTIVE_PERSONA = "active_persona"
     PERSONA_LIST   = "persona_list"
-    UI_LANG        = "ui_lang"          # "en" | "ar" | "fr"
-    AUTO_TARGET    = "auto_target"      # target selected by CIPHER
-    AUTO_REASON    = "auto_reason"      # reason for CIPHER's selection
-    APP_CONFIG     = "app_config"       # global sidebar configuration
+    UI_LANG        = "ui_lang"          
+    AUTO_TARGET    = "auto_target"      
+    AUTO_REASON    = "auto_reason"      
+    APP_CONFIG     = "app_config"
+    
+    # 🧪 ADVANCED DNA KEYS
+    MUSE_DNA       = "muse_dna"         # AmeerInk Visual DNA
+    VELVET_DNA     = "velvet_dna"       # Technical Auditing DNA
+    REI_DNA        = "rei_dna"          # Team Rei Tactical DNA
 
 
 _DEFAULTS: dict = {
@@ -42,9 +48,9 @@ _DEFAULTS: dict = {
     K.LAST_INPUT:      "",
     K.LAST_PATTERN:    None,
     K.USER_HASH:       None,
-    K.USER_PIN:        None,            # 🛡️ Initialized
-    K.FAILED_ATTEMPTS: 0,               # 🛡️ Initialized
-    K.LOCKOUT_UNTIL:   None,            # 🛡️ Initialized
+    K.USER_PIN:        None,
+    K.FAILED_ATTEMPTS: 0,
+    K.LOCKOUT_UNTIL:   None,
     K.VAULT_SEARCH:    "",
     K.VAULT_STATS:     {},
     K.ACTIVE_PERSONA:  None,
@@ -53,6 +59,20 @@ _DEFAULTS: dict = {
     K.AUTO_TARGET:     None,
     K.AUTO_REASON:     None,
     K.APP_CONFIG:      None,
+
+    # 🧪 INITIALIZING ADVANCED DNA (Forensic Pre-load)
+    K.MUSE_DNA: (
+        "AESTHETIC: Chiaroscuro lighting, tech-noir cyberpunk vibes, minimalist framing. "
+        "COLOR: Obsidian and Gold. STYLE: High-contrast digital photography, 8k resolution, cinematic atmosphere."
+    ),
+    K.VELVET_DNA: (
+        "PROTOCOL: VelvetCodex. FOCUS: Forensic code auditing, security vulnerability detection, "
+        "and logical leak analysis. TONE: Authoritative and challenging."
+    ),
+    K.REI_DNA: (
+        "TEAM: Rei. ROSTER: Ascendant (Captain), Emrys (Roam), Dethrine (Gold), Phantom (Exp), Aizen (Mage). "
+        "FOCUS: MLBB Meta-strategy and competitive tactical anthems."
+    ),
 }
 
 
@@ -75,23 +95,29 @@ def init_session_state() -> None:
 
 
 def reset_session() -> None:
-    """Nuclear reset: flushes state but preserves security context."""
-    # 🛡️ Preserve identity and security status during reset
+    """Nuclear reset: flushes state but preserves Identity and Advanced DNA."""
+    # 🛡️ Preserve security and Advanced DNA status during reset
     preserved = {
         K.USER_HASH:       st.session_state.get(K.USER_HASH),
         K.USER_PIN:        st.session_state.get(K.USER_PIN),
         K.UI_LANG:         st.session_state.get(K.UI_LANG, "en"),
         K.FAILED_ATTEMPTS: st.session_state.get(K.FAILED_ATTEMPTS, 0),
         K.LOCKOUT_UNTIL:   st.session_state.get(K.LOCKOUT_UNTIL),
+        
+        # 🧪 Preserve your personal branding/logic
+        K.MUSE_DNA:        st.session_state.get(K.MUSE_DNA),
+        K.VELVET_DNA:      st.session_state.get(K.VELVET_DNA),
+        K.REI_DNA:         st.session_state.get(K.REI_DNA),
     }
     
     st.session_state.clear()
     
     init_session_state()
     
-    # 🛡️ Restore preserved security keys
+    # 🛡️ Restore preserved keys
     for key, value in preserved.items():
-        st.session_state[key] = value
+        if value is not None:
+            st.session_state[key] = value
 
     # 🐛 UI Clean-up
     st.session_state["ta_input"]            = ""
