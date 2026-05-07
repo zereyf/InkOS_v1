@@ -1,7 +1,7 @@
 """
 state.py — Session State Contract
 ===================================
-v12: Integrated URL-based Identity Latching and Volatile State Detection.
+v1.0: Security Vault Integration (PIN, Failed Attempts, and Lockout Logic).
 """
 
 import uuid
@@ -20,6 +20,9 @@ class K:
     LAST_INPUT     = "last_input"
     LAST_PATTERN   = "last_pattern"
     USER_HASH      = "user_hash"
+    USER_PIN       = "user_pin"         # 🛡️ NEW: Verified Security PIN
+    FAILED_ATTEMPTS = "failed_attempts" # 🛡️ NEW: Counter for Self-Destruct logic
+    LOCKOUT_UNTIL  = "lockout_until"    # 🛡️ NEW: Timestamp for system lockout
     VAULT_SEARCH   = "vault_search"
     VAULT_STATS    = "vault_stats"
     ACTIVE_PERSONA = "active_persona"
@@ -31,22 +34,25 @@ class K:
 
 
 _DEFAULTS: dict = {
-    K.HISTORY:        [],
-    K.TIMESTAMPS:     [],
-    K.SECURITY_LOG:   [],
-    K.LAST_RESULT:    None,
-    K.LAST_AUDIT:     None,
-    K.LAST_INPUT:     "",
-    K.LAST_PATTERN:   None,
-    K.USER_HASH:      None,
-    K.VAULT_SEARCH:   "",
-    K.VAULT_STATS:    {},
-    K.ACTIVE_PERSONA: None,
-    K.PERSONA_LIST:   [],
-    K.UI_LANG:        "en",
-    K.AUTO_TARGET:    None,
-    K.AUTO_REASON:    None,
-    K.APP_CONFIG:     None,
+    K.HISTORY:         [],
+    K.TIMESTAMPS:      [],
+    K.SECURITY_LOG:    [],
+    K.LAST_RESULT:     None,
+    K.LAST_AUDIT:      None,
+    K.LAST_INPUT:      "",
+    K.LAST_PATTERN:    None,
+    K.USER_HASH:       None,
+    K.USER_PIN:        None,            # 🛡️ Initialized
+    K.FAILED_ATTEMPTS: 0,               # 🛡️ Initialized
+    K.LOCKOUT_UNTIL:   None,            # 🛡️ Initialized
+    K.VAULT_SEARCH:    "",
+    K.VAULT_STATS:     {},
+    K.ACTIVE_PERSONA:  None,
+    K.PERSONA_LIST:    [],
+    K.UI_LANG:         "en",
+    K.AUTO_TARGET:     None,
+    K.AUTO_REASON:     None,
+    K.APP_CONFIG:      None,
 }
 
 
@@ -58,31 +64,36 @@ def init_session_state() -> None:
             
     # 🔗 IDENTITY LATCHING LOGIC
     if st.session_state.get(K.USER_HASH) is None:
-        # Check URL for existing Session ID (sid)
         url_sid = st.query_params.get("sid")
 
         if url_sid:
-            # Latch onto the ID found in the URL
             st.session_state[K.USER_HASH] = url_sid
         else:
-            # Generate a temporary Volatile Guest ID
             raw_id = str(uuid.uuid4())
             guest_suffix = hashlib.sha256(raw_id.encode()).hexdigest()[:8].upper()
             st.session_state[K.USER_HASH] = f"GUEST_{guest_suffix}"
 
 
 def reset_session() -> None:
-    """Nuclear reset: flushes state but preserves the Identity context."""
-    preserved_hash = st.session_state.get(K.USER_HASH)
-    preserved_lang = st.session_state.get(K.UI_LANG, "en")
+    """Nuclear reset: flushes state but preserves security context."""
+    # 🛡️ Preserve identity and security status during reset
+    preserved = {
+        K.USER_HASH:       st.session_state.get(K.USER_HASH),
+        K.USER_PIN:        st.session_state.get(K.USER_PIN),
+        K.UI_LANG:         st.session_state.get(K.UI_LANG, "en"),
+        K.FAILED_ATTEMPTS: st.session_state.get(K.FAILED_ATTEMPTS, 0),
+        K.LOCKOUT_UNTIL:   st.session_state.get(K.LOCKOUT_UNTIL),
+    }
     
     st.session_state.clear()
     
     init_session_state()
-    st.session_state[K.USER_HASH] = preserved_hash
-    st.session_state[K.UI_LANG]   = preserved_lang
+    
+    # 🛡️ Restore preserved security keys
+    for key, value in preserved.items():
+        st.session_state[key] = value
 
-    # 🐛 LEVEL 1 FIX: Kill frontend browser ghosting
+    # 🐛 UI Clean-up
     st.session_state["ta_input"]            = ""
     st.session_state["refined_output_area"] = ""
     st.session_state["vault_title_input"]   = ""
