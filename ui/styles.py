@@ -229,30 +229,7 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 [data-baseweb="menu"] li { font-family: var(--font-m) !important; font-size: 0.75rem !important; color: var(--text-muted) !important; padding: 10px 14px !important; transition: background 0.15s, color 0.15s !important; }
 [data-baseweb="menu"] li:hover, [data-baseweb="menu"] li[aria-selected="true"] { background: rgba(201, 168, 76, 0.1) !important; color: var(--gold) !important; border-left: 2px solid var(--gold) !important; }
 
-/* ══════════════════════════════════════════
-   MACRO INJECTORS (HORIZONTAL MOBILE FORCE)
-══════════════════════════════════════════ */
-div[data-testid="stHorizontalBlock"]:has(.macro-btn) {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    gap: 8px !important;
-}
-div[data-testid="stHorizontalBlock"]:has(.macro-btn) > div[data-testid="column"] {
-    width: 33.33% !important;
-    min-width: 30% !important;
-    flex: 1 1 0px !important;
-}
-div[data-testid="stHorizontalBlock"]:has(.macro-btn) button {
-    padding: 0.15rem 0rem !important;
-    min-height: 38px !important;
-}
-div[data-testid="stHorizontalBlock"]:has(.macro-btn) button p {
-    font-size: 0.75rem !important;
-    letter-spacing: 0.5px !important;
-}
-
-/* ══════════════════════════════════════════
+ ══════════════════════════════════════════
    LEVEL 4 FIX: TOAST NOTIFICATIONS
 ══════════════════════════════════════════ */
 [data-testid="stToast"] {
