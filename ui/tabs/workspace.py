@@ -3,6 +3,7 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 v6.1: Fixed the "Lagging Output" Streamlit widget state bug.
 Tab 1: Input stream, live pattern preview, execution, results display.
+Includes Level 3 Agentic Clarification Loop UI.
 """
 
 import hashlib
@@ -227,7 +228,6 @@ def render_workspace(cfg: dict) -> None:
                     st.write(t("status_done"))
                     status.update(label=t("status_complete"), state="complete", expanded=False)
 
-                    # 🐛 THE BUG FIX 🐛 
                     # We must explicitly update the widget's key, or Streamlit will show old data.
                     st.session_state[K.LAST_RESULT]  = result
                     st.session_state["refined_output_area"] = result  
@@ -301,75 +301,106 @@ def render_workspace(cfg: dict) -> None:
                 f'{_escape(last_input)}</div>',
                 unsafe_allow_html=True,
             )
-            st.markdown(
-                f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>',
-                unsafe_allow_html=True,
-            )
             
-            # The widget uses the key updated in the execution block above
-            st.text_area(
-                "refined_output",
-                value=last_result,
-                height=220,
-                disabled=False,
-                label_visibility="collapsed",
-                key="refined_output_area",
-                help=t("refined_help"),
-            )
-            
-            frozen_filename = st.session_state.get("frozen_dl_filename", "inkos_prompt.txt")
-            st.download_button(
-                t("download_prompt"),
-                data=last_result,
-                file_name=frozen_filename,
-                key="btn_dl_result",
-            )
-            
-            from vault.supabase_client import SUPABASE_MISSING as _SB_MISSING
-            if not _SB_MISSING:
-                st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+            # 🐛 LEVEL 3 FIX: AGENTIC CLARIFICATION LOOP UI
+            if "[CLARIFICATION_REQUIRED]" in last_result:
+                clean_questions = last_result.replace("[CLARIFICATION_REQUIRED]", "").strip()
+                
                 st.markdown(
-                    f'<div class="vc-header" style="font-size:0.6rem;margin-top:4px;">{t("save_to_vault")}</div>',
+                    f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;color:var(--gold);">⚠️ AGENTIC INTERVENTION REQUIRED</div>',
                     unsafe_allow_html=True,
                 )
-                v1, v2 = st.columns([3, 2])
-                with v1:
-                    vault_title = st.text_input(
-                        "Title",
-                        placeholder=t("vault_title_ph"),
-                        key="vault_title_input",
-                        label_visibility="collapsed",
-                    )
-                with v2:
-                    vault_tags = st.text_input(
-                        "Tags",
-                        placeholder=t("vault_tags_ph"),
-                        key="vault_tags_input",
-                        label_visibility="collapsed",
-                    )
-
-                if st.button(t("save_vault_btn"), use_container_width=True, key="btn_save_vault"):
-                    if not vault_title.strip():
-                        st.warning(t("save_vault_warning"))
+                st.markdown(
+                    f'<div class="vc-card" style="font-size:0.8rem;line-height:1.75;border-color:var(--gold);">'
+                    f'<span style="color:var(--text-muted);">CIPHER halted execution. The intent is too vague for a precision prompt. Please clarify:</span><br><br>'
+                    f'<strong style="color:var(--text);">{_escape(clean_questions)}</strong></div>',
+                    unsafe_allow_html=True,
+                )
+                
+                st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+                new_details = st.text_area("Reply to CIPHER", placeholder="Provide the missing context here...", height=80, key="agent_reply_input", label_visibility="collapsed")
+                
+                if st.button("Append Context & Retry", use_container_width=True, key="btn_agent_retry"):
+                    if new_details:
+                        current_intent = st.session_state.get(K.LAST_INPUT, "")
+                        st.session_state["ta_input"] = f"{current_intent}\n\n[USER CLARIFICATION]: {new_details}"
+                        # Clear the last result so the UI resets cleanly for the next run
+                        st.session_state[K.LAST_RESULT] = None
+                        st.rerun()
                     else:
-                        with st.spinner(t("saving_vault")):
-                            from vault.vault_engine import save_prompt
-                            audit_data   = st.session_state.get(K.LAST_AUDIT) or {}
-                            pattern_data = st.session_state.get(K.LAST_PATTERN)
-                            _, save_err = save_prompt(
-                                user_hash  = st.session_state.get(K.USER_HASH, ""),
-                                title      = vault_title,
-                                tags       = vault_tags,
-                                content    = last_result,
-                                target     = cfg.get("target_model", ""),
-                                framework  = cfg.get("framework", ""),
-                                score      = audit_data.get("score", 0),
-                                pattern    = pattern_data["pattern"] if pattern_data else "",
-                                islamic    = cfg.get("islamic_mode", False),
-                                aesthetic  = cfg.get("aesthetic_choice", ""),
-                            )
-                        if save_err:
-                            st.error(t('save_vault_error', error=save_err))
+                        st.warning("Please provide clarification before retrying.")
+
+            else:
+                # Normal Output Flow
+                st.markdown(
+                    f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>',
+                    unsafe_allow_html=True,
+                )
+                
+                # The widget uses the key updated in the execution block above
+                st.text_area(
+                    "refined_output",
+                    value=last_result,
+                    height=220,
+                    disabled=False,
+                    label_visibility="collapsed",
+                    key="refined_output_area",
+                    help=t("refined_help"),
+                )
+                
+                frozen_filename = st.session_state.get("frozen_dl_filename", "inkos_prompt.txt")
+                st.download_button(
+                    t("download_prompt"),
+                    data=last_result,
+                    file_name=frozen_filename,
+                    key="btn_dl_result",
+                )
+                
+                from vault.supabase_client import SUPABASE_MISSING as _SB_MISSING
+                if not _SB_MISSING:
+                    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div class="vc-header" style="font-size:0.6rem;margin-top:4px;">{t("save_to_vault")}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    v1, v2 = st.columns([3, 2])
+                    with v1:
+                        vault_title = st.text_input(
+                            "Title",
+                            placeholder=t("vault_title_ph"),
+                            key="vault_title_input",
+                            label_visibility="collapsed",
+                        )
+                    with v2:
+                        vault_tags = st.text_input(
+                            "Tags",
+                            placeholder=t("vault_tags_ph"),
+                            key="vault_tags_input",
+                            label_visibility="collapsed",
+                        )
+
+                    if st.button(t("save_vault_btn"), use_container_width=True, key="btn_save_vault"):
+                        if not vault_title.strip():
+                            st.warning(t("save_vault_warning"))
                         else:
-                            st.session_state[K.VAULT_STATS] = {}
-                            st.success(t('save_vault_success', title=vault_title))
+                            with st.spinner(t("saving_vault")):
+                                from vault.vault_engine import save_prompt
+                                audit_data   = st.session_state.get(K.LAST_AUDIT) or {}
+                                pattern_data = st.session_state.get(K.LAST_PATTERN)
+                                _, save_err = save_prompt(
+                                    user_hash  = st.session_state.get(K.USER_HASH, ""),
+                                    title      = vault_title,
+                                    tags       = vault_tags,
+                                    content    = last_result,
+                                    target     = cfg.get("target_model", ""),
+                                    framework  = cfg.get("framework", ""),
+                                    score      = audit_data.get("score", 0),
+                                    pattern    = pattern_data["pattern"] if pattern_data else "",
+                                    islamic    = cfg.get("islamic_mode", False),
+                                    aesthetic  = cfg.get("aesthetic_choice", ""),
+                                )
+                            if save_err:
+                                st.error(t('save_vault_error', error=save_err))
+                            else:
+                                st.session_state[K.VAULT_STATS] = {}
+                                st.success(t('save_vault_success', title=vault_title))
