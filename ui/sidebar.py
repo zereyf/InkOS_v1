@@ -1,8 +1,8 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v1.0: Integrated Dual-Factor Terminal Identity HUD.
-       Includes Registration Protocol and Failed Attempt Tracking.
+v1.0: Final Security Edition. 
+       Full Dual-Factor Authentication with Database Handshake & Lockout.
 """
 
 import streamlit as st
@@ -13,6 +13,7 @@ from state import K, get_remaining_calls
 from config import TARGET_GUIDES, AESTHETIC_PRESETS, AUTO_SELECT_LABEL, LOGIC_FRAMEWORKS
 from forge.persona_engine import STARTER_PERSONAS, get_persona_display_name
 from vault.supabase_client import SUPABASE_MISSING
+from vault.vault_engine import authenticate_terminal # 🛡️ NEW: Real Auth Gate
 from i18n.translations import t, set_lang, get_lang, LANGUAGES, is_rtl
 
 
@@ -76,22 +77,26 @@ def render_sidebar() -> SidebarConfig:
         st.code(current_sid, language=None)
         
         if is_guest:
-            # 1. Primary Inputs
+            # 1. Identity Inputs
             new_sid = st.text_input("Access Key", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
             new_pin = st.text_input("Security PIN", placeholder="4-6 Digit PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
             
-            # 2. Registration Logic
+            # 2. Registration Toggle
             is_new_user = st.toggle("Registering new identity?", value=False, key="is_new_user_toggle", 
                                     help="Enable this only if you are creating this Access Key for the first time.")
             
             if st.button("LATCH IDENTITY", use_container_width=True, key="btn_latch_sid"):
                 if new_sid.strip() and new_pin.strip():
                     
-                    # 🛡️ Placeholder for Database Verification
-                    # We will replace this logic once vault_engine.py is updated
-                    verification_passed = True 
+                    # 🛡️ REAL DATABASE HANDSHAKE
+                    with st.spinner("Authenticating..."):
+                        success, error_msg = authenticate_terminal(
+                            user_hash=new_sid.strip(), 
+                            pin=new_pin.strip(), 
+                            is_new=is_new_user
+                        )
                     
-                    if verification_passed:
+                    if success:
                         st.session_state[K.USER_HASH] = new_sid.strip()
                         st.session_state[K.USER_PIN]  = new_pin.strip()
                         st.session_state[K.FAILED_ATTEMPTS] = 0
@@ -101,18 +106,21 @@ def render_sidebar() -> SidebarConfig:
                         st.toast(f"{msg}: {new_sid.strip()}", icon="🔐")
                         st.rerun()
                     else:
-                        # 🚨 Failed Attempt Tracking
+                        # 🚨 Failed Attempt Tracking (Self-Destruct Protocol)
                         st.session_state[K.FAILED_ATTEMPTS] += 1
                         attempts = st.session_state[K.FAILED_ATTEMPTS]
+                        
                         if attempts >= 5:
+                            # Trigger Lockout for 10 minutes
                             st.session_state[K.LOCKOUT_UNTIL] = datetime.now(timezone.utc) + timedelta(minutes=10)
                             st.rerun()
-                        st.error(f"Invalid PIN. {5 - attempts} attempts remaining.")
+                        
+                        st.error(f"{error_msg} ({5 - attempts} attempts remaining)")
                 else:
-                    st.warning("ID and PIN required.")
+                    st.warning("ID and PIN required for latching.")
         
         else:
-            # 🔵 SECURE STATE
+            # 🔵 SECURE STATE: Identity is verified and latched
             st.markdown(f"""
                 <div style="font-size:0.62rem; color:var(--gold); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
                     <span class="status-dot" style="background:var(--gold);"></span>
@@ -123,6 +131,7 @@ def render_sidebar() -> SidebarConfig:
             if st.button("Logout / Clear Latch", use_container_width=True, key="btn_logout_sid"):
                 st.session_state[K.USER_HASH] = None 
                 st.session_state[K.USER_PIN]  = None
+                st.session_state[K.FAILED_ATTEMPTS] = 0
                 st.query_params.clear()
                 st.rerun()
 
@@ -136,7 +145,6 @@ def render_sidebar() -> SidebarConfig:
             "Target AI Model", 
             options=target_options,
             key="sb_target",
-            help="Select the target AI. CIPHER maps intent to specific syntax.",
         )
 
         if target_model == AUTO_SELECT_LABEL:
