@@ -1,7 +1,7 @@
 """
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
-v6.0: Two-Tier Quality Gate (Structural Validator + Adversarial Evaluator).
+v6.1: Added Aesthetic Isolation and Fast-Path Routing Heuristics.
 CIPHER: Cognitive Intelligence for Prompt Heuristics, Engineering and Refinement
 """
 
@@ -210,7 +210,6 @@ _FALLBACK_AUDIT: dict = {
 
 
 def make_fallback_audit(critique: str) -> dict:
-    """Helper to generate a clean fallback audit dict."""
     audit = dict(_FALLBACK_AUDIT)
     audit["critique"] = critique
     return audit
@@ -252,11 +251,6 @@ def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
 
 
 def validate_structure(refined: str, target: str) -> Tuple[bool, str]:
-    """
-    Deterministic structural validation. No LLM. No API call.
-    Returns (passed: bool, failure_reason: str).
-    If passed is False, trigger a retry with failure_reason as the critique.
-    """
     text = refined.strip()
 
     if len(text) < 60:
@@ -324,7 +318,6 @@ def validate_structure(refined: str, target: str) -> Tuple[bool, str]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _call_evaluator(original_input: str, target: str, refined_prompt: str) -> dict:
-    """Independent evaluation call using adversarial framing."""
     if not client:
         return make_fallback_audit("Evaluator skipped — API client not initialized.")
 
@@ -379,6 +372,15 @@ def detect_best_target(user_text: str) -> tuple:
     if not client:
         return "Claude", "Defaulted to Claude — API Client not initialized."
 
+    text_lower = user_text.lower()
+    
+    # ── FAST-PATH HEURISTICS (Zero Hallucination Routing) ──
+    if any(kw in text_lower for kw in ["python", "script", "code", "html", "react", "sql", "debug", "fastapi"]):
+        return "Claude", "Hard-routed to Claude (Technical intent detected)."
+        
+    if any(kw in text_lower for kw in ["portrait", "image of", "picture of", "cinematic", "draw ", "render "]):
+        return "Midjourney/Flux", "Hard-routed to Midjourney (Visual intent detected)."
+
     system_prompt = f"""You are CIPHER's target classification module.
 Your only task: read the user input and select the single best AI target.
 
@@ -397,7 +399,7 @@ Valid target names (use exactly): Claude, ChatGPT, Manus AI, Midjourney/Flux, DA
                 {"role": "user",   "content": user_text[:500]},
             ],
             response_format={"type": "json_object"},
-            temperature=0.1,
+            temperature=0.0, # Zero variance for routing
             max_tokens=100,
         )
         raw = json.loads(completion.choices[0].message.content)
@@ -470,10 +472,13 @@ def _build_system_prompt(
     brand_identity:   Optional[dict] = None,
     dynamic_context:  str            = "",
 ) -> str:
-    style = (
-        f"STYLE DIRECTION: {AESTHETIC_PRESETS.get(aesthetic_choice, '')}"
-        if aesthetic_choice != "Raw (No Preset)" else ""
-    )
+    
+    # FIX: Isolate Aesthetic injection to visual models ONLY
+    image_targets = ["Midjourney/Flux", "DALL-E 3", "Gemini (Imagen 3)"]
+    style = ""
+    if target in image_targets and aesthetic_choice != "Raw (No Preset)":
+        style = f"STYLE DIRECTION: {AESTHETIC_PRESETS.get(aesthetic_choice, '')}"
+        
     persona_block = inject_persona(persona, target)
     brand_block   = _build_brand_block(brand_identity)
     retry_block   = (
