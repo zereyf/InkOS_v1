@@ -1,14 +1,13 @@
 """
 ui/tabs/archive.py — Neural Archive Tab
 =========================================
-Tab 2: Filterable history of all refinements.
-Sorted filter options prevent random ordering across reruns.
-Unique download button keys prevent DuplicateWidgetID errors.
+v7.0: Hardened for InkOS. Fixed 0-byte export bug, added metadata UI, 
+      removed old legacy branding.
 """
 
 import json
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timezone
 from state import K
 
 
@@ -36,11 +35,17 @@ def render_archive() -> None:
     all_targets  = sorted({e["target"]  for e in history})
     all_patterns = sorted({e["pattern"] for e in history if e.get("pattern")})
 
+    st.markdown(
+        '<div style="font-size:0.65rem;color:var(--text-muted);font-family:var(--font-m);margin-bottom:4px;">'
+        'FILTER ARCHIVE</div>', 
+        unsafe_allow_html=True
+    )
+    
     fc1, fc2 = st.columns(2)
     with fc1:
-        ft = st.selectbox("Filter Target",  ["All"] + all_targets,  key="arc_ft")
+        ft = st.selectbox("Target Filter", ["All"] + all_targets, key="arc_ft", label_visibility="collapsed")
     with fc2:
-        fp = st.selectbox("Filter Pattern", ["All"] + all_patterns, key="arc_fp")
+        fp = st.selectbox("Pattern Filter", ["All"] + all_patterns, key="arc_fp", label_visibility="collapsed")
 
     filtered = [
         e for e in history
@@ -49,40 +54,76 @@ def render_archive() -> None:
     ]
 
     st.markdown(
-        f'<p style="font-family:var(--font-m);font-size:0.62rem;'
-        f'color:var(--text-muted);letter-spacing:0.1em;">'
-        f'{len(filtered)} ENTRIES</p>',
+        f'<div style="font-family:var(--font-m);font-size:0.62rem;'
+        f'color:var(--gold);letter-spacing:0.1em;margin-top:10px;margin-bottom:10px;">'
+        f'✦ {len(filtered)} ENTRIES FOUND</div>',
         unsafe_allow_html=True,
     )
 
     for item in filtered:
         p_tag = f" · {item['pattern']}" if item.get("pattern") else ""
         i_tag = " · ☪"                  if item.get("islamic")  else ""
+        score = item.get('score', 0)
+        
+        # Visual score severity indicator
+        if score >= 90:
+            score_indicator = "🟢"
+        elif score >= 80:
+            score_indicator = "🟡"
+        else:
+            score_indicator = "🔴"
+
         label = (
-            f"[{item['id']}]  {item['time']}  ·  "
-            f"{item['target']}  ·  {item['score']}%{p_tag}{i_tag}"
+            f"{score_indicator} [{item['id']}]  {item['time']}  ·  "
+            f"{item['target']}  ·  {score}%{p_tag}{i_tag}"
         )
 
         with st.expander(label):
-            st.markdown('<div class="arc-meta">Original Input</div>', unsafe_allow_html=True)
+            # Injection of tactical metadata context
+            st.markdown(f"""
+            <div style="
+                display:flex; gap:15px; flex-wrap:wrap;
+                background:rgba(201,168,76,0.05);
+                border:1px solid rgba(201,168,76,0.15);
+                border-radius:4px; padding:8px 12px;
+                font-family:var(--font-m); font-size:0.65rem;
+                color:var(--gold); margin-bottom:12px;
+            ">
+                <span><strong>FRAMEWORK:</strong> {item.get('framework', 'N/A')}</span>
+                <span><strong>AESTHETIC:</strong> {item.get('aesthetic', 'Raw')}</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown('<div class="arc-meta" style="font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;font-family:var(--font-m);">ORIGINAL INTENT</div>', unsafe_allow_html=True)
             st.markdown(
                 f'<div class="vc-card" style="font-size:0.77rem;line-height:1.65;'
-                f'margin-bottom:10px;">{_escape(item["input"])}</div>',
+                f'margin-bottom:12px;">{_escape(item["input"])}</div>',
                 unsafe_allow_html=True,
             )
+            
+            st.markdown('<div class="arc-meta" style="font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;font-family:var(--font-m);">REFINED ASSET</div>', unsafe_allow_html=True)
             st.code(item["output"], language="markdown")
+            
             st.download_button(
-                "Download",
+                "Download Prompt",
                 data=item["output"],
-                file_name=f"vc_{item['id']}.txt",
-                key=f"dl_{item['id']}",  # unique key — prevents DuplicateWidgetID
+                file_name=f"inkos_prompt_{item['id']}.txt",
+                key=f"dl_{item['id']}", 
+                use_container_width=True
             )
 
     st.markdown("<hr>", unsafe_allow_html=True)
+    
+    # FIX: Freeze export filename to prevent Streamlit 0-byte re-render bug
+    if "arc_export_filename" not in st.session_state:
+        dl_timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        st.session_state["arc_export_filename"] = f"inkos_archive_{dl_timestamp}.json"
+        
     st.download_button(
         "Export Full Archive (JSON)",
         data=json.dumps(history, ensure_ascii=False, indent=2),
-        file_name=f"velvetcodex_archive_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
+        file_name=st.session_state["arc_export_filename"],
         mime="application/json",
         key="btn_export_arc",
+        use_container_width=True
     )
