@@ -1,8 +1,8 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v18.0: Advanced Trigger Engine Integration.
-       Includes Muse Trigger, VelvetCodex, and Team Rei tactical injection.
+v21.0: Trifecta Trigger Engine Integration.
+       Includes Clickable Macro Injectors for /INK, /INTEL, and /HIKMAH.
 """
 
 import hashlib
@@ -27,24 +27,33 @@ def _escape(text: str) -> str:
 
 def _apply_dna_triggers(text: str) -> Tuple[str, list]:
     """
-    Forensic scanning for trigger words to inject stored DNA.
+    Forensic scanning for slash commands to inject stored DNA.
     Returns (processed_text, detected_triggers).
     """
     detected = []
     processed = text
     
     triggers = {
-        "AmeerInk":  st.session_state.get(K.MUSE_DNA, ""),
-        "VelvetCodex": st.session_state.get(K.VELVET_DNA, ""),
-        "Team Rei":  st.session_state.get(K.REI_DNA, "")
+        "/ink":    st.session_state.get(K.INK_DNA, ""),
+        "/intel":  st.session_state.get(K.INTEL_DNA, ""),
+        "/hikmah": st.session_state.get(K.HIKMAH_DNA, "")
     }
     
     for trigger, dna in triggers.items():
         if trigger.lower() in text.lower():
-            processed = f"[DNA INJECTION: {trigger}]\n{dna}\n\n[USER INTENT]\n{processed}"
-            detected.append(trigger)
+            processed = f"[DNA INJECTION: {trigger.upper()}]\n{dna}\n\n[USER INTENT]\n{processed}"
+            detected.append(trigger.upper())
             
     return processed, detected
+
+
+def _inject_macro(macro_text: str):
+    """Callback to append a slash command to the text area."""
+    current = st.session_state.get("ta_input", "")
+    if current:
+        st.session_state["ta_input"] = f"{current} {macro_text}"
+    else:
+        st.session_state["ta_input"] = macro_text
 
 
 def _render_guest_warning():
@@ -74,8 +83,8 @@ def _render_score_block(audit: dict, pattern: Optional[dict], triggers: list = N
         for t_name in triggers:
             st.markdown(f"""
             <div style="background:rgba(201,168,76,0.1); border:1px solid var(--gold); border-radius:3px; padding:8px 12px; margin-bottom:10px;">
-                <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">🧬 TRIGGER ENGAGED</div>
-                <div style="font-family:var(--font-m); font-size:0.75rem; color:white; font-weight:600;">{t_name.upper()} DNA ACTIVE</div>
+                <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">🧬 COMMAND ENGAGED</div>
+                <div style="font-family:var(--font-m); font-size:0.75rem; color:white; font-weight:600;">[ {t_name} ] DNA ACTIVE</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -123,26 +132,20 @@ def render_workspace(cfg: dict) -> None:
         </div>
     """, unsafe_allow_html=True)
 
-    # 🧬 DNA STANDBY BAR (Active Identity Status)
-    # Only show this if we aren't in GUEST mode
+    # 🧬 COMMAND MACROS (Clickable DNA Status Bar)
     current_sid = str(st.session_state.get(K.USER_HASH, ""))
     if "GUEST_" not in current_sid.upper():
-        st.markdown(f"""
-            <div style="display:flex; gap:10px; margin-bottom:20px;">
-                <div style="flex:1; background:rgba(201,168,76,0.03); border:1px solid rgba(201,168,76,0.2); padding:8px; border-radius:3px; text-align:center;">
-                    <div style="font-size:0.55rem; color:var(--gold); font-family:var(--font-m); letter-spacing:1px;">MUSE DNA</div>
-                    <div style="font-size:0.45rem; color:var(--text-muted); font-weight:bold;">ARMED</div>
-                </div>
-                <div style="flex:1; background:rgba(124,158,191,0.03); border:1px solid rgba(124,158,191,0.2); padding:8px; border-radius:3px; text-align:center;">
-                    <div style="font-size:0.55rem; color:#7C9EBF; font-family:var(--font-m); letter-spacing:1px;">VELVET DNA</div>
-                    <div style="font-size:0.45rem; color:var(--text-muted); font-weight:bold;">READY</div>
-                </div>
-                <div style="flex:1; background:rgba(76,175,154,0.03); border:1px solid rgba(76,175,154,0.2); padding:8px; border-radius:3px; text-align:center;">
-                    <div style="font-size:0.55rem; color:#4CAF9A; font-family:var(--font-m); letter-spacing:1px;">REI DNA</div>
-                    <div style="font-size:0.45rem; color:var(--text-muted); font-weight:bold;">LOADED</div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); letter-spacing:1px; margin-bottom:8px; text-transform:uppercase;">DNA Macro Injectors</div>', unsafe_allow_html=True)
+        
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.button("⚡ /INK", on_click=_inject_macro, args=("/ink",), use_container_width=True, help="Inject AmeerInk Creative DNA")
+        with c2:
+            st.button("👁️ /INTEL", on_click=_inject_macro, args=("/intel",), use_container_width=True, help="Inject Tech Observer DNA")
+        with c3:
+            st.button("⚖️ /HIKMAH", on_click=_inject_macro, args=("/hikmah",), use_container_width=True, help="Inject Scholar & Linguist DNA")
+        
+        st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
 
     # ── PERSONA STATUS ────────────────────────────────────────────────────────
     active_persona = cfg.get("active_persona")
