@@ -3,7 +3,7 @@ ui/tabs/workspace.py — Workspace Tab
 ======================================
 v6.1: Fixed the "Lagging Output" Streamlit widget state bug.
 Tab 1: Input stream, live pattern preview, execution, results display.
-Includes Level 3 Agentic Clarification Loop UI.
+Includes Level 3 Agentic Clarification Loop & Level 4 Expert Mode UI.
 """
 
 import hashlib
@@ -302,7 +302,7 @@ def render_workspace(cfg: dict) -> None:
                 unsafe_allow_html=True,
             )
             
-                 # 🐛 LEVEL 3 FIX: AGENTIC CLARIFICATION LOOP UI
+            # 🐛 LEVEL 3 FIX: AGENTIC CLARIFICATION LOOP UI
             if "[CLARIFICATION_REQUIRED]" in last_result:
                 clean_questions = last_result.replace("[CLARIFICATION_REQUIRED]", "").strip()
                 
@@ -331,22 +331,32 @@ def render_workspace(cfg: dict) -> None:
                 st.button("Append Context & Retry", on_click=handle_agent_retry, use_container_width=True, key="btn_agent_retry")
 
             else:
-                # Normal Output Flow
-
-                st.markdown(
-                    f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>',
-                    unsafe_allow_html=True,
-                )
+                # 🐛 LEVEL 4 FIX: EXPERT MODE UI INJECTION
+                if cfg.get("expert_mode"):
+                    st.markdown(
+                        f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;color:var(--danger);">⚡ EXPERT DIAGNOSTICS ACTIVE</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.json(last_audit)
+                    st.markdown(
+                        f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">MANUAL OVERRIDE (REFINED ASSET)</div>',
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(
+                        f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>',
+                        unsafe_allow_html=True,
+                    )
                 
                 # The widget uses the key updated in the execution block above
                 st.text_area(
                     "refined_output",
                     value=last_result,
-                    height=220,
+                    height=280 if cfg.get("expert_mode") else 220,
                     disabled=False,
                     label_visibility="collapsed",
                     key="refined_output_area",
-                    help=t("refined_help"),
+                    help="POWER USER: Direct editing enabled. Modify the compiled prompt before copying/downloading." if cfg.get("expert_mode") else t("refined_help"),
                 )
                 
                 frozen_filename = st.session_state.get("frozen_dl_filename", "inkos_prompt.txt")
