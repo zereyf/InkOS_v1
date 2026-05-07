@@ -1,8 +1,9 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v1.0: The Complete Master Build.
+v26.1: The Complete Master Build.
        Restored Vault/Download actions, Cyber-HUD, and HTML Terminal Bar.
+       Upgraded terminal boot sequence aesthetic.
 """
 
 import hashlib
@@ -206,22 +207,22 @@ def render_workspace(cfg: dict) -> None:
         elif violations: st.error(t("injection_blocked"))
         elif check_rate_limit(consume=1):
             
-            # 🛠️ FIXED: Terminal Boot Sequence (Populates the Status block)
+            # 🛠️ UPDATED: Terminal Boot Sequence with sleek system badges
             with st.status("Initiating Cognitive Routing...", expanded=True) as status:
                 
-                st.write("✔️ Analyzing intent and payload...")
+                st.write("`[ SCAN ]` Analyzing intent and payload...")
                 final_text, detected_dna = _apply_dna_triggers(cleaned)
                 st.session_state["last_detected_triggers"] = detected_dna
                 
                 resolved_target = cfg["target_model"]
                 if resolved_target == AUTO_SELECT_LABEL:
-                    st.write("✔️ Determining optimal AI architecture...")
+                    st.write("`[ CORE ]` Determining optimal AI architecture...")
                     auto_target, auto_reason = detect_best_target(final_text)
                     resolved_target = auto_target
                     st.session_state[K.AUTO_TARGET] = auto_target
                     st.session_state[K.AUTO_REASON] = auto_reason
                 
-                st.write("✔️ Executing forensic adversarial refinement...")
+                st.write("`[ EXEC ]` Executing forensic adversarial refinement...")
                 result, audit, pattern = run_refinement_and_audit(
                     user_text        = final_text,
                     target           = resolved_target,
@@ -279,5 +280,4 @@ def render_workspace(cfg: dict) -> None:
                         elif not v_title.strip():
                             st.error("Title required.")
                         else:
-                            # Triggers UI toast for save confirmation. Ensure your backend vault logic hooks into these keys!
-                            st.toast("✔️ Asset secured to Memory Vault.")
+                            st.toast("✅️ Asset secured to Memory Vault.")
