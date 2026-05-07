@@ -1,8 +1,8 @@
 """
 vault/vault_engine.py — Prompt Memory Vault Engine
 ====================================================
-v16.0: Dual-Factor Authentication & Identity Registration.
-Now requires PIN verification for all persistent operations.
+v17.0: Identity Integrity & Prefix Protection.
+Now includes ID availability checks and reserved prefix shielding.
 """
 
 import hashlib
@@ -11,7 +11,7 @@ from typing import Optional, Tuple, List
 from vault.supabase_client import sb, SUPABASE_MISSING
 
 TABLE_VAULT = "vault"
-TABLE_USERS = "users" # 🛡️ NEW: Central Identity Table
+TABLE_USERS = "users"
 
 
 def _require_sb() -> Optional[str]:
@@ -28,29 +28,56 @@ def _hash_pin(pin: str) -> str:
 
 # ── IDENTITY & AUTHENTICATION ───────────────────────────────────────────────
 
+def check_id_availability(user_hash: str) -> Tuple[bool, str]:
+    """
+    Checks if a Terminal ID can be registered.
+    Returns (is_available, status_message).
+    """
+    if not user_hash.strip():
+        return False, "ID cannot be empty."
+
+    # 🛡️ PROTECT RESERVED PREFIX
+    if user_hash.upper().startswith("GUEST_"):
+        return False, "Reserved Prefix: ID cannot start with 'GUEST_'."
+
+    if err := _require_sb():
+        return False, err
+
+    try:
+        res = sb.table(TABLE_USERS).select("id").eq("id", user_hash.strip()).execute()
+        if len(res.data) > 0:
+            return False, f"ID '{user_hash}' is already taken."
+        return True, f"ID '{user_hash}' is available."
+    except Exception as e:
+        return False, f"Check failed: {str(e)}"
+
+
 def authenticate_terminal(user_hash: str, pin: str, is_new: bool) -> Tuple[bool, Optional[str]]:
     """
-    The 'Real Verification' Gate.
-    - If is_new=True: Attempts to register a new Terminal ID and PIN.
-    - If is_new=False: Verifies PIN against existing Terminal ID.
+    The 'Real Verification' Gate with Prefix Shielding.
     """
     if err := _require_sb():
         return False, err
 
+    clean_id = user_hash.strip()
     hashed_pin = _hash_pin(pin)
+
+    # 🛡️ BLOCK RESERVED PREFIX DURING REGISTRATION
+    if is_new and clean_id.upper().startswith("GUEST_"):
+        return False, "Registration Blocked: 'GUEST_' is a reserved system prefix."
 
     try:
         # Check if user exists
-        res = sb.table(TABLE_USERS).select("*").eq("id", user_hash).execute()
+        res = sb.table(TABLE_USERS).select("*").eq("id", clean_id).execute()
         user_exists = len(res.data) > 0
 
         if is_new:
             if user_exists:
-                return False, "Terminal ID already latched. Choose a different name or log in."
+                return False, "Terminal ID already exists. Switch to Login or choose a new ID."
             
             # Register new user
             sb.table(TABLE_USERS).insert({
-                "id": user_hash,
+                "id": clean_id,
                 "pin_hash": hashed_pin,
                 "created_at": datetime.utcnow().isoformat()
             }).execute()
@@ -58,16 +85,16 @@ def authenticate_terminal(user_hash: str, pin: str, is_new: bool) -> Tuple[bool,
 
         else:
             if not user_exists:
-                return False, "Terminal ID not found. Enable 'Register' to create it."
+                return False, "Terminal ID not found. Use 'Register' to create it."
             
             # Verify PIN
             if res.data[0]["pin_hash"] == hashed_pin:
                 return True, None
             else:
-                return False, "Invalid Security PIN. Authentication failed."
+                return False, "Invalid Security PIN."
 
     except Exception as e:
-        return False, f"Authentication Error: {str(e)}"
+        return False, f"Auth Error: {str(e)}"
 
 
 # ── VAULT OPERATIONS ────────────────────────────────────────────────────────
@@ -84,7 +111,6 @@ def save_prompt(
     islamic:    bool,
     aesthetic:  str,
 ) -> Tuple[Optional[dict], Optional[str]]:
-    """Save a refined prompt to the vault. Scoped to user_hash."""
     if err := _require_sb():
         return None, err
 
@@ -120,7 +146,6 @@ def search_vault(
     min_score:  int = 0,
     limit:      int = 50,
 ) -> Tuple[List[dict], Optional[str]]:
-    """Search vault entries for a specific user_hash."""
     if err := _require_sb():
         return [], err
 
@@ -136,7 +161,6 @@ def search_vault(
 
         if tag_filter:
             q = q.ilike("tags", f"%{tag_filter.lower()}%")
-
         if target_filter and target_filter != "All":
             q = q.eq("target", target_filter)
 
@@ -153,7 +177,6 @@ def search_vault(
             ]
 
         return results, None
-
     except Exception as e:
         return [], f"Search failed: {str(e)}"
 
