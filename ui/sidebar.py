@@ -1,7 +1,7 @@
 """
 ui/sidebar.py — Sidebar Rendering
 ====================================
-v11: Fixed confusing UX labels and added clarification tooltips per audit.
+v12.0: Master Build. Fixed the Persona Overwrite bug via synchronized Callbacks.
 """
 
 import streamlit as st
@@ -69,7 +69,6 @@ def render_sidebar() -> SidebarConfig:
         st.subheader(t("logic_config", fallback="Logic Configuration"))
         target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
         
-        # AUDIT FIX: Renamed from "Target Dialect" to "Target AI Model"
         target_model = st.selectbox(
             "Target AI Model", 
             options=target_options,
@@ -111,7 +110,6 @@ def render_sidebar() -> SidebarConfig:
             help="Defines the structural boundaries of the generated prompt.",
         )
         
-        # AUDIT FIX: Renamed from "Linguistic Source" to "Input Language"
         source_lang = st.radio(
             "Input Language",
             ["English", "Arabic (العربية)"],
@@ -121,7 +119,7 @@ def render_sidebar() -> SidebarConfig:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── PERSONA SELECTOR ──────────────────────────────────────────────────
+        # ── PERSONA SELECTOR (SYNCHRONIZED) ───────────────────────────────────
         st.subheader(t("active_persona", fallback="Active Persona"))
 
         user_hash     = st.session_state.get(K.USER_HASH, "")
@@ -131,31 +129,36 @@ def render_sidebar() -> SidebarConfig:
         user_names    = [p["name"] for p in user_personas]
         all_names     = starter_names + user_names
 
+        # 1. Fetch exactly what is in global memory right now
         current_persona = get_persona_display_name(st.session_state.get(K.ACTIVE_PERSONA))
         if current_persona not in all_names:
             current_persona = "None"
 
-        selected_name = st.selectbox(
+        # 2. Callback to safely update memory ONLY when the dropdown is manually clicked
+        def _sb_persona_changed():
+            sel = st.session_state.sb_persona
+            if sel == "None":
+                st.session_state[K.ACTIVE_PERSONA] = None
+            elif sel in STARTER_PERSONAS:
+                st.session_state[K.ACTIVE_PERSONA] = STARTER_PERSONAS[sel]
+            else:
+                st.session_state[K.ACTIVE_PERSONA] = next((p for p in user_personas if p["name"] == sel), None)
+
+        # 3. Render dropdown, locked to the global memory index
+        st.selectbox(
             "Persona Select",
             options=all_names,
             index=all_names.index(current_persona),
             key="sb_persona",
+            on_change=_sb_persona_changed,
             label_visibility="collapsed",
             help="A.I.Z.E.N. handles default routing. Select an Expert Persona for strict, domain-specific logic.",
         )
 
-        if selected_name == "None":
-            active_persona = None
-        elif selected_name in STARTER_PERSONAS:
-            active_persona = STARTER_PERSONAS[selected_name]
-        else:
-            active_persona = next(
-                (p for p in user_personas if p["name"] == selected_name), None
-            )
+        # 4. Display the badge based purely on global memory
+        active_persona_state = st.session_state.get(K.ACTIVE_PERSONA)
 
-        st.session_state[K.ACTIVE_PERSONA] = active_persona
-
-        if active_persona:
+        if active_persona_state:
             st.markdown(f"""
             <div style="
                 background:rgba(201,168,76,0.07);
@@ -165,9 +168,9 @@ def render_sidebar() -> SidebarConfig:
                 color:var(--gold);line-height:1.6;margin-top:6px;
             ">
                 <span class="status-dot"></span>
-                {active_persona.get('name','')}<br>
+                {active_persona_state.get('name','')}<br>
                 <span style="color:var(--text-muted);">
-                    {active_persona.get('role','')[:80]}...
+                    {active_persona_state.get('role','')[:80]}...
                 </span>
             </div>
             """, unsafe_allow_html=True)
@@ -232,5 +235,5 @@ def render_sidebar() -> SidebarConfig:
         source_lang      = source_lang,
         islamic_mode     = islamic_mode,
         aesthetic_choice = aesthetic_choice,
-        active_persona   = active_persona,
+        active_persona   = active_persona_state,
     )
