@@ -1,8 +1,8 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v24.0: Terminal Aesthetic Restored.
-       Pure HTML Flexbox for [ /INK ] [ /INTEL ] [ /HIKMAH ] Standby Bar.
+v1.0: UI Polish & Intelligence HUD Upgrade.
+       Fixed missing status steps, added Efficiency metric, upgraded Score Block.
 """
 
 import hashlib
@@ -66,6 +66,11 @@ def _render_score_block(audit: dict, pattern: Optional[dict], triggers: list = N
     efficiency = int(audit.get("efficiency", 0))
     critique   = str(audit.get("critique",  ""))
 
+    # Calculate percentages for the progress bars (assuming 40/40/20 max)
+    p_pct = min(100, (precision / 40) * 100) if precision else 0
+    a_pct = min(100, (alignment / 40) * 100) if alignment else 0
+    e_pct = min(100, (efficiency / 20) * 100) if efficiency else 0
+
     if triggers:
         for t_name in triggers:
             st.markdown(f"""
@@ -85,21 +90,50 @@ def _render_score_block(audit: dict, pattern: Optional[dict], triggers: list = N
         </div>
         """, unsafe_allow_html=True)
 
+    # 💎 THE NEW HIGH-END FORENSIC HUD
     st.markdown(f"""
-    <div class="score-block">
-        <div class="score-num">{score}<span>%</span></div>
-        <div class="score-lbl">{t("refinement_quality")}</div>
-        <div class="bar-row">
-            <span class="bar-lbl">{t("precision")}</span>
-            <div class="bar-track"><div class="bar-fill" style="width:{round((precision/40)*100)}%;background:#C9A84C;"></div></div>
-            <span class="bar-val">{precision}/40</span>
+    <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 3px; padding: 22px; position: relative; overflow: hidden; margin-bottom: 15px;">
+        <div style="position: absolute; top: 0; left: 0; width: 40px; height: 2px; background: var(--gold); box-shadow: 0 0 10px var(--gold);"></div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+            <div>
+                <div style="font-family: var(--font-m); font-size: 0.55rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">Overall Fidelity</div>
+                <div style="font-family: var(--font-d); font-size: 3.2rem; color: var(--gold); line-height: 0.9; margin-top: 4px;">{score}<span style="font-size: 1.2rem; color: var(--gold-dim);">%</span></div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-family: var(--font-m); font-size: 0.5rem; color: var(--steel); letter-spacing: 1px;">STATUS</div>
+                <div style="font-family: var(--font-m); font-size: 0.75rem; color: #4CAF9A; font-weight: bold; letter-spacing: 1px;">OPTIMIZED</div>
+            </div>
         </div>
-        <div class="bar-row">
-            <span class="bar-lbl">{t("alignment")}</span>
-            <div class="bar-track"><div class="bar-fill" style="width:{round((alignment/40)*100)}%;background:#7C9EBF;"></div></div>
-            <span class="bar-val">{alignment}/40</span>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-family: var(--font-m); font-size: 0.6rem; color: var(--text-muted); width: 80px; letter-spacing: 1px;">PRECISION</span>
+                <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.08); margin: 0 15px; position: relative;">
+                    <div style="position: absolute; left: 0; top: -1px; height: 3px; width: {p_pct}%; background: var(--gold); box-shadow: 0 0 6px var(--gold);"></div>
+                </div>
+                <span style="font-family: var(--font-m); font-size: 0.65rem; color: var(--gold); width: 40px; text-align: right;">{precision}/40</span>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-family: var(--font-m); font-size: 0.6rem; color: var(--text-muted); width: 80px; letter-spacing: 1px;">ALIGNMENT</span>
+                <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.08); margin: 0 15px; position: relative;">
+                    <div style="position: absolute; left: 0; top: -1px; height: 3px; width: {a_pct}%; background: var(--steel); box-shadow: 0 0 6px var(--steel);"></div>
+                </div>
+                <span style="font-family: var(--font-m); font-size: 0.65rem; color: var(--steel); width: 40px; text-align: right;">{alignment}/40</span>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-family: var(--font-m); font-size: 0.6rem; color: var(--text-muted); width: 80px; letter-spacing: 1px;">EFFICIENCY</span>
+                <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.08); margin: 0 15px; position: relative;">
+                    <div style="position: absolute; left: 0; top: -1px; height: 3px; width: {e_pct}%; background: #4CAF9A; box-shadow: 0 0 6px #4CAF9A;"></div>
+                </div>
+                <span style="font-family: var(--font-m); font-size: 0.65rem; color: #4CAF9A; width: 40px; text-align: right;">{efficiency}/20</span>
+            </div>
         </div>
-        <div class="critique-line">{critique}</div>
+
+        <div style="background: rgba(201,168,76,0.03); border-left: 2px solid var(--gold-border); padding: 12px 16px;">
+            <div style="font-family: var(--font-m); font-size: 0.55rem; color: var(--gold); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px;">> Forensic Log</div>
+            <div style="font-family: var(--font-m); font-size: 0.75rem; color: var(--text); line-height: 1.6;">{critique}</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -117,7 +151,7 @@ def render_workspace(cfg: dict) -> None:
         </div>
     """, unsafe_allow_html=True)
 
-    # 🧬 DNA STANDBY BAR (The Terminal Aesthetic)
+    # 🧬 DNA STANDBY BAR
     current_sid = str(st.session_state.get(K.USER_HASH, ""))
     if "GUEST_" not in current_sid.upper():
         st.markdown(f"""
@@ -168,18 +202,23 @@ def render_workspace(cfg: dict) -> None:
         if not cleaned: st.warning(t("empty_input"))
         elif violations: st.error(t("injection_blocked"))
         elif check_rate_limit(consume=1):
-            with st.status(t("status_processing"), expanded=True) as status:
+            
+            # 🐛 BUG 1 FIX: Adding visual hooks to the status spinner
+            with st.status("Initiating Cognitive Routing...", expanded=True) as status:
                 
+                st.write("✔️ Analyzing intent and payload...")
                 final_text, detected_dna = _apply_dna_triggers(cleaned)
                 st.session_state["last_detected_triggers"] = detected_dna
                 
                 resolved_target = cfg["target_model"]
                 if resolved_target == AUTO_SELECT_LABEL:
+                    st.write("✔️ Determining optimal AI architecture...")
                     auto_target, auto_reason = detect_best_target(final_text)
                     resolved_target = auto_target
                     st.session_state[K.AUTO_TARGET] = auto_target
                     st.session_state[K.AUTO_REASON] = auto_reason
                 
+                st.write("✔️ Executing forensic adversarial refinement...")
                 result, audit, pattern = run_refinement_and_audit(
                     user_text        = final_text,
                     target           = resolved_target,
@@ -196,6 +235,9 @@ def render_workspace(cfg: dict) -> None:
                     st.session_state[K.LAST_AUDIT] = audit
                     st.session_state[K.LAST_INPUT] = cleaned
                     st.session_state[K.LAST_PATTERN] = pattern
+                    
+                    # Close the status loader cleanly
+                    status.update(label="Refinement Complete.", state="complete", expanded=False)
                     st.rerun()
 
     last_result = st.session_state.get(K.LAST_RESULT)
