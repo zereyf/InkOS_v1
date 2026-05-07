@@ -1,7 +1,7 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v7.0: Integrated Identity Latching HUD & Volatile Session Intercept.
+v1.0: Integrated Identity Latching HUD & Volatile Session Intercept.
       Includes Level 3 Agentic Loop & Level 4 Expert Mode UI.
 """
 
