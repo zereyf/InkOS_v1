@@ -1,14 +1,8 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
+v6.0: Fixed 0-byte download bug. Enforced UTC timestamps.
 Tab 1: Input stream, live pattern preview, execution, results display.
-
-Responsibilities:
-  - Render text input with char counter
-  - Run live pattern detection before execution (zero cost)
-  - Execute sanitize → rate_limit → refine pipeline
-  - Display pattern card, score block, and refined asset
-  - Write results to session state via K keys
 """
 
 import hashlib
@@ -53,7 +47,6 @@ def _render_score_block(audit: dict, pattern: Optional[dict]) -> None:
     a_pct = round((alignment  / 40) * 100)
     e_pct = round((efficiency / 20) * 100)
 
-    # Pattern card inside results
     if pattern:
         color = pattern.get("color", "#C9A84C")
         st.markdown(f"""
@@ -90,16 +83,11 @@ def _render_score_block(audit: dict, pattern: Optional[dict]) -> None:
 
 
 def render_workspace(cfg: dict) -> None:
-    """
-    Renders Tab 1 — Workspace.
-    cfg: SidebarConfig dict from ui/sidebar.py
-    """
     st.markdown(
         f'<div class="vc-header"><span class="status-dot"></span>{t("workspace_header")}</div>',
         unsafe_allow_html=True,
     )
 
-    # Active persona badge
     active_persona = cfg.get("active_persona")
     if active_persona:
         from forge.persona_engine import get_persona_display_name
@@ -127,7 +115,6 @@ def render_workspace(cfg: dict) -> None:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── VOICE ENGINE ──────────────────────────────────────────────────────────
     from config import WHISPER_CONTEXT_PROMPT, client as _audio_client
 
     st.markdown(
@@ -171,7 +158,6 @@ def render_workspace(cfg: dict) -> None:
         key="ta_input",
     )
 
-    # ── CHAR COUNTER + LIVE PATTERN PREVIEW ───────────────────────────────────
     if raw_input:
         char = len(raw_input)
         c_color = "#A93226" if char > INPUT_WARN_THRESHOLD else "#3A4455"
@@ -187,7 +173,6 @@ def render_workspace(cfg: dict) -> None:
 
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
-    # ── EXECUTE ────────────────────────────────────────────────────────────────
     if st.button(t("execute_btn"), use_container_width=True, key="btn_execute",
                  help=t("execute_help")):
         cleaned, violations = sanitize_input(raw_input or "")
@@ -197,7 +182,6 @@ def render_workspace(cfg: dict) -> None:
 
         elif violations:
             st.error(t("injection_blocked"))
-            # STRICT UTC TIMESTAMPS
             st.session_state.setdefault(K.SECURITY_LOG, []).append({
                 "time":     datetime.now(timezone.utc).strftime("%H:%M:%S"),
                 "hash":     hashlib.md5((raw_input or "").encode()).hexdigest()[:10],
@@ -236,10 +220,10 @@ def render_workspace(cfg: dict) -> None:
                 )
                 
                 score = (audit or {}).get("score", 0)
-                retry_msg = " (retry applied)" if score >= 80 else ""
+                retry_msg = " (retry applied)" if score >= 85 else ""
                 st.write(t("status_compiling") + retry_msg)
 
-                if not result.startswith("[REFINEMENT ERROR]"):
+                if not result.startswith("[CIPHER ERROR]"):
                     st.write(t("status_done"))
                     status.update(label=t("status_complete"), state="complete", expanded=False)
 
@@ -247,8 +231,13 @@ def render_workspace(cfg: dict) -> None:
                     st.session_state[K.LAST_AUDIT]   = audit
                     st.session_state[K.LAST_INPUT]   = cleaned
                     st.session_state[K.LAST_PATTERN] = pattern
+                    
+                    # AUDIT FIX: Freeze the filename in session state so Streamlit doesn't 
+                    # create a 0-byte re-render interruption when the user clicks download.
+                    dl_timestamp = datetime.now(timezone.utc).strftime("%H%M%S")
+                    safe_target = resolved_target.lower().replace(' ', '_').replace('/', '_')
+                    st.session_state["frozen_dl_filename"] = f"inkos_{safe_target}_{dl_timestamp}.txt"
 
-                    # STRICT UTC TIMESTAMPS FOR HISTORY
                     st.session_state.setdefault(K.HISTORY, []).insert(0, {
                         "id":        hashlib.md5(
                                          f"{cleaned}{datetime.now(timezone.utc).isoformat()}".encode()
@@ -273,7 +262,7 @@ def render_workspace(cfg: dict) -> None:
     last_input   = st.session_state.get(K.LAST_INPUT) or ""
     last_pattern = st.session_state.get(K.LAST_PATTERN)
 
-    if last_result and not last_result.startswith("[REFINEMENT ERROR]"):
+    if last_result and not last_result.startswith("[CIPHER ERROR]"):
         st.markdown("<hr>", unsafe_allow_html=True)
 
         auto_target = st.session_state.get(K.AUTO_TARGET)
@@ -323,18 +312,16 @@ def render_workspace(cfg: dict) -> None:
                 key="refined_output_area",
                 help=t("refined_help"),
             )
+            
+            # Use the frozen filename instead of calling datetime.now() dynamically
+            frozen_filename = st.session_state.get("frozen_dl_filename", "inkos_prompt.txt")
             st.download_button(
                 t("download_prompt"),
                 data=last_result,
-                # STRICT UTC TIMESTAMPS
-                file_name=(
-                    f"vc_{cfg['target_model'].lower().replace(' ', '_')}"
-                    f"_{datetime.now(timezone.utc).strftime('%H%M%S')}.txt"
-                ),
+                file_name=frozen_filename,
                 key="btn_dl_result",
             )
             
-            # ── SAVE TO VAULT ──────────────────────────────────────────────────
             from vault.supabase_client import SUPABASE_MISSING as _SB_MISSING
             if not _SB_MISSING:
                 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
