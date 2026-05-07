@@ -207,15 +207,23 @@ FRAMEWORK_BLUEPRINTS = MappingProxyType({
 
 GOLDEN_FEW_SHOT_BLUEPRINT: str = """
 ━━━ GOLDEN EXAMPLE (PERFECT PROMPT STRUCTURE) ━━━
-When formatting your text-based outputs, emulate this level of structural precision:
+CRITICAL: You must merge the ACTIVE FRAMEWORK skeleton and the COGNITIVE PROTOCOL directly into the Target AI's required syntax.
+
+Example of how to fuse Claude XML + Technical Framework + CoT:
 <role>You are a Principal Security Architect.</role>
-<task>Analyze the provided Python script for SSRF vulnerabilities.</task>
+<task>
+  Analyze the provided Python script for SSRF vulnerabilities.
+  [CURRENT STATE] The app accepts URLs via the `?url=` parameter.
+  [EXPECTED STATE] It should block internal IP ranges.
+  [ENVIRONMENT] Python 3.10, Flask.
+</task>
 <constraints>
-  1. Do not give generalized advice; reference specific line numbers.
-  2. If an exploit is possible, write the exact payload.
+  1. OPEN WITH A <thinking> BLOCK to map out your diagnostic logic BEFORE generating the final answer.
+  2. Do not give generalized advice; reference specific line numbers.
 </constraints>
 <output_format>Markdown with an Executive Summary followed by an Attack Chain table.</output_format>
 """
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # EXPERT PERSONAS (Strings are natively immutable)
