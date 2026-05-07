@@ -18,7 +18,7 @@ from engine.cognitive_map import detect_arabic_pattern
 from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
 from forge.persona_engine import inject_persona
 
-RETRY_THRESHOLD:  int   = 85
+RETRY_THRESHOLD:  int   = 92
 MAX_RETRIES:      int   = 2
 EVAL_TEMPERATURE: float = 0.1
 
