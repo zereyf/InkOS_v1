@@ -624,7 +624,10 @@ def run_refinement_and_audit(
         # 🐛 LEVEL 3 FIX: Intercept the Clarification flag before it hits the Evaluator
         if "[CLARIFICATION_REQUIRED]" in refined:
             best_audit = self_audit or make_fallback_audit("Agentic Clarification Triggered.")
-            best_audit["score"] = 100 # Give it a perfect score to bypass the retry loop immediately
+            best_audit["score"]      = 0 
+            best_audit["precision"]  = 0
+            best_audit["alignment"]  = 0
+            best_audit["efficiency"] = 0
             return refined, best_audit, detected
 
         audit = _call_evaluator(user_text, target, refined)
