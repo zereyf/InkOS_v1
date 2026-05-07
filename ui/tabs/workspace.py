@@ -1,7 +1,7 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v6.0: Fixed 0-byte download bug. Enforced UTC timestamps.
+v6.1: Fixed the "Lagging Output" Streamlit widget state bug.
 Tab 1: Input stream, live pattern preview, execution, results display.
 """
 
@@ -227,13 +227,15 @@ def render_workspace(cfg: dict) -> None:
                     st.write(t("status_done"))
                     status.update(label=t("status_complete"), state="complete", expanded=False)
 
+                    # 🐛 THE BUG FIX 🐛 
+                    # We must explicitly update the widget's key, or Streamlit will show old data.
                     st.session_state[K.LAST_RESULT]  = result
+                    st.session_state["refined_output_area"] = result  
+                    
                     st.session_state[K.LAST_AUDIT]   = audit
                     st.session_state[K.LAST_INPUT]   = cleaned
                     st.session_state[K.LAST_PATTERN] = pattern
                     
-                    # AUDIT FIX: Freeze the filename in session state so Streamlit doesn't 
-                    # create a 0-byte re-render interruption when the user clicks download.
                     dl_timestamp = datetime.now(timezone.utc).strftime("%H%M%S")
                     safe_target = resolved_target.lower().replace(' ', '_').replace('/', '_')
                     st.session_state["frozen_dl_filename"] = f"inkos_{safe_target}_{dl_timestamp}.txt"
@@ -303,6 +305,8 @@ def render_workspace(cfg: dict) -> None:
                 f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>',
                 unsafe_allow_html=True,
             )
+            
+            # The widget uses the key updated in the execution block above
             st.text_area(
                 "refined_output",
                 value=last_result,
@@ -313,7 +317,6 @@ def render_workspace(cfg: dict) -> None:
                 help=t("refined_help"),
             )
             
-            # Use the frozen filename instead of calling datetime.now() dynamically
             frozen_filename = st.session_state.get("frozen_dl_filename", "inkos_prompt.txt")
             st.download_button(
                 t("download_prompt"),
