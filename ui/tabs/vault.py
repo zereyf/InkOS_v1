@@ -61,30 +61,45 @@ def render_vault() -> None:
         st.warning("Session not initialized. Refresh the page.")
         return
 
-    # ── VAULT STATS BAR ────────────────────────────────────────────────────────
+       # ── VAULT STATS HUD (v13.0 TACTICAL REDESIGN) ──────────────────────────────
     stats, err = get_vault_stats(user_hash)
     if not err and stats.get("count", 0) > 0:
         s_color = _score_color(stats["avg_score"])
+        
+        # Tactical Aliasing for the long Auto-Target label
+        target_display = stats['top_target']
+        if "Auto" in target_display:
+            target_display = "CIPHER / AUTO"
+
         st.markdown(f"""
-        <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
-            <div class="score-block" style="flex:1;min-width:100px;padding:16px;margin:0;border-top:2px solid var(--border);">
-                <div class="score-num" style="font-size:1.8rem;color:#E2E8F0;">{stats['count']}</div>
-                <div class="score-lbl">Saved Assets</div>
+        <div style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 30px;
+        ">
+            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-left:3px solid var(--steel); padding:12px 16px; border-radius:4px;">
+                <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase;">Memory Assets</div>
+                <div style="font-family:var(--font-m); font-size:1.4rem; color:#E2E8F0; font-weight:600;">{stats['count']}</div>
             </div>
-            <div class="score-block" style="flex:1;min-width:100px;padding:16px;margin:0;border-top:2px solid {s_color};">
-                <div class="score-num" style="font-size:1.8rem;color:{s_color};">{stats['avg_score']}<span>%</span></div>
-                <div class="score-lbl">Fleet Avg Score</div>
+            
+            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-left:3px solid {s_color}; padding:12px 16px; border-radius:4px;">
+                <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase;">Fleet Precision</div>
+                <div style="font-family:var(--font-m); font-size:1.4rem; color:{s_color}; font-weight:600;">{stats['avg_score']}<span style="font-size:0.8rem; opacity:0.6;">%</span></div>
             </div>
-            <div class="score-block" style="flex:1;min-width:100px;padding:16px;margin:0;border-top:2px solid var(--border);">
-                <div class="score-num" style="font-size:0.9rem;line-height:1.2;color:var(--steel);padding-top:6px;">{stats['top_target']}</div>
-                <div class="score-lbl">Primary Target</div>
+            
+            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-left:3px solid var(--gold); padding:12px 16px; border-radius:4px;">
+                <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase;">Primary Uplink</div>
+                <div style="font-family:var(--font-m); font-size:0.85rem; color:var(--gold); font-weight:600; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{target_display}</div>
             </div>
-            <div class="score-block" style="flex:1;min-width:100px;padding:16px;margin:0;border-top:2px solid var(--border);">
-                <div class="score-num" style="font-size:1rem;color:var(--gold);padding-top:6px;">{stats['top_tag'] or '—'}</div>
-                <div class="score-lbl">Dominant Tag</div>
+            
+            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-left:3px solid #7C9EBF; padding:12px 16px; border-radius:4px;">
+                <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase;">Logic Domain</div>
+                <div style="font-family:var(--font-m); font-size:0.85rem; color:#E2E8F0; font-weight:600; padding-top:6px;">{stats['top_tag'] or 'GENERAL'}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
+
 
     # ── SEARCH + FILTERS ───────────────────────────────────────────────────────
     st.markdown(
