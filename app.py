@@ -1,11 +1,13 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v6: Integrated Identity Persistence & Boot Sequence
+v1.0: Security Gate Implementation (PIN & Lockout Logic)
 """
 
 import sys
 import os
+from datetime import datetime, timezone
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
@@ -31,6 +33,31 @@ if API_KEY_MISSING:
 # ── INITIALIZE STATE & IDENTITY ─────────────────────────────────────────────
 init_session_state()
 
+# ── SECURITY GATE: LOCKOUT CHECK ────────────────────────────────────────────
+lockout_ts = st.session_state.get(K.LOCKOUT_UNTIL)
+if lockout_ts:
+    now = datetime.now(timezone.utc)
+    if now < lockout_ts:
+        st.markdown(STYLES, unsafe_allow_html=True)
+        remaining = int((lockout_ts - now).total_seconds() / 60)
+        st.markdown(f"""
+            <div style="height:80vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+                <div style="font-family:var(--font-m); color:var(--danger); font-size:2rem; letter-spacing:4px; margin-bottom:10px;">
+                    TERMINAL LOCKED
+                </div>
+                <div style="font-family:var(--font-m); color:var(--text-muted); font-size:0.8rem; max-width:400px; line-height:1.6;">
+                    Multiple failed authentication attempts detected. <br>
+                    System self-destruct protocol active. <br><br>
+                    <span style="color:var(--gold);">Access restored in: {remaining + 1} minutes.</span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        st.stop()
+    else:
+        # Lockout expired, clear it
+        st.session_state[K.LOCKOUT_UNTIL] = None
+        st.session_state[K.FAILED_ATTEMPTS] = 0
+
 # 🔗 Proactive Sync: Ensure URL always reflects current Terminal ID
 current_sid = st.session_state.get(K.USER_HASH)
 if current_sid:
@@ -38,7 +65,7 @@ if current_sid:
 
 # ── INITIAL BOOT SEQUENCE (One-time Toast) ──────────────────────────────────
 if "boot_complete" not in st.session_state:
-    if "GUEST_" in current_sid:
+    if "GUEST_" in str(current_sid):
         st.toast("InkOS System Initialized. Running in Ghost Mode.", icon="📡")
     else:
         st.toast(f"Identity Locked: {current_sid}", icon="🔐")
