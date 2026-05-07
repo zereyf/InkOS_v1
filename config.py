@@ -206,22 +206,22 @@ FRAMEWORK_BLUEPRINTS = MappingProxyType({
 })
 
 GOLDEN_FEW_SHOT_BLUEPRINT: str = """
-━━━ GOLDEN EXAMPLE (PERFECT PROMPT STRUCTURE) ━━━
-CRITICAL: You must merge the ACTIVE FRAMEWORK skeleton and the COGNITIVE PROTOCOL directly into the Target AI's required syntax.
+━━━ FRAMEWORK INTEGRATION RULE (CRITICAL) ━━━
+You MUST explicitly write out the bracketed tags from the ACTIVE FRAMEWORK (e.g., [PREMISE/HOOK], [CURRENT STATE]) inside your final generated prompt. Do not silently fulfill them—print the actual brackets to structure the prompt.
 
-Example of how to fuse Claude XML + Technical Framework + CoT:
-<role>You are a Principal Security Architect.</role>
+Example 1: Claude + Technical Framework
 <task>
-  Analyze the provided Python script for SSRF vulnerabilities.
-  [CURRENT STATE] The app accepts URLs via the `?url=` parameter.
-  [EXPECTED STATE] It should block internal IP ranges.
-  [ENVIRONMENT] Python 3.10, Flask.
+  [CURRENT STATE] The app crashes on load.
+  [EXPECTED STATE] It should render the widget.
 </task>
-<constraints>
-  1. OPEN WITH A <thinking> BLOCK to map out your diagnostic logic BEFORE generating the final answer.
-  2. Do not give generalized advice; reference specific line numbers.
-</constraints>
-<output_format>Markdown with an Executive Summary followed by an Attack Chain table.</output_format>
+
+Example 2: ChatGPT + Creative Framework
+You are a visionary tech blogger.
+1. [PREMISE/HOOK] The future isn't AI replacing us, it's augmented programmers replacing legacy ones.
+2. [NARRATIVE ARC] Start with the shock value, transition to the current landscape, end with the augmented workflow.
+3. [PACING/TONE] Punchy, authoritative, fast-paced.
+4. [CLICHES TO AVOID] Do not use the phrase "In today's fast-paced digital landscape."
+Output format: Markdown introduction.
 """
 
 
