@@ -109,15 +109,53 @@ def _render_score_block(audit: dict, pattern: Optional[dict], triggers: list = N
 
 
 def render_workspace(cfg: dict) -> None:
+    # ── VOLATILE INTERCEPT ────────────────────────────────────────────────────
     _render_guest_warning()
 
-    st.markdown(f'<div class="vc-header"><span class="status-dot"></span>{t("workspace_header")}</div>', unsafe_allow_html=True)
+    # 🔗 BRAND SIGNATURE HEADER (حبر وفكرة)
+    st.markdown(f"""
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <div class="vc-header" style="margin:0;"><span class="status-dot"></span>{t("workspace_header")}</div>
+            <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; letter-spacing:1px;">حبر وفكرة</div>
+        </div>
+        <div style="font-family:var(--font-m); font-size:0.5rem; color:var(--text-dim); letter-spacing:2px; margin-bottom:15px; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+            A.I.Z.E.N. COGNITIVE TERMINAL // SESS_REF: {st.session_state.get(K.USER_HASH, "NULL")[:8]}
+        </div>
+    """, unsafe_allow_html=True)
 
+    # 🧬 DNA STANDBY BAR (Active Identity Status)
+    # Only show this if we aren't in GUEST mode
+    current_sid = str(st.session_state.get(K.USER_HASH, ""))
+    if "GUEST_" not in current_sid.upper():
+        st.markdown(f"""
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <div style="flex:1; background:rgba(201,168,76,0.03); border:1px solid rgba(201,168,76,0.2); padding:8px; border-radius:3px; text-align:center;">
+                    <div style="font-size:0.55rem; color:var(--gold); font-family:var(--font-m); letter-spacing:1px;">MUSE DNA</div>
+                    <div style="font-size:0.45rem; color:var(--text-muted); font-weight:bold;">ARMED</div>
+                </div>
+                <div style="flex:1; background:rgba(124,158,191,0.03); border:1px solid rgba(124,158,191,0.2); padding:8px; border-radius:3px; text-align:center;">
+                    <div style="font-size:0.55rem; color:#7C9EBF; font-family:var(--font-m); letter-spacing:1px;">VELVET DNA</div>
+                    <div style="font-size:0.45rem; color:var(--text-muted); font-weight:bold;">READY</div>
+                </div>
+                <div style="flex:1; background:rgba(76,175,154,0.03); border:1px solid rgba(76,175,154,0.2); padding:8px; border-radius:3px; text-align:center;">
+                    <div style="font-size:0.55rem; color:#4CAF9A; font-family:var(--font-m); letter-spacing:1px;">REI DNA</div>
+                    <div style="font-size:0.45rem; color:var(--text-muted); font-weight:bold;">LOADED</div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # ── PERSONA STATUS ────────────────────────────────────────────────────────
     active_persona = cfg.get("active_persona")
     if active_persona:
         from forge.persona_engine import get_persona_display_name
         pname = get_persona_display_name(active_persona)
-        st.markdown(f'<div class="vc-card" style="padding:5px 12px; font-size:0.65rem; color:var(--gold); border-color:rgba(201,168,76,0.3); margin-bottom:10px;">PERSONA: {pname}</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class="vc-card" style="padding:6px 12px; font-size:0.65rem; color:var(--gold); border-color:rgba(201,168,76,0.3); margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+                <span class="status-dot" style="width:4px; height:4px;"></span>
+                TACTICAL PERSONA: {pname.upper()}
+            </div>
+        """, unsafe_allow_html=True)
+
 
     # ── VOICE INPUT ───────────────────────────────────────────────────────────
     from config import client as _audio_client, WHISPER_CONTEXT_PROMPT
