@@ -74,6 +74,13 @@ def reset_session() -> None:
     st.session_state[K.USER_HASH] = preserved_hash
     st.session_state[K.UI_LANG]   = preserved_lang
 
+    # 🐛 LEVEL 1 FIX: Explicitly zero-out widget keys to kill frontend browser ghosting
+    st.session_state["ta_input"]            = ""
+    st.session_state["refined_output_area"] = ""
+    st.session_state["vault_title_input"]   = ""
+    st.session_state["vault_tags_input"]    = ""
+
+
 
 def get_remaining_calls(window_seconds: int = 60, max_calls: int = 10) -> int:
     """Calculates remaining quota and executes garbage collection on expired timestamps."""
