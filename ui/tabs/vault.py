@@ -1,6 +1,8 @@
 """
 ui/tabs/vault.py — Prompt Memory Vault Tab
 ============================================
+v7.0: Upgraded for InkOS. Fixed cross-tab widget rendering bug,
+      enhanced dashboard aesthetics, and aligned metadata styles.
 """
 
 import streamlit as st
@@ -21,18 +23,23 @@ def _score_color(score: int) -> str:
     if score >= 90: return "#C9A84C"
     if score >= 70: return "#4CAF9A"
     if score >= 50: return "#7C9EBF"
-    return "#B07C9E"
+    return "#E53E3E"
 
 
 def _render_unavailable() -> None:
     st.markdown("""
-    <div style="background: rgba(169,50,38,0.08);border: 1px solid rgba(169,50,38,0.3);border-radius: 4px;padding: 20px 24px;font-family: var(--font-m);font-size: 0.78rem;color: #FC8181;line-height: 1.8;">
-        <strong style="color:#FC8181;letter-spacing:0.1em;">{t("vault_offline")}</strong><br><br>
-        Supabase credentials not found.<br>
-        Add to your <code>.env</code> and Streamlit Cloud Secrets:<br><br>
-        <code>SUPABASE_URL = "your_project_url"</code><br>
-        <code>SUPABASE_KEY = "your_anon_key"</code><br><br>
-        See setup instructions in the session that introduced this feature.
+    <div style="
+        background: rgba(229, 62, 62, 0.05); 
+        border-left: 3px solid #E53E3E; 
+        border-radius: 0 4px 4px 0; 
+        padding: 20px 24px; 
+        font-family: var(--font-m); font-size: 0.78rem; color: #E2E8F0; line-height: 1.8;
+    ">
+        <strong style="color:#FC8181;letter-spacing:0.1em;font-size:0.9rem;">✦ VAULT UPLINK OFFLINE</strong><br><br>
+        <span style="color:var(--text-muted);">Supabase credentials not found in environment.</span><br>
+        Add the following to your <code>.env</code> or Streamlit Cloud Secrets to activate cloud storage:<br><br>
+        <code style="color:var(--gold);background:rgba(201,168,76,0.1);">SUPABASE_URL = "your_project_url"</code><br>
+        <code style="color:var(--gold);background:rgba(201,168,76,0.1);">SUPABASE_KEY = "your_anon_key"</code>
     </div>
     """, unsafe_allow_html=True)
 
@@ -41,7 +48,7 @@ def render_vault() -> None:
     """Renders Tab 5 — Prompt Memory Vault."""
 
     st.markdown(
-        f'<div class="vc-header"><span class="status-dot"></span>{t("vault_header")}</div>',
+        f'<div class="vc-header"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 8px var(--gold);"></span>Vault Intelligence</div>',
         unsafe_allow_html=True,
     )
 
@@ -58,31 +65,31 @@ def render_vault() -> None:
     stats, err = get_vault_stats(user_hash)
     if not err and stats.get("count", 0) > 0:
         s_color = _score_color(stats["avg_score"])
-        # DEV FIX: Added word-break and overflow wrapping to score-num classes to prevent mobile vertical stretching
         st.markdown(f"""
-        <div style="display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
-            <div class="score-block" style="flex:1;min-width:100px;padding:12px 16px;margin:0;overflow:hidden;">
-                <div class="score-num" style="font-size:1.8rem;word-wrap:break-word;word-break:break-word;">{stats['count']}</div>
-                <div class="score-lbl">Saved Prompts</div>
+        <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+            <div class="score-block" style="flex:1;min-width:100px;padding:16px;margin:0;border-top:2px solid var(--border);">
+                <div class="score-num" style="font-size:1.8rem;color:#E2E8F0;">{stats['count']}</div>
+                <div class="score-lbl">Saved Assets</div>
             </div>
-            <div class="score-block" style="flex:1;min-width:100px;padding:12px 16px;margin:0;overflow:hidden;">
-                <div class="score-num" style="font-size:1.8rem;color:{s_color};word-wrap:break-word;word-break:break-word;">{stats['avg_score']}<span>%</span></div>
-                <div class="score-lbl">Avg Score</div>
+            <div class="score-block" style="flex:1;min-width:100px;padding:16px;margin:0;border-top:2px solid {s_color};">
+                <div class="score-num" style="font-size:1.8rem;color:{s_color};">{stats['avg_score']}<span>%</span></div>
+                <div class="score-lbl">Fleet Avg Score</div>
             </div>
-            <div class="score-block" style="flex:1;min-width:100px;padding:12px 16px;margin:0;overflow:hidden;">
-                <div class="score-num" style="font-size:0.9rem;line-height:1.2;color:var(--steel);padding-top:6px;word-wrap:break-word;word-break:break-word;">{stats['top_target']}</div>
-                <div class="score-lbl">Top Target</div>
+            <div class="score-block" style="flex:1;min-width:100px;padding:16px;margin:0;border-top:2px solid var(--border);">
+                <div class="score-num" style="font-size:0.9rem;line-height:1.2;color:var(--steel);padding-top:6px;">{stats['top_target']}</div>
+                <div class="score-lbl">Primary Target</div>
             </div>
-            <div class="score-block" style="flex:1;min-width:100px;padding:12px 16px;margin:0;overflow:hidden;">
-                <div class="score-num" style="font-size:1rem;color:var(--gold);padding-top:6px;word-wrap:break-word;word-break:break-word;">{stats['top_tag'] or '—'}</div>
-                <div class="score-lbl">Top Tag</div>
+            <div class="score-block" style="flex:1;min-width:100px;padding:16px;margin:0;border-top:2px solid var(--border);">
+                <div class="score-num" style="font-size:1rem;color:var(--gold);padding-top:6px;">{stats['top_tag'] or '—'}</div>
+                <div class="score-lbl">Dominant Tag</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
     # ── SEARCH + FILTERS ───────────────────────────────────────────────────────
     st.markdown(
-        f'<div class="vc-header" style="font-size:0.62rem;">{t("search_label")}</div>',
+        f'<div style="font-size:0.65rem;color:var(--text-muted);font-family:var(--font-m);margin-bottom:4px;">'
+        f'DATABASE QUERY</div>',
         unsafe_allow_html=True,
     )
 
@@ -131,30 +138,39 @@ def render_vault() -> None:
     )
 
     if err:
-        st.error(f"Vault error: {err}")
+        st.error(f"Vault query failed: {err}")
         return
 
     if not results:
         st.markdown(
-            '<p style="font-family:var(--font-m);font-size:0.75rem;color:var(--text-muted);">'
-            'No prompts found. Execute a refinement and save it to populate your vault.</p>',
+            '<p style="font-family:var(--font-m);font-size:0.75rem;color:var(--text-muted);margin-top:10px;">'
+            'No matching assets found in the vault.</p>',
             unsafe_allow_html=True,
         )
         return
 
     st.markdown(
-        f'<p style="font-family:var(--font-m);font-size:0.62rem;color:var(--text-muted);letter-spacing:0.1em;margin-bottom:12px;">'
-        f'{len(results)} PROMPT{"S" if len(results) != 1 else ""} FOUND</p>',
+        f'<div style="font-family:var(--font-m);font-size:0.62rem;color:var(--gold);'
+        f'letter-spacing:0.1em;margin-top:16px;margin-bottom:12px;">'
+        f'✦ {len(results)} ASSET{"S" if len(results) != 1 else ""} RECOVERED</div>',
         unsafe_allow_html=True,
     )
 
     # ── RESULTS LIST ───────────────────────────────────────────────────────────
     for entry in results:
         score      = entry.get("score", 0)
-        s_color    = _score_color(score)
         tags_raw   = entry.get("tags", "")
+        
+        # Severity Indicator alignment
+        if score >= 90:
+            score_indicator = "🟢"
+        elif score >= 80:
+            score_indicator = "🟡"
+        else:
+            score_indicator = "🔴"
+            
         tag_chips  = " ".join(
-            f'<span style="font-family:var(--font-m);font-size:0.62rem;background:rgba(201,168,76,0.08);border:1px solid var(--gold-border);border-radius:2px;padding:1px 7px;color:var(--gold);margin:1px;">{t.strip()}</span>'
+            f'<span style="font-family:var(--font-m);font-size:0.62rem;background:rgba(201,168,76,0.08);border:1px solid var(--gold-border);border-radius:2px;padding:2px 8px;color:var(--gold);margin-right:6px;display:inline-block;margin-bottom:4px;">{t.strip()}</span>'
             for t in tags_raw.split(",") if t.strip()
         )
         pattern_tag = (
@@ -164,63 +180,77 @@ def render_vault() -> None:
         islamic_tag = ' <span style="color:#6ee7b7;font-size:0.7rem;">☪</span>' if entry.get("islamic") else ""
 
         with st.expander(
-            f"[{entry['id']}]  {entry['title']}  ·  {score}%  ·  {entry['target']}"
+            f"{score_indicator} [{entry['id'][:6]}]  {entry['title']}  ·  {score}%  ·  {entry['target']}"
         ):
-            # Header row
+            # Injection of tactical metadata context
             st.markdown(f"""
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                <div>
-                    <span style="font-family:var(--font-d);font-size:1.1rem;color:{s_color};">{score}%</span>
+            <div style="
+                display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;
+                background:rgba(201,168,76,0.05);
+                border:1px solid rgba(201,168,76,0.15);
+                border-radius:4px; padding:10px 14px;
+                margin-bottom:12px;
+            ">
+                <div style="font-family:var(--font-m); font-size:0.65rem; color:var(--gold);">
+                    <span style="margin-right:15px;"><strong>FRAMEWORK:</strong> {entry.get('framework', 'N/A')}</span>
+                    <span><strong>AESTHETIC:</strong> {entry.get('aesthetic', 'Raw')}</span>
                     {pattern_tag}{islamic_tag}
                 </div>
-                <div style="text-align:right;">
-                    <span style="font-family:var(--font-m);font-size:0.62rem;color:var(--text-muted);">{entry['target']} · {entry['framework']}</span><br>
-                    <span style="font-family:var(--font-m);font-size:0.58rem;color:var(--text-dim);">{entry.get('created_at','')[:10]}</span>
+                <div style="font-family:var(--font-m); font-size:0.58rem; color:var(--text-dim); text-align:right;">
+                    SAVED: {entry.get('created_at','')[:10]}
                 </div>
             </div>
-            {f'<div style="margin-bottom:10px;">{tag_chips}</div>' if tag_chips else ''}
+            {f'<div style="margin-bottom:12px;">{tag_chips}</div>' if tag_chips else ''}
             """, unsafe_allow_html=True)
 
             # Prompt content
+            st.markdown('<div class="arc-meta" style="font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;font-family:var(--font-m);">REFINED ASSET</div>', unsafe_allow_html=True)
             st.code(entry["content"], language="markdown")
 
             # Action buttons
             a1, a2, a3 = st.columns([2, 2, 1])
 
             with a1:
-                # Deploy: load back into workspace state
+                # 🐛 FIX: Synchronize Workspace Widget Key 🐛
                 if st.button(
-                    t("deploy_workspace"),
+                    t("deploy_workspace", fallback="Deploy to Workspace"),
                     key=f"deploy_{entry['id']}",
                     use_container_width=True,
                 ):
                     st.session_state[K.LAST_RESULT]  = entry["content"]
-                    st.session_state[K.LAST_INPUT]   = f"[Loaded from Vault: {entry['title']}]"
+                    st.session_state["refined_output_area"] = entry["content"]  # Explicitly update the text_area widget
+                    st.session_state[K.LAST_INPUT]   = f"[LOADED FROM VAULT] {entry['title']}"
+                    
                     st.session_state[K.LAST_AUDIT]   = {
                         "score":     entry["score"],
-                        "critique":  "Loaded from Vault.",
-                        "precision": 0,
-                        "alignment": 0,
-                        "efficiency":0,
+                        "critique":  "Successfully recovered from Vault memory.",
+                        "precision": 40 if entry["score"] > 0 else 0, # Placeholder visual math
+                        "alignment": 40 if entry["score"] > 0 else 0,
+                        "efficiency": int(entry["score"]) - 80 if entry["score"] >= 80 else 0,
                     }
                     st.session_state[K.LAST_PATTERN] = None
-                    st.success(t('deployed_success', title=entry['title']))
+                    
+                    # Force the sidebar/workspace to acknowledge the loaded target
+                    st.session_state[K.AUTO_TARGET] = entry['target']
+                    st.session_state[K.AUTO_REASON] = "Target locked from Vault asset."
+                    
+                    st.success(f"✓ Deployed '{entry['title']}' to Workspace.")
 
             with a2:
+                safe_target = entry['target'].lower().replace(' ', '_').replace('/', '_')
                 st.download_button(
                     t("download"),
                     data=entry["content"],
-                    file_name=f"vault_{entry['id']}.txt",
+                    file_name=f"inkos_vault_{safe_target}_{entry['id'][:6]}.txt",
                     key=f"dl_{entry['id']}",
                     use_container_width=True,
                 )
 
             with a3:
-                # Delete with double-confirm via session state flag
                 confirm_key = f"confirm_del_{entry['id']}"
                 if st.session_state.get(confirm_key):
                     if st.button(
-                        t("confirm_delete"),
+                        t("confirm_delete", fallback="Confirm"),
                         key=f"confirm_btn_{entry['id']}",
                         use_container_width=True,
                     ):
@@ -233,7 +263,7 @@ def render_vault() -> None:
                             st.error(del_err)
                 else:
                     if st.button(
-                        t("delete_btn"),
+                        t("delete_btn", fallback="Delete"),
                         key=f"del_{entry['id']}",
                         use_container_width=True,
                     ):
