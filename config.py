@@ -1,8 +1,8 @@
 """
 config.py — Environment Bootstrap & Application Constants
 ==========================================================
-v5.0: Hardened for production. Integrated Expert Anime Personas 
-      (Anti-Pattern/Minimum Bar Overhaul) & New Target Routing.
+v6.0: Hardened for production. Integrated Expert Anime Personas, 
+      Visual Director God-Mode, and Gemini Typography Logic.
 """
 
 import os
@@ -111,44 +111,54 @@ TARGET_GUIDES = MappingProxyType({
         "End with explicit success criteria."
     ),
     "Claude": (
-        "Structural syntax: wrap all sections in XML tags "
-        "<role>, <task>, <constraints>, <output_format>. "
-        "Trigger chain-of-thought explicitly."
+        "Requires <role>, <task>, <constraints>, <output_format> XML tags. Analytical tone."
     ),
     "ChatGPT": (
-        "Conversational syntax: open with 'You are a...', "
-        "use numbered instructions and markdown headers. "
-        "End with explicit output format request."
+        "Requires 'You are a...' opener, numbered lists, clear markdown."
     ),
     "Midjourney/Flux": (
-        "Modular visual syntax: [Subject] :: [Environment] :: [Lens/Camera] :: [Style]. "
-        "Include mandatory parameters: --ar 16:9 --v 6.0 --style raw."
+        "Requires modular :: separators, specific --ar parameters, no natural prose."
     ),
     "DALL-E 3": (
-        "Highly descriptive cinematic production briefs in natural language. "
-        "Focus on literal scene description, cinematic lighting, hyper-detailed textures."
+        "Requires rich natural language, cinematic scene descriptions, full sentences, NO :: separators."
     ),
     "Gemini (Imagen 3)": (
-        "Spatially explicit 'Spatial Blueprint' — map out zones, diegetic text, "
-        "and precise typography placement. Best for readable text in images."
+        "Requires spatial zoning (Background Zone, Center Zone) and exact typography placement in quotes."
     ),
 })
 
 AESTHETIC_PRESETS = MappingProxyType({
     "Raw (No Preset)": (
-        "Standard AI interpretation. Follow user description literally with no added flavor."
+        "No aesthetic filter applied. Follow user description with literal interpretation."
     ),
     "Velvet (Signature)": (
-        "Focus: Tech-Noir Minimalism. Palette: Obsidian, Matte Black, Deep Gold (#C9A84C). "
-        "Lighting: Chiaroscuro, high-contrast, cinematic amber glows."
+        "Tech-Noir Minimalism. Obsidian black #0A0A0A, deep gold #C9A84C. Chiaroscuro lighting. Quiet authority."
+    ),
+    "Tech-Noir Arabesque (Proprietary)": (
+        "Cyberpunk matrix fused with classical Islamic antiquity. Obsidian black, terminal green, aged gold. "
+        "Volumetric data-glow intersecting with soft light passing through Mashrabiya screens. Holographic data "
+        "cascading over physical, carved Arabesque lattice work. Subtle, glowing Kufic calligraphy out-of-focus "
+        "in the background. Ancient wisdom commanding futuristic systems."
     ),
     "Scholar (Traditional)": (
-        "Focus: Arabic Heritage & Calligraphy. Palette: Sandstone, Emerald, Aged Parchment. "
-        "Lighting: Natural sunlight, soft organic shadows."
+        "Arabic Heritage. Aged parchment, sandstone, emerald green. Natural diffused sunlight, weathered paper "
+        "grain, geometric Islamic pattern overlays at 10% opacity."
     ),
     "Cyber-Radiant": (
-        "Focus: High-energy tech. Palette: Electric Blue, Cyber Lime, Carbon Fiber. "
-        "Lighting: Volumetric neon, sharp lens flares."
+        "High-energy cyberpunk. Pure black, electric blue, cyber lime. Volumetric neon lighting, "
+        "holographic iridescence, glitch artifact overlays."
+    ),
+    "Shonen (Combat)": (
+        "High-intensity anime action. Deep navy, cyan, white. Impact flash lighting, directional speed lines, "
+        "ink splash, grunge texture."
+    ),
+    "Crimson Protocol": (
+        "Menacing tech-noir. Pure black, blood red, crimson. Red underlighting, harsh shadows, "
+        "white data stream lines, HUD interface elements."
+    ),
+    "Velvet Anime": (
+        "Premium anime portrait. Cold blue ambient, warm ivory skin, deep shadow. Rim lighting, "
+        "clean precise cel-shading, Wit Studio quality."
     ),
 })
 
@@ -328,15 +338,47 @@ Efficient because your time and the user's time are both valuable.
 """
 
 VISUAL_DIRECTOR_PROMPT: str = """
-ACTIVE FRAMEWORK: Visual Director (Cognitive Prompt Compiler)
-Task: Deconstruct raw concepts into elite, studio-grade prompt architecture.
-Instead of treating styles as generic keywords, deconstruct them into
-latent production attributes (Style DNA):
-  - art_medium: The specific artistic production method
-  - render_type: The technical rendering approach
-  - composition_style: The spatial and framing logic
-  - design_language: The cultural/aesthetic reference set
-Output must be modular, parametric, and ready for immediate use in visual AI tools.
+ACTIVE FRAMEWORK: Visual Director - Studio Production Compiler
+
+MISSION:
+Deconstruct the user's raw visual concept into a modular, studio-grade prompt architecture. Do not write descriptive sentences. Build a structured production brief using the exact slot system below.
+
+━━━ THE SLOT SYSTEM (Use every slot. Be hyper-specific) ━━━
+
+SUBJECT: Primary character/object. Pose, expression, clothing, age/build.
+ENVIRONMENT: Scene setting. Foreground / midground / background separately.
+LIGHTING: Quality + direction + color temperature (e.g., amber 3200K) + mood.
+LENS (Cinematographer Protocol):
+  - Close-up: "85mm lens, f/1.4, shallow depth of field, creamy bokeh"
+  - Wide landscape: "14mm wide-angle, f/8, infinite focus"
+  - Action shot: "35mm prime, fast shutter speed, dynamic angle"
+STYLE: Art medium + render pipeline + studio references (e.g., "premium anime cel-shading, Wit Studio aesthetic").
+PALETTE: Explicit colors. Use hex codes where precision matters (e.g., #0A0F1E).
+MOOD: The emotional register. One word + one sentence.
+PARAMETERS (Autonomous Aspect Ratio):
+  - Deduced from intent: Portraits = 4:5 or 1:1. Cinematic/YouTube = 16:9. Banners = 3:1. Mobile = 9:16.
+AVOID (Midjourney Only - The Anti-AI Arsenal): 
+  - ALWAYS append: "no text, watermark, signature, 3d render, plastic skin, oversaturated, ugly, deformed, motion blur"
+
+━━━ TARGET SYNTAX ROUTING & TEMPLATES ━━━
+
+If Target is Midjourney/Flux:
+Use modular :: separators. NO natural prose.
+Format: [SUBJECT] :: [ENVIRONMENT] :: [LIGHTING] & [LENS] :: [STYLE] & [PALETTE] --ar [ratio] --v 6.0 --style raw [AVOID BLOCK]
+
+If Target is Gemini (Imagen 3):
+Use the Spatial Typography Blueprint. Gemini excels at text.
+Format: 
+[AESTHETIC & PALETTE: Overall style]
+[BACKGROUND ZONE: Environment]
+[CENTER ZONE: Primary subject]
+[TYPOGRAPHY & PLACEMENT: Exact text in quotes, font style, and precise spatial location (e.g., Typography (Top Left Zone): "SYSTEM OVERRIDE" in bold glowing white sans-serif)]
+
+If Target is DALL-E 3:
+Use cinematic editorial illustration format. Natural prose, full sentences. NO :: separators, NO --parameters.
+
+━━━ QUALITY STANDARDS ━━━
+Every slot must be precise. Vague "dramatic lighting" fails. Precise "single overhead key light at 45° casting hard shadow under jawline, amber 3200K" passes. If the user is abstract, YOU make the creative decision and commit. Produce one flawless direction.
 """
 
 # ── UI CONSTANTS ──────────────────────────────────────────────────────────────
