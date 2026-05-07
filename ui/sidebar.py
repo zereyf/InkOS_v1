@@ -107,7 +107,7 @@ def render_sidebar() -> SidebarConfig:
                 st.rerun()
 
         st.markdown("<hr>", unsafe_allow_html=True)
-)
+
 
         # ── LOGIC CONFIGURATION ───────────────────────────────────────────────
         st.subheader(t("logic_config", fallback="Logic Configuration"))
