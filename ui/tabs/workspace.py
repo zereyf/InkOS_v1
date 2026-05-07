@@ -302,7 +302,7 @@ def render_workspace(cfg: dict) -> None:
                 unsafe_allow_html=True,
             )
             
-            # 🐛 LEVEL 3 FIX: AGENTIC CLARIFICATION LOOP UI
+                 # 🐛 LEVEL 3 FIX: AGENTIC CLARIFICATION LOOP UI
             if "[CLARIFICATION_REQUIRED]" in last_result:
                 clean_questions = last_result.replace("[CLARIFICATION_REQUIRED]", "").strip()
                 
@@ -318,20 +318,21 @@ def render_workspace(cfg: dict) -> None:
                 )
                 
                 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-                new_details = st.text_area("Reply to CIPHER", placeholder="Provide the missing context here...", height=80, key="agent_reply_input", label_visibility="collapsed")
+                st.text_area("Reply to CIPHER", placeholder="Provide the missing context here...", height=80, key="agent_reply_input", label_visibility="collapsed")
                 
-                if st.button("Append Context & Retry", use_container_width=True, key="btn_agent_retry"):
-                    if new_details:
+                # The Callback Function executes BEFORE the page reruns
+                def handle_agent_retry():
+                    reply = st.session_state.get("agent_reply_input", "")
+                    if reply:
                         current_intent = st.session_state.get(K.LAST_INPUT, "")
-                        st.session_state["ta_input"] = f"{current_intent}\n\n[USER CLARIFICATION]: {new_details}"
-                        # Clear the last result so the UI resets cleanly for the next run
+                        st.session_state["ta_input"] = f"{current_intent}\n\n[USER CLARIFICATION]: {reply}"
                         st.session_state[K.LAST_RESULT] = None
-                        st.rerun()
-                    else:
-                        st.warning("Please provide clarification before retrying.")
+                
+                st.button("Append Context & Retry", on_click=handle_agent_retry, use_container_width=True, key="btn_agent_retry")
 
             else:
                 # Normal Output Flow
+
                 st.markdown(
                     f'<div class="vc-header" style="font-size:0.6rem;margin-top:16px;">{t("refined_asset")}</div>',
                     unsafe_allow_html=True,
