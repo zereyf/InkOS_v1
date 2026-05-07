@@ -2,7 +2,7 @@
 ui/styles.py — InkOS Design System
 ==========================================
 The full CSS string exported as a single constant.
-Integrated Ghost Menu and Horizontal Switcher modules.
+Integrated Ghost Menu, Horizontal Switchers, and Mobile Macro Injectors.
 """
 
 STYLES: str = """
@@ -98,7 +98,7 @@ header[data-testid="stHeader"] { position: fixed !important; top: 0 !important; 
 }
 
 /* ══════════════════════════════════════════
-   GHOST MENU & SIDEBAR OVERHAUL (INTEGRATED)
+   GHOST MENU & SIDEBAR OVERHAUL
 ══════════════════════════════════════════ */
 [data-testid="stSidebar"] {
     background: var(--bg-deep) !important;
@@ -111,7 +111,6 @@ header[data-testid="stHeader"] { position: fixed !important; top: 0 !important; 
 }
 [data-testid="stSidebar"] > div { animation: fadeUp 0.4s ease both; }
 
-/* LOGO WORDMARK */
 .sidebar-logo-box {
     background: linear-gradient(135deg, rgba(201,168,76,0.1) 0%, transparent 100%);
     border-left: 2px solid var(--gold);
@@ -132,25 +131,11 @@ header[data-testid="stHeader"] { position: fixed !important; top: 0 !important; 
 
 div[data-testid="stSidebarNav"] { display: none; }
 
-/* GHOST RADIO BUTTON CLOAKING (Content-Aware Filter) */
-/* 1. Kill the native radio input entirely */
-[data-testid="stSidebar"] [role="radiogroup"] input[type="radio"] {
-    display: none !important;
-}
-
-/* 2. Kill the circle: Hide any div inside the radio label that DOES NOT contain a paragraph or span */
-[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:not(:has(p)):not(:has(span)) {
-    display: none !important;
-}
-
-/* 3. Save the text: Force visibility on the specific div that DOES contain the text */
+[data-testid="stSidebar"] [role="radiogroup"] input[type="radio"] { display: none !important; }
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:not(:has(p)):not(:has(span)) { display: none !important; }
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:has(p),
-[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:has(span) {
-    display: block !important;
-    width: 100% !important;
-}
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:has(span) { display: block !important; width: 100% !important; }
 
-/* MENU ITEM CONTAINERS */
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] {
     width: 100% !important; padding: 10px 14px !important; margin-bottom: 4px !important;
     border-radius: 4px !important; background: transparent !important;
@@ -158,7 +143,6 @@ div[data-testid="stSidebarNav"] { display: none; }
     cursor: pointer !important; display: block !important;
 }
 
-/* TEXT TYPOGRAPHY (Targeting the actual text nodes) */
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] p,
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] span {
     font-family: 'IBM Plex Mono', monospace !important; font-size: 0.75rem !important;
@@ -167,16 +151,12 @@ div[data-testid="stSidebarNav"] { display: none; }
     transition: color 0.2s ease !important; display: block !important;
 }
 
-/* MENU HOVER */
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover {
     background: rgba(201, 168, 76, 0.04) !important; border-left: 3px solid rgba(201, 168, 76, 0.4) !important;
 }
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover p,
-[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover span { 
-    color: #E2D5BC !important; 
-}
+[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:hover span { color: #E2D5BC !important; }
 
-/* MENU ACTIVE */
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) {
     background: linear-gradient(90deg, rgba(201,168,76,0.12) 0%, transparent 100%) !important;
     border-left: 3px solid #C9A84C !important;
@@ -186,7 +166,6 @@ div[data-testid="stSidebarNav"] { display: none; }
     color: #C9A84C !important; font-weight: 600 !important; text-shadow: 0 0 10px rgba(201,168,76,0.2) !important;
 }
 
-
 /* ══════════════════════════════════════════
    HORIZONTAL LANGUAGE SWITCHER
 ══════════════════════════════════════════ */
@@ -195,9 +174,7 @@ div[data-testid="stSidebarNav"] { display: none; }
     flex-wrap: nowrap !important; gap: 6px !important;
     align-items: center !important; margin-bottom: 10px !important;
 }
-[data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(button) > div {
-    min-width: 0 !important; flex: 1 1 0% !important;
-}
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(button) > div { min-width: 0 !important; flex: 1 1 0% !important; }
 [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button {
     height: 36px !important; margin: 0 !important; padding: 0 !important;
     display: flex !important; align-items: center !important; justify-content: center !important;
@@ -246,88 +223,37 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 .stTextArea textarea { background: var(--bg-input) !important; border: 1px solid var(--text-dim) !important; border-radius: 3px !important; color: var(--text) !important; font-family: var(--font-m) !important; font-size: 0.82rem !important; line-height: 1.75 !important; caret-color: var(--gold) !important; transition: border-color 0.2s, box-shadow 0.2s !important; }
 .stTextArea textarea:focus { border-color: var(--gold-border) !important; box-shadow: 0 0 0 1px var(--gold-border), inset 0 0 20px var(--gold-faint) !important; outline: none !important; }
 
-.stSelectbox > div > div { background: var(--bg-input) !important; border-color: var(--text-dim) !important; color: var(--text) !important; font-family: var(--font-m) !important; font-size: 0.78rem !important; border-radius: 3px !important; }
-.stRadio > div { font-family: var(--font-m) !important; font-size: 0.75rem !important; }
-.stRadio label { color: var(--text-muted) !important; }
+.stSelectbox > div > div { background: linear-gradient(180deg, var(--bg-input) 0%, #05070A 100%) !important; border: 1px solid rgba(201,168,76,0.3) !important; color: var(--text) !important; font-family: var(--font-m) !important; font-size: 0.78rem !important; border-radius: 2px !important; box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important; transition: all 0.2s ease !important; }
+.stSelectbox > div > div:hover { border-color: var(--gold) !important; box-shadow: 0 0 12px rgba(201,168,76,0.15) !important; }
+[data-baseweb="popover"] > div { background: var(--bg-deep) !important; border: 1px solid var(--gold) !important; border-radius: 2px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important; }
+[data-baseweb="menu"] li { font-family: var(--font-m) !important; font-size: 0.75rem !important; color: var(--text-muted) !important; padding: 10px 14px !important; transition: background 0.15s, color 0.15s !important; }
+[data-baseweb="menu"] li:hover, [data-baseweb="menu"] li[aria-selected="true"] { background: rgba(201, 168, 76, 0.1) !important; color: var(--gold) !important; border-left: 2px solid var(--gold) !important; }
 
 /* ══════════════════════════════════════════
-   LEVEL 2 FIX: AGGRESSIVE SELECTBOX (DROPDOWN) OVERRIDES
+   MACRO INJECTORS (HORIZONTAL MOBILE FORCE)
 ══════════════════════════════════════════ */
-/* The main box before opening */
-.stSelectbox > div > div { 
-    background: linear-gradient(180deg, var(--bg-input) 0%, #05070A 100%) !important; 
-    border: 1px solid rgba(201,168,76,0.3) !important; /* Forces the gold border immediately */
-    color: var(--text) !important; 
-    font-family: var(--font-m) !important; 
-    font-size: 0.78rem !important; 
-    border-radius: 2px !important; 
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
-    transition: all 0.2s ease !important;
+div[data-testid="stHorizontalBlock"]:has(.macro-btn) {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
 }
-
-/* Hover state for the Selectbox */
-.stSelectbox > div > div:hover {
-    border-color: var(--gold) !important;
-    box-shadow: 0 0 12px rgba(201,168,76,0.15) !important;
+div[data-testid="stHorizontalBlock"]:has(.macro-btn) > div[data-testid="column"] {
+    width: 33.33% !important;
+    min-width: 30% !important;
+    flex: 1 1 0px !important;
 }
-
-/* The actual dropdown menu list that pops out */
-[data-baseweb="popover"] > div {
-    background: var(--bg-deep) !important;
-    border: 1px solid var(--gold) !important;
-    border-radius: 2px !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important;
+div[data-testid="stHorizontalBlock"]:has(.macro-btn) button {
+    padding: 0.15rem 0rem !important;
+    min-height: 38px !important;
 }
-
-/* The items inside the dropdown list */
-[data-baseweb="menu"] li {
-    font-family: var(--font-m) !important;
+div[data-testid="stHorizontalBlock"]:has(.macro-btn) button p {
     font-size: 0.75rem !important;
-    color: var(--text-muted) !important;
-    padding: 10px 14px !important;
-    transition: background 0.15s, color 0.15s !important;
+    letter-spacing: 0.5px !important;
 }
-
-/* Hover state for items inside the dropdown */
-[data-baseweb="menu"] li:hover, [data-baseweb="menu"] li[aria-selected="true"] {
-    background: rgba(201, 168, 76, 0.1) !important;
-    color: var(--gold) !important;
-    border-left: 2px solid var(--gold) !important;
-}
-
 
 /* ══════════════════════════════════════════
-   LEVEL 2 FIX: STATUS & SPINNER (KILL THE GREEN)
-══════════════════════════════════════════ */
-/* Targets the "st.status" or "st.spinner" icons and text */
-[data-testid="stStatusWidget"] div[role="status"],
-[data-testid="stStatusWidget"] svg,
-[data-testid="stSpinner"] svg {
-    color: var(--gold) !important;
-    fill: var(--gold) !important;
-    stroke: var(--gold) !important;
-}
-
-/* Targets the success checkmark specifically (killing Streamlit green) */
-[data-testid="stStatusWidget"] svg[data-baseweb="icon"] {
-    color: var(--gold) !important; 
-}
-
-/* The box around the status */
-[data-testid="stStatusWidget"] {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--gold-border) !important;
-    border-radius: 3px !important;
-    font-family: var(--font-m) !important;
-    font-size: 0.75rem !important;
-    color: var(--text) !important;
-}
-
-
-/*
-
-/* ══════════════════════════════════════════
-   LEVEL 4 FIX: TOAST NOTIFICATIONS (TERMINAL ALERTS)
+   LEVEL 4 FIX: TOAST NOTIFICATIONS
 ══════════════════════════════════════════ */
 [data-testid="stToast"] {
     background: linear-gradient(135deg, var(--bg-card) 0%, #05070A 100%) !important;
@@ -336,26 +262,11 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
     border-radius: 3px !important;
     box-shadow: 0 8px 20px rgba(0,0,0,0.6), 0 0 15px rgba(201,168,76,0.05) !important;
 }
+[data-testid="stToast"] div { font-family: var(--font-m) !important; font-size: 0.75rem !important; color: var(--text) !important; letter-spacing: 0.05em !important; }
+[data-testid="stToast"] button { color: var(--text-muted) !important; transition: color 0.2s ease !important; }
+[data-testid="stToast"] button:hover { color: var(--danger) !important; background: transparent !important; }
 
-/* Toast Text Styling */
-[data-testid="stToast"] div {
-    font-family: var(--font-m) !important;
-    font-size: 0.75rem !important;
-    color: var(--text) !important;
-    letter-spacing: 0.05em !important;
-}
-
-/* Toast Close Button */
-[data-testid="stToast"] button {
-    color: var(--text-muted) !important;
-    transition: color 0.2s ease !important;
-}
-[data-testid="stToast"] button:hover {
-    color: var(--danger) !important;
-    background: transparent !important;
-}
-
- ══════════════════════════════════════════
+/* ══════════════════════════════════════════
    MOBILE OVERRIDES & MISC
 ══════════════════════════════════════════ */
 @media (max-width: 768px) {
@@ -367,7 +278,6 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 
 [data-testid="stMetricValue"] { font-family: var(--font-d) !important; color: var(--gold) !important; font-size: 1.6rem !important; }
 [data-testid="stMetricLabel"] { font-family: var(--font-m) !important; font-size: 0.58rem !important; letter-spacing: 0.12em !important; text-transform: uppercase !important; color: var(--text-muted) !important; }
-
 hr { border: none !important; border-top: 1px solid var(--text-dim) !important; margin: 18px 0 !important; }
 .status-dot { display: inline-block; width: 5px; height: 5px; background: var(--gold); border-radius: 50%; margin-right: 7px; animation: pulse-dot 2.5s ease infinite; vertical-align: middle; }
 
