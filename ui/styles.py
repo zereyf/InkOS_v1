@@ -251,6 +251,80 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 .stRadio label { color: var(--text-muted) !important; }
 
 /* ══════════════════════════════════════════
+   LEVEL 2 FIX: AGGRESSIVE SELECTBOX (DROPDOWN) OVERRIDES
+══════════════════════════════════════════ */
+/* The main box before opening */
+.stSelectbox > div > div { 
+    background: linear-gradient(180deg, var(--bg-input) 0%, #05070A 100%) !important; 
+    border: 1px solid rgba(201,168,76,0.3) !important; /* Forces the gold border immediately */
+    color: var(--text) !important; 
+    font-family: var(--font-m) !important; 
+    font-size: 0.78rem !important; 
+    border-radius: 2px !important; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Hover state for the Selectbox */
+.stSelectbox > div > div:hover {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 12px rgba(201,168,76,0.15) !important;
+}
+
+/* The actual dropdown menu list that pops out */
+[data-baseweb="popover"] > div {
+    background: var(--bg-deep) !important;
+    border: 1px solid var(--gold) !important;
+    border-radius: 2px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important;
+}
+
+/* The items inside the dropdown list */
+[data-baseweb="menu"] li {
+    font-family: var(--font-m) !important;
+    font-size: 0.75rem !important;
+    color: var(--text-muted) !important;
+    padding: 10px 14px !important;
+    transition: background 0.15s, color 0.15s !important;
+}
+
+/* Hover state for items inside the dropdown */
+[data-baseweb="menu"] li:hover, [data-baseweb="menu"] li[aria-selected="true"] {
+    background: rgba(201, 168, 76, 0.1) !important;
+    color: var(--gold) !important;
+    border-left: 2px solid var(--gold) !important;
+}
+
+
+/* ══════════════════════════════════════════
+   LEVEL 2 FIX: STATUS & SPINNER (KILL THE GREEN)
+══════════════════════════════════════════ */
+/* Targets the "st.status" or "st.spinner" icons and text */
+[data-testid="stStatusWidget"] div[role="status"],
+[data-testid="stStatusWidget"] svg,
+[data-testid="stSpinner"] svg {
+    color: var(--gold) !important;
+    fill: var(--gold) !important;
+    stroke: var(--gold) !important;
+}
+
+/* Targets the success checkmark specifically (killing Streamlit green) */
+[data-testid="stStatusWidget"] svg[data-baseweb="icon"] {
+    color: var(--gold) !important; 
+}
+
+/* The box around the status */
+[data-testid="stStatusWidget"] {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--gold-border) !important;
+    border-radius: 3px !important;
+    font-family: var(--font-m) !important;
+    font-size: 0.75rem !important;
+    color: var(--text) !important;
+}
+
+
+/* ══════════════════════════════════════════
    MOBILE OVERRIDES & MISC
 ══════════════════════════════════════════ */
 @media (max-width: 768px) {
