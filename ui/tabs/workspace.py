@@ -59,7 +59,6 @@ def _render_guest_warning():
         </div>
         """, unsafe_allow_html=True)
 
-
 def _render_score_block(audit: dict, pattern: Optional[dict], triggers: list = None) -> None:
     """Renders the high-end Forensic HUD for refinement scores."""
     score      = int(audit.get("score",     0))
@@ -76,68 +75,70 @@ def _render_score_block(audit: dict, pattern: Optional[dict], triggers: list = N
     if triggers:
         for t_name in triggers:
             st.markdown(f"""
-            <div style="background:rgba(201,168,76,0.1); border:1px solid var(--gold); border-radius:3px; padding:8px 12px; margin-bottom:10px;">
-                <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">🧬 COMMAND ENGAGED</div>
-                <div style="font-family:var(--font-m); font-size:0.75rem; color:white; font-weight:600;">[ {t_name} ] DNA ACTIVE</div>
-            </div>
-            """, unsafe_allow_html=True)
+<div style="background:rgba(201,168,76,0.1); border:1px solid var(--gold); border-radius:3px; padding:8px 12px; margin-bottom:10px;">
+    <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">🧬 COMMAND ENGAGED</div>
+    <div style="font-family:var(--font-m); font-size:0.75rem; color:white; font-weight:600;">[ {t_name} ] DNA ACTIVE</div>
+</div>
+            """.strip(), unsafe_allow_html=True)
 
     if pattern:
         color = pattern.get("color", "#C9A84C")
         st.markdown(f"""
-        <div class="pattern-card" style="margin-bottom:12px;">
-            <span class="p-label">Engine Applied</span>
-            <span class="p-arabic" style="color:{color};">{pattern['pattern']}</span>
-            <span class="p-paradigm" style="color:{color};">→ {pattern['prompt_paradigm']}</span>
-        </div>
-        """, unsafe_allow_html=True)
+<div class="pattern-card" style="margin-bottom:12px;">
+    <span class="p-label">Engine Applied</span>
+    <span class="p-arabic" style="color:{color};">{pattern['pattern']}</span>
+    <span class="p-paradigm" style="color:{color};">→ {pattern['prompt_paradigm']}</span>
+</div>
+        """.strip(), unsafe_allow_html=True)
 
-    # 💎 THE HIGH-END FORENSIC HUD
-    st.markdown(f"""
-    <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 3px; padding: 22px; position: relative; overflow: hidden; margin-bottom: 15px;">
-        <div style="position: absolute; top: 0; left: 0; width: 40px; height: 2px; background: var(--gold); box-shadow: 0 0 10px var(--gold);"></div>
-        
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
-            <div>
-                <div style="font-family: var(--font-m); font-size: 0.55rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">Overall Fidelity</div>
-                <div style="font-family: var(--font-d); font-size: 3.2rem; color: var(--gold); line-height: 0.9; margin-top: 4px;">{score}<span style="font-size: 1.2rem; color: var(--gold-dim);">%</span></div>
-            </div>
-            <div style="text-align: right;">
-                <div style="font-family: var(--font-m); font-size: 0.5rem; color: var(--steel); letter-spacing: 1px;">STATUS</div>
-                <div style="font-family: var(--font-m); font-size: 0.75rem; color: #4CAF9A; font-weight: bold; letter-spacing: 1px;">OPTIMIZED</div>
-            </div>
+    # 💎 THE HIGH-END FORENSIC HUD (Flush left to bypass Markdown code-block rendering)
+    hud_html = f"""
+<div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 3px; padding: 22px; position: relative; overflow: hidden; margin-bottom: 15px;">
+    <div style="position: absolute; top: 0; left: 0; width: 40px; height: 2px; background: var(--gold); box-shadow: 0 0 10px var(--gold);"></div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+        <div>
+            <div style="font-family: var(--font-m); font-size: 0.55rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">Overall Fidelity</div>
+            <div style="font-family: var(--font-d); font-size: 3.2rem; color: var(--gold); line-height: 0.9; margin-top: 4px;">{score}<span style="font-size: 1.2rem; color: var(--gold-dim);">%</span></div>
         </div>
-
-        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-family: var(--font-m); font-size: 0.6rem; color: var(--text-muted); width: 80px; letter-spacing: 1px;">PRECISION</span>
-                <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.08); margin: 0 15px; position: relative;">
-                    <div style="position: absolute; left: 0; top: -1px; height: 3px; width: {p_pct}%; background: var(--gold); box-shadow: 0 0 6px var(--gold);"></div>
-                </div>
-                <span style="font-family: var(--font-m); font-size: 0.65rem; color: var(--gold); width: 40px; text-align: right;">{precision}/40</span>
-            </div>
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-family: var(--font-m); font-size: 0.6rem; color: var(--text-muted); width: 80px; letter-spacing: 1px;">ALIGNMENT</span>
-                <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.08); margin: 0 15px; position: relative;">
-                    <div style="position: absolute; left: 0; top: -1px; height: 3px; width: {a_pct}%; background: var(--steel); box-shadow: 0 0 6px var(--steel);"></div>
-                </div>
-                <span style="font-family: var(--font-m); font-size: 0.65rem; color: var(--steel); width: 40px; text-align: right;">{alignment}/40</span>
-            </div>
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-family: var(--font-m); font-size: 0.6rem; color: var(--text-muted); width: 80px; letter-spacing: 1px;">EFFICIENCY</span>
-                <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.08); margin: 0 15px; position: relative;">
-                    <div style="position: absolute; left: 0; top: -1px; height: 3px; width: {e_pct}%; background: #4CAF9A; box-shadow: 0 0 6px #4CAF9A;"></div>
-                </div>
-                <span style="font-family: var(--font-m); font-size: 0.65rem; color: #4CAF9A; width: 40px; text-align: right;">{efficiency}/20</span>
-            </div>
-        </div>
-
-        <div style="background: rgba(201,168,76,0.03); border-left: 2px solid var(--gold-border); padding: 12px 16px;">
-            <div style="font-family: var(--font-m); font-size: 0.55rem; color: var(--gold); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px;">> Forensic Log</div>
-            <div style="font-family: var(--font-m); font-size: 0.75rem; color: var(--text); line-height: 1.6;">{critique}</div>
+        <div style="text-align: right;">
+            <div style="font-family: var(--font-m); font-size: 0.5rem; color: var(--steel); letter-spacing: 1px;">STATUS</div>
+            <div style="font-family: var(--font-m); font-size: 0.75rem; color: #4CAF9A; font-weight: bold; letter-spacing: 1px;">OPTIMIZED</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-family: var(--font-m); font-size: 0.6rem; color: var(--text-muted); width: 80px; letter-spacing: 1px;">PRECISION</span>
+            <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.08); margin: 0 15px; position: relative;">
+                <div style="position: absolute; left: 0; top: -1px; height: 3px; width: {p_pct}%; background: var(--gold); box-shadow: 0 0 6px var(--gold);"></div>
+            </div>
+            <span style="font-family: var(--font-m); font-size: 0.65rem; color: var(--gold); width: 40px; text-align: right;">{precision}/40</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-family: var(--font-m); font-size: 0.6rem; color: var(--text-muted); width: 80px; letter-spacing: 1px;">ALIGNMENT</span>
+            <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.08); margin: 0 15px; position: relative;">
+                <div style="position: absolute; left: 0; top: -1px; height: 3px; width: {a_pct}%; background: var(--steel); box-shadow: 0 0 6px var(--steel);"></div>
+            </div>
+            <span style="font-family: var(--font-m); font-size: 0.65rem; color: var(--steel); width: 40px; text-align: right;">{alignment}/40</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-family: var(--font-m); font-size: 0.6rem; color: var(--text-muted); width: 80px; letter-spacing: 1px;">EFFICIENCY</span>
+            <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.08); margin: 0 15px; position: relative;">
+                <div style="position: absolute; left: 0; top: -1px; height: 3px; width: {e_pct}%; background: #4CAF9A; box-shadow: 0 0 6px #4CAF9A;"></div>
+            </div>
+            <span style="font-family: var(--font-m); font-size: 0.65rem; color: #4CAF9A; width: 40px; text-align: right;">{efficiency}/20</span>
+        </div>
+    </div>
+
+    <div style="background: rgba(201,168,76,0.03); border-left: 2px solid var(--gold-border); padding: 12px 16px;">
+        <div style="font-family: var(--font-m); font-size: 0.55rem; color: var(--gold); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px;">> Forensic Log</div>
+        <div style="font-family: var(--font-m); font-size: 0.75rem; color: var(--text); line-height: 1.6;">{critique}</div>
+    </div>
+</div>
+    """
+    st.markdown(hud_html.strip(), unsafe_allow_html=True)
+
 
 
 def render_workspace(cfg: dict) -> None:
