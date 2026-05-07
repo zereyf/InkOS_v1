@@ -24,7 +24,7 @@ FRAMEWORK_ROUTER = {
 
 def apply_framework_callback(target_framework: str, name: str):
     st.session_state["sb_framework"] = target_framework
-    st.toast(f"⚡️LATCHED: {name} → {target_framework}" Logic ") 
+    st.toast(f"⚡️LATCHED: {name} → {target_framework} Logic") 
 
 def toggle_islamic_callback():
     current_state = st.session_state.get("sb_islamic", False)
