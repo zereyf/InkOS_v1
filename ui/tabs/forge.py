@@ -1,8 +1,7 @@
 """
 ui/tabs/forge.py — Persona Forge Tab
 ======================================
-v16.0: Upgraded for InkOS. Advanced Tech-Noir UI, active state anchoring,
-       and unified Brand Identity payloads.
+v17.0: Hardened with Streamlit Callbacks to prevent state-race conditions.
 Tab 6: Create, browse, and manage AI personas and Visual DNA.
 """
 
@@ -15,6 +14,22 @@ from vault.supabase_client import SUPABASE_MISSING
 from config import TARGET_GUIDES
 from i18n.translations import t
 
+# ── STREAMLIT CALLBACKS ───────────────────────────────────────────────────────
+# Executes state changes before the UI locks for re-rendering
+
+def toggle_persona_callback(persona_data: dict, is_currently_active: bool):
+    if is_currently_active:
+        st.session_state[K.ACTIVE_PERSONA] = None
+        st.toast("🎭 System Override Deactivated.")
+    else:
+        st.session_state[K.ACTIVE_PERSONA] = persona_data
+        st.toast(f"🎭 LATCHED: {persona_data.get('name', 'Unknown')}")
+
+def toggle_preview_callback(pid: str):
+    current = st.session_state.get(f"show_preview_{pid}", False)
+    st.session_state[f"show_preview_{pid}"] = not current
+
+# ──────────────────────────────────────────────────────────────────────────────
 
 def _render_persona_card(
     persona:   dict,
@@ -30,7 +45,6 @@ def _render_persona_card(
     target      = persona.get("target", "All")
     pid         = persona.get("id", name)
 
-    border_color = "var(--gold)" if is_active else "rgba(201,168,76,0.14)"
     active_label = ' <span style="color:#4CAF9A;font-size:0.7rem;margin-left:8px;">● ACTIVE</span>' if is_active else ""
     indicator    = "🟢" if is_active else "✦"
 
@@ -79,15 +93,23 @@ def _render_persona_card(
 
         with a1:
             btn_label = "Deactivate Persona" if is_active else "Engage Persona"
-            if st.button(btn_label, key=f"activate_{pid}", use_container_width=True):
-                st.session_state[K.ACTIVE_PERSONA] = None if is_active else persona
-                st.rerun()
+            # 🐛 FIX: Using on_click callback to prevent state racing 🐛
+            st.button(
+                btn_label, 
+                key=f"activate_{pid}", 
+                on_click=toggle_persona_callback,
+                args=(persona, is_active),
+                use_container_width=True
+            )
 
         with a2:
-            preview_target = st.session_state.get("sb_target", "Claude")
-            if st.button(t("preview_injection", fallback="Preview Prompt Code"), key=f"preview_{pid}", use_container_width=True):
-                st.session_state[f"show_preview_{pid}"] = not st.session_state.get(f"show_preview_{pid}", False)
-                st.rerun()
+            st.button(
+                t("preview_injection", fallback="Preview Prompt Code"), 
+                key=f"preview_{pid}", 
+                on_click=toggle_preview_callback,
+                args=(pid,),
+                use_container_width=True
+            )
 
         with a3:
             if not is_starter:
@@ -251,39 +273,34 @@ def render_forge() -> None:
 
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-        if st.button("Compile & Save Construct", use_container_width=True, key="forge_save"):
+        def _save_construct_callback():
+            if not p_name.strip() or not p_role.strip():
+                return
+            new_persona = {
+                "id":          p_name.strip().lower().replace(" ", "_"),
+                "name":        p_name.strip(),
+                "role":        p_role.strip(),
+                "constraints": p_constraints.strip(),
+                "style":       p_style.strip(),
+                "target":      p_target,
+                "tags":        p_tags.strip(),
+            }
+            if SUPABASE_MISSING:
+                st.session_state[K.ACTIVE_PERSONA] = new_persona
+            else:
+                saved, err = save_persona(user_hash, p_name, p_role, p_constraints, p_style, p_target, p_tags)
+                if not err:
+                    st.session_state[K.ACTIVE_PERSONA] = saved
+
+        if st.button("Compile & Save Construct", use_container_width=True, key="forge_save", on_click=_save_construct_callback):
             if not p_name.strip():
                 st.warning("Construct requires a Designation (Name).")
             elif not p_role.strip():
                 st.warning("Construct requires a Core Directive (Role).")
             elif SUPABASE_MISSING:
-                new_persona = {
-                    "id":          p_name.strip().lower().replace(" ", "_"),
-                    "name":        p_name.strip(),
-                    "role":        p_role.strip(),
-                    "constraints": p_constraints.strip(),
-                    "style":       p_style.strip(),
-                    "target":      p_target,
-                    "tags":        p_tags.strip(),
-                }
-                st.session_state[K.ACTIVE_PERSONA] = new_persona
                 st.success(f"Session memory activated: {p_name} (Cloud save unavailable)")
             else:
-                saved, err = save_persona(
-                    user_hash   = user_hash,
-                    name        = p_name,
-                    role        = p_role,
-                    constraints = p_constraints,
-                    style       = p_style,
-                    target      = p_target,
-                    tags        = p_tags,
-                )
-                if err:
-                    st.error(f"Save failed: {err}")
-                else:
-                    st.session_state[K.ACTIVE_PERSONA] = saved
-                    st.success(f"Construct Secured: {p_name}")
-                    st.rerun()
+                st.success(f"Construct Secured: {p_name}")
 
     # ── BRAND IDENTITY (DYNAMIC ENGINE) ────────────────────────────────────────
     with forge_tab3:
@@ -322,13 +339,11 @@ def render_forge() -> None:
         
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
         
-        if st.button("💾 Lock Brand Identity DNA", use_container_width=True):
+        def _save_brand_callback():
             st.session_state["brand_identity"] = {
-                "name": b_name,
-                "tagline": b_tagline,
-                "muse": b_muse,
-                "trigger": b_trigger.lower(),
-                "vibe": b_vibe
+                "name": b_name, "tagline": b_tagline, "muse": b_muse,
+                "trigger": b_trigger.lower(), "vibe": b_vibe
             }
+            
+        if st.button("💾 Lock Brand Identity DNA", use_container_width=True, on_click=_save_brand_callback):
             st.success("DNA Sequence Locked. Visual routing parameters updated.")
-            st.rerun()
