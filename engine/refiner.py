@@ -1,8 +1,8 @@
 """
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
-v7.0: Master Build. Evaluator math fixed, weaponized retries, 
-      429 rate-limit soft-passes, and direct error bubbling.
+v8.0: Master Build. Added Cognitive Formatting Engine, 
+      Forced Chain-of-Thought (CoT), and Framework Blueprints.
 """
 
 import json
@@ -66,7 +66,6 @@ the prompt has failed regardless of what it says.
 
   Claude →
     Required: <role>, <task>, <constraints>, <output_format> XML tags
-    Required: Explicit chain-of-thought instruction
     Tone: Analytical, structured, rewards depth
 
   ChatGPT →
@@ -95,7 +94,6 @@ the prompt has failed regardless of what it says.
     Required: Spatial blueprint format — describe zones of the image explicitly
     Required: Typography placement, font style, exact text content verbatim
     Required: Background/foreground separation
-    Use when: The image must contain readable text
 
 ━━━ SELF-CHECK (run before outputting) ━━━
 
@@ -344,7 +342,6 @@ def _call_evaluator(original_input: str, target: str, refined_prompt: str) -> di
     except Exception as e:
         err_str = str(e)
         if "429" in err_str or "rate_limit" in err_str.lower():
-            # 🛡️ RESILIENCE: If Evaluator gets rate-limited, issue a Soft-Pass to save the prompt.
             return {
                 "score": 86, 
                 "critique": "Evaluator Rate Limited (429). System assigned a safety pass to preserve output.",
@@ -383,7 +380,6 @@ def detect_best_target(user_text: str) -> tuple:
 
     text_lower = user_text.lower()
     
-    # ── FAST-PATH HEURISTICS (Zero Hallucination Routing) ──
     if any(kw in text_lower for kw in ["python", "script", "code", "html", "react", "sql", "debug", "fastapi"]):
         return "Claude", "Hard-routed to Claude (Technical intent detected)."
         
@@ -398,7 +394,7 @@ Your only task: read the user input and select the single best AI target.
 Output ONLY valid JSON. No preamble. No explanation.
 {{"target": "<exact target name>", "reason": "<one sentence max>"}}
 
-Valid target names (use exactly): Claude, ChatGPT, Manus AI, Midjourney/Flux, DALL-E 3
+Valid target names (use exactly): Claude, ChatGPT, Manus AI, Midjourney/Flux, DALL-E 3, Gemini (Imagen 3)
 """
     try:
         completion = client.chat.completions.create(
@@ -408,7 +404,7 @@ Valid target names (use exactly): Claude, ChatGPT, Manus AI, Midjourney/Flux, DA
                 {"role": "user",   "content": user_text[:500]},
             ],
             response_format={"type": "json_object"},
-            temperature=0.0, # Zero variance for routing
+            temperature=0.0, 
             max_tokens=100,
         )
         raw = json.loads(completion.choices[0].message.content)
@@ -490,7 +486,6 @@ def _build_system_prompt(
     persona_block = inject_persona(persona, target)
     brand_block   = _build_brand_block(brand_identity)
     
-    # ⚔️ WEAPONIZED RETRY BLOCK
     retry_block   = (
         f"\n\n🚨 CRITICAL CORRECTION REQUIRED FOR THIS RETRY 🚨\n"
         f"Your previous attempt was REJECTED by the Auditor for this exact reason:\n"
@@ -498,11 +493,27 @@ def _build_system_prompt(
         f"You MUST explicitly integrate this missing requirement. Do NOT ignore the Auditor.\n\n"
     ) if retry_critique else ""
 
-    framework_block = (
-        VISUAL_DIRECTOR_PROMPT
-        if framework == "Visual Director"
-        else f"ACTIVE FRAMEWORK: {framework}"
-    )
+    # 🧠 COGNITIVE FORMATTING ENGINE (NEW INJECTION)
+    try:
+        from config import FRAMEWORK_BLUEPRINTS, GOLDEN_FEW_SHOT_BLUEPRINT
+        fw_details = FRAMEWORK_BLUEPRINTS.get(framework, "")
+        golden_ex  = GOLDEN_FEW_SHOT_BLUEPRINT
+    except ImportError:
+        fw_details = ""
+        golden_ex  = ""
+
+    cot_block = ""
+    if framework in ["Technical (Debugger)", "Academic"] and target in ["Claude", "ChatGPT"]:
+        cot_block = (
+            "COGNITIVE PROTOCOL (FORCED CoT):\n"
+            "You MUST include an instruction in your refined prompt that forces the target AI "
+            "to use a <thinking> block to map out its logic step-by-step BEFORE generating the final answer."
+        )
+
+    if framework == "Visual Director":
+        framework_block = VISUAL_DIRECTOR_PROMPT
+    else:
+        framework_block = f"ACTIVE FRAMEWORK: {framework}\n{fw_details}\n{cot_block}\n{golden_ex}"
 
     parts = [
         CIPHER_IDENTITY,
@@ -580,7 +591,6 @@ def run_refinement_and_audit(
         refined, self_audit, error = _call_cipher(sys_prompt, user_text)
 
         if error:
-            # 🛡️ ERROR BUBBLING: If the API crashes on the first try, show the exact error.
             if best_refined is None:
                 return (
                     f"[SYSTEM ERROR]: API connection failed. Details: {error}",
@@ -594,7 +604,6 @@ def run_refinement_and_audit(
         if not struct_passed:
             retry_critique = struct_reason
             
-            # Save the structurally failing prompt in case we run out of retries
             if best_refined is None:
                 best_refined = refined
                 best_audit = self_audit or make_fallback_audit(struct_reason)
