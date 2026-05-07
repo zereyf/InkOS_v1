@@ -45,10 +45,11 @@ def _render_persona_card(
     target      = persona.get("target", "All")
     pid         = persona.get("id", name)
 
-    active_label = ' <span style="color:#4CAF9A;font-size:0.7rem;margin-left:8px;">● ACTIVE</span>' if is_active else ""
+        active_label = " [● ACTIVE]" if is_active else ""
     indicator    = "🟢" if is_active else "✦"
 
     with st.expander(f"{indicator} {name}  ·  {target}{active_label}"):
+
 
         # Role preview
         st.markdown(f"""
