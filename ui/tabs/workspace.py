@@ -1,8 +1,8 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v23.0: Indestructible Mobile Horizontal Layout.
-       Forces macro buttons into a single row using flexbox injection.
+v24.0: Terminal Aesthetic Restored.
+       Pure HTML Flexbox for [ /INK ] [ /INTEL ] [ /HIKMAH ] Standby Bar.
 """
 
 import hashlib
@@ -42,15 +42,6 @@ def _apply_dna_triggers(text: str) -> Tuple[str, list]:
             detected.append(trigger.upper())
             
     return processed, detected
-
-
-def _inject_macro(macro_text: str):
-    """Callback to append a slash command to the text area."""
-    current = st.session_state.get("ta_input", "")
-    if current:
-        st.session_state["ta_input"] = f"{current} {macro_text}"
-    else:
-        st.session_state["ta_input"] = macro_text
 
 
 def _render_guest_warning():
@@ -126,40 +117,25 @@ def render_workspace(cfg: dict) -> None:
         </div>
     """, unsafe_allow_html=True)
 
-    # 🧬 INDESTRUCTIBLE HORIZONTAL MACROS
+    # 🧬 DNA STANDBY BAR (The Terminal Aesthetic)
     current_sid = str(st.session_state.get(K.USER_HASH, ""))
     if "GUEST_" not in current_sid.upper():
-        st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); letter-spacing:1px; margin-bottom:4px; text-transform:uppercase;">DNA Macro Injectors</div>', unsafe_allow_html=True)
-        
-        # We inject CSS targeting exactly the container below to force flex-direction: row.
-        st.markdown("""
-        <style>
-        .macro-container {
-            display: flex !important;
-            flex-direction: row !important;
-            gap: 8px !important;
-            margin-bottom: 15px !important;
-        }
-        .macro-container button {
-            flex: 1 !important;
-            padding: 8px 4px !important;
-            font-size: 0.7rem !important;
-            white-space: nowrap !important;
-        }
-        </style>
-        <div class="macro-container">
+        st.markdown(f"""
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <div style="flex:1; background:rgba(201,168,76,0.03); border:1px solid rgba(201,168,76,0.2); padding:8px; border-radius:3px; text-align:center; box-shadow: inset 0 0 10px rgba(201,168,76,0.02);">
+                    <div style="font-size:0.55rem; color:var(--gold); font-family:var(--font-m); letter-spacing:1px; margin-bottom:2px;">[ /INK ]</div>
+                    <div style="font-size:0.45rem; color:var(--text-muted); font-weight:bold; letter-spacing:2px;">ARMED</div>
+                </div>
+                <div style="flex:1; background:rgba(124,158,191,0.03); border:1px solid rgba(124,158,191,0.2); padding:8px; border-radius:3px; text-align:center; box-shadow: inset 0 0 10px rgba(124,158,191,0.02);">
+                    <div style="font-size:0.55rem; color:#7C9EBF; font-family:var(--font-m); letter-spacing:1px; margin-bottom:2px;">[ /INTEL ]</div>
+                    <div style="font-size:0.45rem; color:var(--text-muted); font-weight:bold; letter-spacing:2px;">READY</div>
+                </div>
+                <div style="flex:1; background:rgba(76,175,154,0.03); border:1px solid rgba(76,175,154,0.2); padding:8px; border-radius:3px; text-align:center; box-shadow: inset 0 0 10px rgba(76,175,154,0.02);">
+                    <div style="font-size:0.55rem; color:#4CAF9A; font-family:var(--font-m); letter-spacing:1px; margin-bottom:2px;">[ /HIKMAH ]</div>
+                    <div style="font-size:0.45rem; color:var(--text-muted); font-weight:bold; letter-spacing:2px;">LOADED</div>
+                </div>
+            </div>
         """, unsafe_allow_html=True)
-        
-        # We use a trick: outputting standard Streamlit buttons inside the HTML div container
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.button("⚡ /INK", on_click=_inject_macro, args=("/ink",), use_container_width=True)
-        with c2:
-            st.button("♦️ /INTEL", on_click=_inject_macro, args=("/intel",), use_container_width=True)
-        with c3:
-            st.button("🔶 /HIKMAH", on_click=_inject_macro, args=("/hikmah",), use_container_width=True)
-            
-        st.markdown('</div>', unsafe_allow_html=True)
 
     active_persona = cfg.get("active_persona")
     if active_persona:
