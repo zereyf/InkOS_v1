@@ -1,8 +1,8 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v21.0: Trifecta Trigger Engine Integration.
-       Includes Clickable Macro Injectors for /INK, /INTEL, and /HIKMAH.
+v23.0: Indestructible Mobile Horizontal Layout.
+       Forces macro buttons into a single row using flexbox injection.
 """
 
 import hashlib
@@ -26,10 +26,7 @@ def _escape(text: str) -> str:
 # ── ADVANCED TRIGGER LOGIC ────────────────────────────────────────────────────
 
 def _apply_dna_triggers(text: str) -> Tuple[str, list]:
-    """
-    Forensic scanning for slash commands to inject stored DNA.
-    Returns (processed_text, detected_triggers).
-    """
+    """Forensic scanning for slash commands to inject stored DNA."""
     detected = []
     processed = text
     
@@ -78,7 +75,6 @@ def _render_score_block(audit: dict, pattern: Optional[dict], triggers: list = N
     efficiency = int(audit.get("efficiency", 0))
     critique   = str(audit.get("critique",  ""))
 
-    # 🧪 DNA TRIGGER HUD
     if triggers:
         for t_name in triggers:
             st.markdown(f"""
@@ -118,10 +114,8 @@ def _render_score_block(audit: dict, pattern: Optional[dict], triggers: list = N
 
 
 def render_workspace(cfg: dict) -> None:
-    # ── VOLATILE INTERCEPT ────────────────────────────────────────────────────
     _render_guest_warning()
 
-    # 🔗 BRAND SIGNATURE HEADER (حبر وفكرة)
     st.markdown(f"""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
             <div class="vc-header" style="margin:0;"><span class="status-dot"></span>{t("workspace_header")}</div>
@@ -132,55 +126,41 @@ def render_workspace(cfg: dict) -> None:
         </div>
     """, unsafe_allow_html=True)
 
-    # 🧬 COMMAND MACROS (Clickable DNA Status Bar)
+    # 🧬 INDESTRUCTIBLE HORIZONTAL MACROS
     current_sid = str(st.session_state.get(K.USER_HASH, ""))
     if "GUEST_" not in current_sid.upper():
         st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); letter-spacing:1px; margin-bottom:4px; text-transform:uppercase;">DNA Macro Injectors</div>', unsafe_allow_html=True)
         
-        # ── CSS INJECTION: The Ultimate Mobile Column Override ──
+        # We inject CSS targeting exactly the container below to force flex-direction: row.
         st.markdown("""
         <style>
-        /* Force the specific macro row to stay horizontal on mobile */
-        div[data-testid="stHorizontalBlock"]:has(.macro-btn) {
+        .macro-container {
             display: flex !important;
             flex-direction: row !important;
-            flex-wrap: nowrap !important;
             gap: 8px !important;
+            margin-bottom: 15px !important;
         }
-        /* Lock the column widths to exactly one-third of the screen */
-        div[data-testid="stHorizontalBlock"]:has(.macro-btn) > div[data-testid="column"] {
-            width: 33.33% !important;
-            min-width: 30% !important;
-            flex: 1 1 0px !important;
-        }
-        /* Slim down the buttons to fit elegantly */
-        div[data-testid="stHorizontalBlock"]:has(.macro-btn) button {
-            padding: 0.15rem 0rem !important;
-            min-height: 38px !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(.macro-btn) button p {
-            font-size: 0.75rem !important;
-            letter-spacing: 0.5px !important;
+        .macro-container button {
+            flex: 1 !important;
+            padding: 8px 4px !important;
+            font-size: 0.7rem !important;
+            white-space: nowrap !important;
         }
         </style>
+        <div class="macro-container">
         """, unsafe_allow_html=True)
-        # ────────────────────────────────────────────────────
-
+        
+        # We use a trick: outputting standard Streamlit buttons inside the HTML div container
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.markdown('<span class="macro-btn"></span>', unsafe_allow_html=True)
-            st.button("⚡ /INK", on_click=_inject_macro, args=("/ink",), use_container_width=True, help="Creative DNA")
+            st.button("⚡ /INK", on_click=_inject_macro, args=("/ink",), use_container_width=True)
         with c2:
-            st.markdown('<span class="macro-btn"></span>', unsafe_allow_html=True)
-            st.button("♦️ /INTEL", on_click=_inject_macro, args=("/intel",), use_container_width=True, help="Observer DNA")
+            st.button("♦️ /INTEL", on_click=_inject_macro, args=("/intel",), use_container_width=True)
         with c3:
-            st.markdown('<span class="macro-btn"></span>', unsafe_allow_html=True)
-            st.button("🔶️ /HIKMAH", on_click=_inject_macro, args=("/hikmah",), use_container_width=True, help="Scholar DNA")
-        
-        st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+            st.button("🔶 /HIKMAH", on_click=_inject_macro, args=("/hikmah",), use_container_width=True)
+            
+        st.markdown('</div>', unsafe_allow_html=True)
 
-
-    # ── PERSONA STATUS ────────────────────────────────────────────────────────
     active_persona = cfg.get("active_persona")
     if active_persona:
         from forge.persona_engine import get_persona_display_name
@@ -192,8 +172,6 @@ def render_workspace(cfg: dict) -> None:
             </div>
         """, unsafe_allow_html=True)
 
-
-    # ── VOICE INPUT ───────────────────────────────────────────────────────────
     from config import client as _audio_client, WHISPER_CONTEXT_PROMPT
     audio_value = st.audio_input("Record your intent", label_visibility="collapsed")
     if audio_value is not None:
@@ -216,7 +194,6 @@ def render_workspace(cfg: dict) -> None:
         elif check_rate_limit(consume=1):
             with st.status(t("status_processing"), expanded=True) as status:
                 
-                # 🧪 APPLY ADVANCED TRIGGER SCANNING
                 final_text, detected_dna = _apply_dna_triggers(cleaned)
                 st.session_state["last_detected_triggers"] = detected_dna
                 
@@ -245,7 +222,6 @@ def render_workspace(cfg: dict) -> None:
                     st.session_state[K.LAST_PATTERN] = pattern
                     st.rerun()
 
-    # ── RESULTS RENDERING ─────────────────────────────────────────────────────
     last_result = st.session_state.get(K.LAST_RESULT)
     if last_result:
         left, right = st.columns([1, 2], gap="large")
