@@ -1,7 +1,7 @@
 """
 state.py — Session State Contract
 ===================================
-v11: Sealed memory leaks, enforced deepcopy isolation, and UTC standard.
+v12: Integrated URL-based Identity Latching and Volatile State Detection.
 """
 
 import uuid
@@ -51,50 +51,54 @@ _DEFAULTS: dict = {
 
 
 def init_session_state() -> None:
-    """Idempotent initialization of required state keys."""
+    """Idempotent initialization with URL-based Identity Latching."""
     for key, default in _DEFAULTS.items():
         if key not in st.session_state:
-            # Deepcopy ensures mutable defaults (lists, dicts) do not share memory references
             st.session_state[key] = deepcopy(default)
             
+    # 🔗 IDENTITY LATCHING LOGIC
     if st.session_state.get(K.USER_HASH) is None:
-        raw_id = str(uuid.uuid4())
-        st.session_state[K.USER_HASH] = hashlib.sha256(raw_id.encode()).hexdigest()[:32]
+        # Check URL for existing Session ID (sid)
+        url_sid = st.query_params.get("sid")
+
+        if url_sid:
+            # Latch onto the ID found in the URL
+            st.session_state[K.USER_HASH] = url_sid
+        else:
+            # Generate a temporary Volatile Guest ID
+            raw_id = str(uuid.uuid4())
+            guest_suffix = hashlib.sha256(raw_id.encode()).hexdigest()[:8].upper()
+            st.session_state[K.USER_HASH] = f"GUEST_{guest_suffix}"
 
 
 def reset_session() -> None:
-    """Nuclear reset: flushes entire state except explicitly preserved keys."""
+    """Nuclear reset: flushes state but preserves the Identity context."""
     preserved_hash = st.session_state.get(K.USER_HASH)
     preserved_lang = st.session_state.get(K.UI_LANG, "en")
     
-    # Aggressively clear to destroy orphaned keys from third-party widgets
     st.session_state.clear()
     
     init_session_state()
     st.session_state[K.USER_HASH] = preserved_hash
     st.session_state[K.UI_LANG]   = preserved_lang
 
-    # 🐛 LEVEL 1 FIX: Explicitly zero-out widget keys to kill frontend browser ghosting
+    # 🐛 LEVEL 1 FIX: Kill frontend browser ghosting
     st.session_state["ta_input"]            = ""
     st.session_state["refined_output_area"] = ""
     st.session_state["vault_title_input"]   = ""
     st.session_state["vault_tags_input"]    = ""
 
 
-
 def get_remaining_calls(window_seconds: int = 60, max_calls: int = 10) -> int:
     """Calculates remaining quota and executes garbage collection on expired timestamps."""
     now = datetime.now(timezone.utc)
     
-    # Prune timestamps outside the rolling window
     valid_timestamps = [
         t for t in st.session_state.get(K.TIMESTAMPS, [])
         if t > now - timedelta(seconds=window_seconds)
     ]
     
-    # GARBAGE COLLECTION: Overwrite state to prevent infinite array memory leak
     st.session_state[K.TIMESTAMPS] = valid_timestamps
-    
     return max(0, max_calls - len(valid_timestamps))
 
 
@@ -103,4 +107,3 @@ def record_api_call() -> None:
     if K.TIMESTAMPS not in st.session_state:
         st.session_state[K.TIMESTAMPS] = []
     st.session_state[K.TIMESTAMPS].append(datetime.now(timezone.utc))
-
