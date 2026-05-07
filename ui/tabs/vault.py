@@ -1,7 +1,7 @@
 """
 ui/tabs/vault.py — Prompt Memory Vault Tab
 ============================================
-v8.0: Privacy Shield Integration.
+v8.1: Privacy Shield Integration & HTML Rendering Fix.
       Restricts database uplink to verified Terminal Identities only.
 """
 
@@ -163,17 +163,18 @@ def render_vault() -> None:
         islamic_tag = ' <span style="color:#6ee7b7;font-size:0.7rem;">☪</span>' if entry.get("islamic") else ""
 
         with st.expander(f"{score_indicator} [{entry['id'][:6]}] {entry['title']} · {score}%"):
+            # 🟢 FIX: This specific block must be "flushed left" to render HTML correctly
             st.markdown(f"""
-            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(201,168,76,0.05); border:1px solid rgba(201,168,76,0.15); border-radius:4px; padding:10px 14px; margin-bottom:12px;">
-                <div style="font-family:var(--font-m); font-size:0.65rem; color:var(--gold);">
-                    <span style="margin-right:15px;"><strong>FRAMEWORK:</strong> {entry.get('framework', 'N/A')}</span>
-                    <span><strong>AESTHETIC:</strong> {entry.get('aesthetic', 'Raw')}</span>
-                    {pattern_tag}{islamic_tag}
-                </div>
-                <div style="font-family:var(--font-m); font-size:0.58rem; color:var(--text-dim);">SAVED: {entry.get('created_at','')[:10]}</div>
-            </div>
-            {f'<div style="margin-bottom:12px;">{tag_chips}</div>' if tag_chips else ''}
-            """, unsafe_allow_html=True)
+<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(201,168,76,0.05); border:1px solid rgba(201,168,76,0.15); border-radius:4px; padding:10px 14px; margin-bottom:12px;">
+<div style="font-family:var(--font-m); font-size:0.65rem; color:var(--gold);">
+<span style="margin-right:15px;"><strong>FRAMEWORK:</strong> {entry.get('framework', 'N/A')}</span>
+<span><strong>AESTHETIC:</strong> {entry.get('aesthetic', 'Raw')}</span>
+{pattern_tag}{islamic_tag}
+</div>
+<div style="font-family:var(--font-m); font-size:0.58rem; color:var(--text-dim);">SAVED: {entry.get('created_at','')[:10]}</div>
+</div>
+{f'<div style="margin-bottom:12px;">{tag_chips}</div>' if tag_chips else ''}
+""", unsafe_allow_html=True)
 
             st.code(entry["content"], language="markdown")
             a1, a2, a3 = st.columns([2, 2, 1])
