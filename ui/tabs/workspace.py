@@ -185,23 +185,58 @@ def render_workspace(cfg: dict) -> None:
         st.session_state["athar_trace"] = False
         cleaned, _ = sanitize_input(st.session_state.get("ta_input", ""))
         if cleaned:
-            with st.status("Neural Handshake...", expanded=True):
-                final_text, _ = _apply_dna_triggers(cleaned)
-                auto_target, auto_reason = detect_best_target(final_text)
-                st.session_state[K.AUTO_TARGET], st.session_state[K.AUTO_REASON] = auto_target, auto_reason
-                
-                result, audit, _ = run_refinement_and_audit(
-                    final_text, auto_target, cfg["framework"], 
-                    cfg["source_lang"], cfg["aesthetic_choice"], 
-                    cfg["islamic_mode"], cfg.get("active_persona")
-                )
-                
-                st.session_state[K.LAST_RESULT], st.session_state[K.LAST_AUDIT], st.session_state[K.LAST_INPUT] = result, audit, cleaned
-                st.session_state[K.HISTORY].append({
-                    "timestamp": datetime.now(timezone.utc).isoformat(), "intent": cleaned, "target": auto_target,
-                    "score": audit.get("score", 0), "asset": result
-                })
-                st.rerun()
+            import time
+            
+            # ── HUD INITIALIZATION ──
+            st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+            ui_text = st.empty()
+            prog_bar = st.progress(0)
+            
+            # Phase 1: Handshake
+            ui_text.markdown("`< 15% >` **[SYSTEM]** Validating payload integrity and parsing logic gates...")
+            prog_bar.progress(15)
+            time.sleep(0.3)
+            
+            # Phase 2: Routing & DNA
+            final_text, detected = _apply_dna_triggers(cleaned)
+            auto_target, auto_reason = detect_best_target(final_text)
+            st.session_state[K.AUTO_TARGET], st.session_state[K.AUTO_REASON] = auto_target, auto_reason
+            
+            dna_log = f" | DNA: {', '.join(detected)}" if detected else ""
+            ui_text.markdown(f"`< 45% >` **[ROUTER]** Locking trajectory to **{auto_target.upper()}**{dna_log}...")
+            prog_bar.progress(45)
+            time.sleep(0.4)
+            
+            # Phase 3: Execution
+            ui_text.markdown("`< 80% >` **[CORE]** Compiling refinement matrix. Executing handshake...")
+            prog_bar.progress(80)
+            
+            # API CALL (Real wait time happens here)
+            result, audit, _ = run_refinement_and_audit(
+                final_text, auto_target, cfg["framework"], 
+                cfg["source_lang"], cfg["aesthetic_choice"], 
+                cfg["islamic_mode"], cfg.get("active_persona")
+            )
+            
+            # Phase 4: Resolution
+            ui_text.markdown(f"`< 100% >` **[SECURE]** Asset refraction complete. Closing uplink.")
+            prog_bar.progress(100)
+            time.sleep(0.3)
+            
+            # Clear HUD for clean layout
+            ui_text.empty()
+            prog_bar.empty()
+            
+            # State Saving...
+            st.session_state[K.LAST_RESULT] = result
+            st.session_state[K.LAST_AUDIT] = audit
+            st.session_state[K.LAST_INPUT] = cleaned
+            st.session_state[K.HISTORY].append({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "intent": cleaned, "target": auto_target,
+                "score": audit.get("score", 0), "asset": result
+            })
+            st.rerun()
 
     # ── 5. OUTPUT LAYER ───────────────────────────────────────────────────────
     if st.session_state.get(K.LAST_RESULT):
