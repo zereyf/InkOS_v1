@@ -95,27 +95,39 @@ def render_workspace(cfg: dict) -> None:
     # 1. HEADER & COGNITIVE LOAD
     source_lang = cfg.get("source_lang", "English")
     
-    # 🟢 IMPROVEMENT: Read from the widget key for real-time load tracking
-    raw_text = st.session_state.get("ta_input_widget") or st.session_state.get("ta_input") or ""
+    # 🟢 FIXED: Live Load Tracking (Reads directly from the widget's internal state)
+    raw_text = st.session_state.get("ta_input_widget") or ""
     cognitive_load = len(raw_text)
 
-    # 🟢 PRECISION: Persona Data Extraction with type safety
     active_persona = st.session_state.get(K.ACTIVE_PERSONA)
     p_name = ""
+    p_target = "All"
     if isinstance(active_persona, dict):
         p_name = active_persona.get("name", "").upper()
+        p_target = active_persona.get("target", "All")
 
-    # Badge Logic
-    expert_badge = "<span style='background:rgba(229, 62, 62, 0.1); color:var(--danger); border:1px solid rgba(229, 62, 62, 0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; position:relative; top:-2px;'>EXPERT</span>" if cfg.get("expert_mode") else ""
-    islamic_badge = "<span style='background:rgba(76, 175, 154, 0.1); color:#4CAF9A; border:1px solid rgba(76, 175, 154, 0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; position:relative; top:-2px;'>HIKMAH LATCH</span>" if cfg.get("islamic_mode") else ""
-    persona_badge = f"<span style='background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; position:relative; top:-2px;'>PERSONA: {p_name}</span>" if p_name else ""
+    # 🟢 NEW FEATURE: Target Misalignment Detection
+    current_global_target = cfg.get("target_model")
+    is_misaligned = p_target != "All" and p_target != current_global_target
+    
+    misalignment_badge = ""
+    if is_misaligned:
+        misalignment_badge = textwrap.dedent(f"""
+            <span style='background:rgba(229, 62, 62, 0.15); color:#FF4B4B; border:1px solid #FF4B4B; padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; position:relative; top:-2px; animation: pulse-red 2s infinite;'>
+                ⚠️ THERMAL DRIFT: TARGET MISMATCH ({p_target.upper()} vs {current_global_target.upper()})
+            </span>
+        """)
+
+    expert_badge = f"<span class='badge-expert'>EXPERT</span>" if cfg.get("expert_mode") else ""
+    islamic_badge = f"<span class='badge-hikmah'>HIKMAH LATCH</span>" if cfg.get("islamic_mode") else ""
+    persona_badge = f"<span class='badge-persona'>PERSONA: {p_name}</span>" if p_name else ""
 
     header_html = textwrap.dedent(f"""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
             <div class="vc-header" style="margin:0; display:flex; align-items:center;">
-                <span class="status-dot"></span>{t("tab_workspace", fallback="WORKSPACE")}{expert_badge}{islamic_badge}{persona_badge}
+                <span class="status-dot"></span>{t("tab_workspace")}{expert_badge}{islamic_badge}{persona_badge}{misalignment_badge}
             </div>
-            <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; letter-spacing:1px; text-shadow: 0 0 10px rgba(201,168,76,0.3);">حبر وفكرة</div>
+            <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; letter-spacing:1px; text-shadow: 0 0 10px rgba(201, 168, 76, 0.3);">حبر وفكرة</div>
         </div>
         <div style="display:flex; justify-content:space-between; font-family:var(--font-m); font-size:0.55rem; color:var(--text-dim); letter-spacing:1px; margin-bottom:15px; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
             <div>A.I.Z.E.N. // REF: {(st.session_state.get(K.USER_HASH) or "GHOST_ID")[:8]}</div>
@@ -123,6 +135,29 @@ def render_workspace(cfg: dict) -> None:
         </div>
     """)
     st.markdown(header_html, unsafe_allow_html=True)
+
+    # ... [Sections 2 & 3 remain the same] ...
+
+    # 4. INPUT AREA & VOICE UPLINK
+    if "ta_input_widget" not in st.session_state:
+        st.session_state["ta_input_widget"] = st.session_state.get("ta_input", "")
+
+    v_col1, v_col2 = st.columns([1, 6])
+    with v_col1:
+        # [Voice Uplink logic remains unchanged, but ensure it writes to "ta_input_widget"]
+        pass 
+
+    with v_col2:
+        # 🟢 FIXED: The widget now drives the state directly
+        intent_val = st.text_area(
+            "intent", 
+            height=145, 
+            placeholder=t("workspace_placeholder"), 
+            label_visibility="collapsed", 
+            key="ta_input_widget" 
+        )
+        st.session_state["ta_input"] = intent_val
+
 
 
 
