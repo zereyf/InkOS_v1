@@ -4,6 +4,7 @@ InkOS | app.py — Entry Point
 v2026.4.3: Master Sync — Bootloader Hardened.
            - Destroyed duplicate Persona Rehydration trap.
            - Injected Task 10 Startup Validation matrix.
+           - V2 Tactical Toggle Baseweb Override Active.
 """
 
 import sys
@@ -84,41 +85,45 @@ st.markdown("""
         70% { box-shadow: 0 0 0 6px rgba(229, 62, 62, 0); }
         100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0); }
     }
-    /* ── TACTICAL TOGGLE SWITCHES ── */
+    
+    /* ── TACTICAL TOGGLE SWITCHES (V2 BASEWEB OVERRIDE) ── */
     
     /* 1. Terminal Font for the Label */
-    div[data-testid="stToggle"] label {
+    div[data-testid="stToggle"] label p {
         font-family: var(--font-m) !important;
-        font-size: 0.6rem !important;
+        font-size: 0.65rem !important;
         letter-spacing: 1px !important;
         color: var(--text-muted) !important;
+        text-transform: uppercase !important;
     }
 
-    /* 2. Square the Track (The background of the switch) */
-    div[data-testid="stToggle"] div[role="switch"] {
-        border-radius: 2px !important; 
+    /* 2. Square the Track (Inactive) */
+    div[data-testid="stToggle"] [data-baseweb="checkbox"] > div:first-of-type {
         background-color: rgba(255, 255, 255, 0.05) !important;
+        border-radius: 2px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        transition: all 0.3s ease !important;
     }
 
-    /* 3. Square the Thumb (The part that moves) */
-    div[data-testid="stToggle"] div[role="switch"] > div {
-        border-radius: 1px !important;
+    /* 3. Square the Thumb (Inactive) */
+    div[data-testid="stToggle"] [data-baseweb="checkbox"] > div:first-of-type > div {
         background-color: var(--text-dim) !important;
+        border-radius: 1px !important;
         box-shadow: none !important;
+        transition: all 0.3s ease !important;
     }
 
-    /* 4. ACTIVE STATE: The Amber Forensic Glow */
-    div[data-testid="stToggle"] input:checked + div[role="switch"] {
+    /* 4. ACTIVE STATE: The Amber Forensic Track */
+    div[data-testid="stToggle"] input:checked + div {
         background-color: rgba(201, 168, 76, 0.15) !important;
         border-color: var(--gold) !important;
-        box-shadow: 0 0 8px rgba(201, 168, 76, 0.3) !important;
+        box-shadow: inset 0 0 8px rgba(201, 168, 76, 0.1) !important;
     }
 
-    /* 5. ACTIVE STATE: Thumb Color */
-    div[data-testid="stToggle"] input:checked + div[role="switch"] > div {
+    /* 5. ACTIVE STATE: The Glowing Amber Thumb */
+    div[data-testid="stToggle"] input:checked + div > div {
         background-color: var(--gold) !important;
-        box-shadow: 0 0 4px var(--gold) !important;
+        box-shadow: 0 0 8px rgba(201, 168, 76, 0.6) !important;
     }
 
 </style>
