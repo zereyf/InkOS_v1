@@ -158,18 +158,50 @@ def render_sidebar() -> SidebarConfig:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── PERSONA SELECTOR ──────────────────────────────────────────────────
+        # ── 🟢 FIXED: PERSONA SELECTOR (SYNC & REHYDRATION) ────────────────────
         st.subheader(t("active_persona", fallback="Active Persona"))
         user_personas = _load_user_personas(st.session_state.get(K.USER_HASH, ""))
-        all_names = list(STARTER_PERSONAS.keys()) + [p["name"] for p in user_personas]
+        
+        # Build comprehensive list: None + Starters + Custom Constructs
+        options_list = ["None"] + list(STARTER_PERSONAS.keys()) + [p["name"] for p in user_personas]
+
+        # 1. URL REHYDRATION: Ensure custom personas survive refresh
+        url_p_name = st.query_params.get("p")
+        if url_p_name and not st.session_state.get(K.ACTIVE_PERSONA):
+            if url_p_name in STARTER_PERSONAS:
+                st.session_state[K.ACTIVE_PERSONA] = STARTER_PERSONAS[url_p_name]
+            else:
+                custom_p = next((p for p in user_personas if p["name"] == url_p_name), None)
+                if custom_p:
+                    st.session_state[K.ACTIVE_PERSONA] = custom_p
+
+        # 2. DYNAMIC INDEX: Sync Sidebar with Forge "Engage" clicks
+        current_active = st.session_state.get(K.ACTIVE_PERSONA)
+        current_name = get_persona_display_name(current_active) if current_active else "None"
+        
+        try:
+            p_index = options_list.index(current_name)
+        except ValueError:
+            p_index = 0
+
+        # 3. CALLBACK: Update URL when persona changes via Sidebar
+        def _on_sidebar_persona_change():
+            val = st.session_state.sb_persona
+            if val == "None":
+                if "p" in st.query_params: del st.query_params["p"]
+            else:
+                st.query_params["p"] = val
 
         sel_persona = st.selectbox(
             "Persona Select", 
-            options=["None"] + all_names, 
+            options=options_list, 
+            index=p_index,
             key="sb_persona", 
+            on_change=_on_sidebar_persona_change,
             label_visibility="collapsed"
         )
         
+        # Map selected name back to persona object and update state
         if sel_persona == "None":
             active_p = None
         elif sel_persona in STARTER_PERSONAS:
@@ -178,6 +210,7 @@ def render_sidebar() -> SidebarConfig:
             active_p = next((p for p in user_personas if p["name"] == sel_persona), None)
 
         st.session_state[K.ACTIVE_PERSONA] = active_p
+
 
         if active_p:
             st.markdown(f"""
