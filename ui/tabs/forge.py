@@ -379,7 +379,6 @@ def toggle_persona_callback(persona_data: dict, is_currently_active: bool):
         # 🟢 PERSISTENCE: Latch persona name into URL
         st.query_params["p"] = persona_data.get("name", "Unknown")
         st.toast(f"🎭 LATCHED: {persona_data.get('name', 'Unknown')}")
-)
 
 # ── UI COMPONENTS ─────────────────────────────────────────────────────────────
 
