@@ -114,18 +114,22 @@ def render_workspace(cfg: dict) -> None:
                 ⚠️ THERMAL DRIFT: TARGET MISMATCH ({p_target.upper()} vs {current_global_target.upper()})
             </span>
         """)
-
-    expert_badge = f"<span class='badge-expert' style='background:rgba(229, 62, 62, 0.1); color:var(--danger); border:1px solid rgba(229, 62, 62, 0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px;'>EXPERT</span>" if cfg.get("expert_mode") else ""
-    islamic_badge = f"<span class='badge-hikmah' style='background:rgba(76, 175, 154, 0.1); color:#4CAF9A; border:1px solid rgba(76, 175, 154, 0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px;'>HIKMAH LATCH</span>" if cfg.get("islamic_mode") else ""
-    persona_badge = f"<span class='badge-persona' style='background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px;'>PERSONA: {p_name}</span>" if p_name else ""
+    # ── 1. HEADER BADGE FIX ──────────────────────────────────────────────────
+    # Added explicit &nbsp; and forced margins to prevent "WORKSPACEHIKMAH" overlap
+    expert_badge = f"&nbsp;<span style='background:rgba(229, 62, 62, 0.1); color:var(--danger); border:1px solid rgba(229, 62, 62, 0.3); padding:2px 6px; border-radius:2px; margin-left:10px; font-size:0.45rem; letter-spacing:1px; display:inline-block; vertical-align:middle;'>EXPERT</span>" if cfg.get("expert_mode") else ""
+    
+    islamic_badge = f"&nbsp;<span style='background:rgba(76, 175, 154, 0.1); color:#4CAF9A; border:1px solid rgba(76, 175, 154, 0.3); padding:2px 6px; border-radius:2px; margin-left:10px; font-size:0.45rem; letter-spacing:1px; display:inline-block; vertical-align:middle;'>HIKMAH LATCH</span>" if cfg.get("islamic_mode") else ""
+    
+    persona_badge = f"&nbsp;<span style='background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.3); padding:2px 6px; border-radius:2px; margin-left:10px; font-size:0.45rem; letter-spacing:1px; display:inline-block; vertical-align:middle;'>PERSONA: {p_name}</span>" if p_name else ""
 
     header_html = textwrap.dedent(f"""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
             <div class="vc-header" style="margin:0; display:flex; align-items:center;">
-                <span class="status-dot"></span>{t("tab_workspace")}{expert_badge}{islamic_badge}{persona_badge}{misalignment_badge}
+                <span class="status-dot"></span><span style="margin-right:5px;">{t("tab_workspace", fallback="WORKSPACE")}</span>{expert_badge}{islamic_badge}{persona_badge}{misalignment_badge}
             </div>
-            <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; letter-spacing:1px; text-shadow: 0 0 10px rgba(201,168,76,0.3);">حبر وفكرة</div>
+            <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; letter-spacing:1px; text-shadow: 0 0 10px rgba(201, 168, 76, 0.3);">حبر وفكرة</div>
         </div>
+
         <div style="display:flex; justify-content:space-between; font-family:var(--font-m); font-size:0.55rem; color:var(--text-dim); letter-spacing:1px; margin-bottom:15px; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
             <div>A.I.Z.E.N. // REF: {(st.session_state.get(K.USER_HASH) or "GHOST_ID")[:8]}</div>
             <div>LOAD: {cognitive_load} B</div>
