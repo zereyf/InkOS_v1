@@ -123,14 +123,18 @@ def reset_session() -> None:
 
 
 def get_remaining_calls(window_seconds: int = 60, max_calls: int = 10) -> int:
-    """Forensic rate limiting calculator."""
+    """Forensic rate limiting calculator with None-safety."""
     now = datetime.now(timezone.utc)
+    # 🛡️ ARMORED: Ensure we always iterate over a list, even if state is None
+    timestamps = st.session_state.get(K.TIMESTAMPS) or [] 
+    
     valid_timestamps = [
-        t for t in st.session_state.get(K.TIMESTAMPS, [])
-        if t > now - timedelta(seconds=window_seconds)
+        ts for ts in timestamps
+        if ts > now - timedelta(seconds=window_seconds)
     ]
     st.session_state[K.TIMESTAMPS] = valid_timestamps
     return max(0, max_calls - len(valid_timestamps))
+
 
 
 def record_api_call() -> None:
