@@ -20,14 +20,15 @@ from i18n.translations import t
 def toggle_persona_callback(persona_data: dict, is_currently_active: bool):
     if is_currently_active:
         st.session_state[K.ACTIVE_PERSONA] = None
-        st.toast("🎭 System Override Deactivated.")
+        if "p" in st.query_params:
+            del st.query_params["p"]
+        st.toast("🎭 Identity Matrix Reset.")
     else:
         st.session_state[K.ACTIVE_PERSONA] = persona_data
+        # Latch name into URL parameter
+        st.query_params["p"] = persona_data.get("name", "Unknown")
         st.toast(f"🎭 LATCHED: {persona_data.get('name', 'Unknown')}")
 
-def toggle_preview_callback(pid: str):
-    current = st.session_state.get(f"show_preview_{pid}", False)
-    st.session_state[f"show_preview_{pid}"] = not current
 
 # ──────────────────────────────────────────────────────────────────────────────
 
