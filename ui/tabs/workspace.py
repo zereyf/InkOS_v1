@@ -1,22 +1,19 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v30.8: Master Sync — Architecture Stabilized.
-       - Restored missing variable definitions (NameError fix).
-       - Repaired block indentation (IndentationError fix).
-       - HTML markup inline formatting secured.
-       - Voice Uplink (Groq Whisper) integrated.
+v31.0: Master Consolidation — The AmeerInk Protocol.
+       - Unified Input Pipeline (Duplicate Key Fix).
+       - Live Thermal HUD (Persona & Target Sync).
+       - Hardened Voice Uplink (Loop Prevention).
 """
 
-import hashlib
 import textwrap
 import streamlit as st
 from datetime import datetime, timezone
-from typing import Optional, Tuple
+from typing import Tuple
 
 from state import K
 from security.sanitizer import sanitize_input
-from security.rate_limiter import check_rate_limit
 from engine.refiner import run_refinement_and_audit, detect_best_target
 from engine.cognitive_map import detect_arabic_pattern
 from i18n.translations import t
@@ -41,14 +38,14 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
     score = int(safe_audit.get("score", 0))
     precision = int(safe_audit.get("precision", 0))
     alignment = int(safe_audit.get("alignment", 0))
-    efficiency = int(safe_audit.get("efficiency", 0))
-    critique = str(safe_audit.get("critique", ""))
     
     thermal_status = "STABLE" if score > 80 else "CRITICAL" if score < 40 else "FLUCTUATING"
-    target, reason = st.session_state.get(K.AUTO_TARGET, "Unknown"), st.session_state.get(K.AUTO_REASON, "Manual")
-    status_label, status_color = ("OPTIMIZED", "#4CAF9A") if score > 85 else ("SUB-OPTIMAL", "var(--gold)")
+    target = st.session_state.get(K.AUTO_TARGET, "Unknown")
+    reason = st.session_state.get(K.AUTO_REASON, "Manual")
+    status_color = "#4CAF9A" if score > 85 else "var(--gold)"
     
-    p_pct, a_pct, e_pct = min(100, (precision/40)*100), min(100, (alignment/40)*100), min(100, (efficiency/20)*100)
+    p_pct = min(100, (precision/40)*100)
+    a_pct = min(100, (alignment/40)*100)
 
     hud_html = textwrap.dedent(f"""
         <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); padding: 22px; position: relative; overflow: hidden; margin-bottom: 15px;">
@@ -79,7 +76,7 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
                 <div style="font-family: var(--font-m); font-size: 0.55rem; color: var(--gold); text-transform: uppercase; margin-bottom: 6px;">> Forensic Log</div>
                 <div style="font-family: var(--font-m); font-size: 0.75rem; color: var(--text); line-height: 1.6;">
                     <span style="color:var(--gold); font-weight:bold;">[ CIPHER ]: {target.upper()}</span> — {reason}<br>
-                    {critique}
+                    {safe_audit.get("critique", "")}
                 </div>
             </div>
         </div>
@@ -90,22 +87,23 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
             st.json(safe_audit)
 
 # ── MAIN RENDERER ─────────────────────────────────────────────────────────────
+
 def render_workspace(cfg: dict) -> None:
-    # ── 1. HEADER & COGNITIVE LOAD ───────────────────────────────────────────
+    # ── 1. HEADER & LIVE METRICS ─────────────────────────────────────────────
     source_lang = cfg.get("source_lang", "English")
     
-    # 🟢 LIVE SYNC: Read from the widget key for real-time load tracking
+    # 🟢 LIVE LOAD: Reads from widget key for real-time tracking
     raw_text = st.session_state.get("ta_input_widget") or ""
     cognitive_load = len(raw_text)
 
-    # Persona Data Extraction
+    # Active Persona Logic
     active_persona = st.session_state.get(K.ACTIVE_PERSONA)
     p_name, p_target = "", "All"
     if isinstance(active_persona, dict):
         p_name = active_persona.get("name", "").upper()
         p_target = active_persona.get("target", "All")
 
-    # Target Misalignment Detection (Thermal Drift)
+    # Thermal Drift Warning (Global vs Persona Target Mismatch)
     current_global_target = cfg.get("target_model")
     is_misaligned = p_target != "All" and p_target != current_global_target
     
@@ -117,16 +115,16 @@ def render_workspace(cfg: dict) -> None:
             </span>
         """)
 
-    expert_badge = f"<span class='badge-expert'>EXPERT</span>" if cfg.get("expert_mode") else ""
-    islamic_badge = f"<span class='badge-hikmah'>HIKMAH LATCH</span>" if cfg.get("islamic_mode") else ""
-    persona_badge = f"<span class='badge-persona'>PERSONA: {p_name}</span>" if p_name else ""
+    expert_badge = f"<span class='badge-expert' style='background:rgba(229, 62, 62, 0.1); color:var(--danger); border:1px solid rgba(229, 62, 62, 0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px;'>EXPERT</span>" if cfg.get("expert_mode") else ""
+    islamic_badge = f"<span class='badge-hikmah' style='background:rgba(76, 175, 154, 0.1); color:#4CAF9A; border:1px solid rgba(76, 175, 154, 0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px;'>HIKMAH LATCH</span>" if cfg.get("islamic_mode") else ""
+    persona_badge = f"<span class='badge-persona' style='background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px;'>PERSONA: {p_name}</span>" if p_name else ""
 
     header_html = textwrap.dedent(f"""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
             <div class="vc-header" style="margin:0; display:flex; align-items:center;">
                 <span class="status-dot"></span>{t("tab_workspace")}{expert_badge}{islamic_badge}{persona_badge}{misalignment_badge}
             </div>
-            <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; letter-spacing:1px; text-shadow: 0 0 10px rgba(201, 168, 76, 0.3);">حبر وفكرة</div>
+            <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; letter-spacing:1px; text-shadow: 0 0 10px rgba(201,168,76,0.3);">حبر وفكرة</div>
         </div>
         <div style="display:flex; justify-content:space-between; font-family:var(--font-m); font-size:0.55rem; color:var(--text-dim); letter-spacing:1px; margin-bottom:15px; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
             <div>A.I.Z.E.N. // REF: {(st.session_state.get(K.USER_HASH) or "GHOST_ID")[:8]}</div>
@@ -155,23 +153,7 @@ def render_workspace(cfg: dict) -> None:
         """)
         st.markdown(dna_bar, unsafe_allow_html=True)
 
-    # ── 3. 📡 LIVE LINGUISTIC INTERCEPT ──────────────────────────────────────
-    raw_input = st.session_state.get("ta_input_widget", "")
-    live_pattern_html = '<div style="height:22px;"></div>'
-    if raw_input and source_lang == "Arabic (العربية)":
-        p_data = detect_arabic_pattern(raw_input)
-        if p_data:
-            live_pattern_html = textwrap.dedent(f"""
-                <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px; opacity:0.8;">
-                    <span style="height:6px; width:6px; background:var(--gold); border-radius:50%; box-shadow: 0 0 5px var(--gold);"></span>
-                    <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">
-                        PATTERN_INTERCEPT: <span style="color:var(--text); font-weight:bold;">{p_data['pattern'].upper()}</span>
-                    </div>
-                </div>
-            """)
-    st.markdown(live_pattern_html, unsafe_allow_html=True)
-
-    # ── 4. INPUT AREA & VOICE UPLINK ──────────────────────────────────────────
+    # ── 3. INPUT AREA & VOICE UPLINK ──────────────────────────────────────────
     if "ta_input_widget" not in st.session_state:
         st.session_state["ta_input_widget"] = ""
 
@@ -189,11 +171,11 @@ def render_workspace(cfg: dict) -> None:
                         transcription = client.audio.transcriptions.create(
                             file=("audio.wav", audio_bytes.read()),
                             model="whisper-large-v3",
-                            prompt="This audio may contain English, Fusha, or regional Arabic dialects."
+                            prompt="Arabic Education terminology, dialects, and Fusha transcription."
                         )
                         if transcription.text:
-                            curr = st.session_state.get("ta_input_widget", "")
-                            st.session_state["ta_input_widget"] = f"{curr} {transcription.text}".strip()
+                            curr_val = st.session_state.get("ta_input_widget", "")
+                            st.session_state["ta_input_widget"] = f"{curr_val} {transcription.text}".strip()
                             st.session_state["last_audio_hash"] = current_audio_hash
                             st.toast("Voice Transcribed.", icon="🎙️")
                             st.rerun()
@@ -201,7 +183,7 @@ def render_workspace(cfg: dict) -> None:
                         st.error(f"Voice Uplink Failed: {e}")
 
     with v_col2:
-        # THE ONLY INSTANCE OF ta_input_widget
+        # THE ONLY INSTANCE: ta_input_widget
         intent_val = st.text_area(
             "intent", 
             height=145, 
@@ -211,6 +193,20 @@ def render_workspace(cfg: dict) -> None:
         )
         st.session_state["ta_input"] = intent_val
 
+    # ── 4. 📡 LIVE LINGUISTIC INTERCEPT ──────────────────────────────────────
+    # Placed after text area to avoid one-frame delay in Arabic detection
+    if intent_val and source_lang == "Arabic (العربية)":
+        p_data = detect_arabic_pattern(intent_val)
+        if p_data:
+            st.markdown(textwrap.dedent(f"""
+                <div style="margin-top:-15px; margin-bottom:15px; display:flex; align-items:center; gap:8px; opacity:0.8;">
+                    <span style="height:6px; width:6px; background:var(--gold); border-radius:50%; box-shadow: 0 0 5px var(--gold);"></span>
+                    <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">
+                        PATTERN_INTERCEPT: <span style="color:var(--text); font-weight:bold;">{p_data['pattern'].upper()}</span>
+                    </div>
+                </div>
+            """), unsafe_allow_html=True)
+
     if st.button(t("execute_btn", fallback="EXECUTE REFINEMENT"), use_container_width=True):
         st.session_state["athar_trace"] = False
         cleaned, _ = sanitize_input(st.session_state.get("ta_input", ""))
@@ -219,11 +215,23 @@ def render_workspace(cfg: dict) -> None:
                 final_text, _ = _apply_dna_triggers(cleaned)
                 auto_target, auto_reason = detect_best_target(final_text)
                 st.session_state[K.AUTO_TARGET], st.session_state[K.AUTO_REASON] = auto_target, auto_reason
-                result, audit, _ = run_refinement_and_audit(final_text, auto_target, cfg["framework"], cfg["source_lang"], cfg["aesthetic_choice"], cfg["islamic_mode"], cfg.get("active_persona"))
+                
+                result, audit, _ = run_refinement_and_audit(
+                    final_text, auto_target, cfg["framework"], 
+                    cfg["source_lang"], cfg["aesthetic_choice"], 
+                    cfg["islamic_mode"], cfg.get("active_persona")
+                )
+                
                 st.session_state[K.LAST_RESULT] = result
                 st.session_state[K.LAST_AUDIT] = audit
                 st.session_state[K.LAST_INPUT] = cleaned
-                st.session_state[K.HISTORY].append({"timestamp": datetime.now(timezone.utc).isoformat(), "intent": cleaned, "target": auto_target, "score": audit.get("score", 0), "asset": result})
+                st.session_state[K.HISTORY].append({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "intent": cleaned,
+                    "target": auto_target,
+                    "score": audit.get("score", 0),
+                    "asset": result
+                })
                 st.rerun()
 
     # ── 5. OUTPUT LAYER ───────────────────────────────────────────────────────
@@ -234,24 +242,29 @@ def render_workspace(cfg: dict) -> None:
         with right:
             st.markdown(f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:2px; margin-bottom:8px;">[ REFINED_ASSET ]</div>', unsafe_allow_html=True)
             st.text_area("Asset", value=st.session_state.get(K.LAST_RESULT), height=320, label_visibility="collapsed")
+            
             st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
             v1, v2, v3 = st.columns([2, 2, 1])
             with v1: st.text_input("Title", key="v_t", label_visibility="collapsed", placeholder="Asset Title...")
             with v2: st.text_input("Tags", key="v_g", label_visibility="collapsed", placeholder="Forensic Tags...")
             with v3: 
                 if st.button("SECURE"):
-                    current_user = st.session_state.get(K.USER_HASH)
-                    if not current_user or "GUEST_" in str(current_user).upper():
+                    uid = st.session_state.get(K.USER_HASH)
+                    if not uid or "GUEST_" in str(uid).upper():
                         st.error("Vault Lock Failed: Identity Unlatched.")
                     else:
                         from vault.vault_engine import save_prompt
-                        res, err = save_prompt(current_user, title=st.session_state.get("v_t"), tags=st.session_state.get("v_g"), content=st.session_state.get(K.LAST_RESULT), target=st.session_state.get(K.AUTO_TARGET), framework=cfg["framework"], score=(st.session_state.get(K.LAST_AUDIT) or {}).get("score", 0))
+                        res, err = save_prompt(
+                            uid, title=st.session_state.get("v_t"), 
+                            tags=st.session_state.get("v_g"), 
+                            content=st.session_state.get(K.LAST_RESULT), 
+                            target=st.session_state.get(K.AUTO_TARGET), 
+                            framework=cfg["framework"], 
+                            score=(st.session_state.get(K.LAST_AUDIT) or {}).get("score", 0)
+                        )
                         if not err:
                             st.session_state[K.LAST_SAVED] = datetime.now().strftime("%H:%M")
                             st.toast("Neural Vault Updated.")
                             st.rerun()
                         else:
                             st.error(f"Vault Lock Failed: {err}")
-
-
-
