@@ -89,23 +89,24 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
             st.json(safe_audit)
 
 # ── MAIN RENDERER ─────────────────────────────────────────────────────────────
-
 def render_workspace(cfg: dict) -> None:
     # 1. HEADER & COGNITIVE LOAD
     source_lang = cfg.get("source_lang", "English")
     cognitive_load = len(st.session_state.get("ta_input", ""))
+    
+    # 🟢 ARMORED: Removed empty line, fixed translation key, optimized for mobile width.
     header_html = textwrap.dedent(f"""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <div class="vc-header" style="margin:0;"><span class="status-dot"></span>{t("workspace_header")}</div>
+            <div class="vc-header" style="margin:0;"><span class="status-dot"></span>{t("tab_workspace", fallback="WORKSPACE")}</div>
             <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; letter-spacing:1px; text-shadow: 0 0 10px rgba(201,168,76,0.3);">حبر وفكرة</div>
         </div>
-        <div style="display:flex; justify-content:space-between; font-family:var(--font-m); font-size:0.5rem; color:var(--text-dim); letter-spacing:2px; margin-bottom:15px; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
-            <div>A.I.Z.E.N. TERMINAL // REF: {(st.session_state.get(K.USER_HASH) or "GHOST_ID")[:8]}</div>
-
-            <div>COGNITIVE_LOAD: {cognitive_load} BYTES</div>
+        <div style="display:flex; justify-content:space-between; font-family:var(--font-m); font-size:0.55rem; color:var(--text-dim); letter-spacing:1px; margin-bottom:15px; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+            <div>A.I.Z.E.N. // REF: {(st.session_state.get(K.USER_HASH) or "GHOST_ID")[:8]}</div>
+            <div>LOAD: {cognitive_load} B</div>
         </div>
     """)
     st.markdown(header_html, unsafe_allow_html=True)
+
 
     # 2. DNA ARMORY BAR
     if "GUEST_" not in str(st.session_state.get(K.USER_HASH, "")).upper():
@@ -145,7 +146,7 @@ def render_workspace(cfg: dict) -> None:
 
     # 4. INPUT AREA
     # 🟢 FIXED: Removed on_change to prevent double-click bug
-    st.text_area("intent", height=145, placeholder=t("workspace_placeholder"), label_visibility="collapsed", key="ta_input")
+    st.text_area("intent", height=145, placeholder=t("Inout your raw idea here in English or Arabic..."), label_visibility="collapsed", key="ta_input")
 
     if st.button(t("execute_btn"), use_container_width=True):
         st.session_state["athar_trace"] = False
