@@ -1,12 +1,14 @@
+
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v31.2: Hardened Header Build — The AmeerInk Protocol.
+v31.3: Hardened Header Build — The AmeerInk Protocol.
        - Eliminated HTML Leaks (Atomic String Concatenation).
        - Fixed Tag Fractures (Removed textwrap.dedent).
        - Stabilized Thermal HUD (Zero-Lag Cognitive Metrics).
        - Fully Consolidated Section Flow (No duplicate keys).
        - Injected Dynamic SYNCED/IDLE Telemetry Monitors.
+       - Injected Tech-Noir Ghost Mode Warning & Latch CTA.
 """
 
 import textwrap
@@ -115,10 +117,12 @@ def render_workspace(cfg: dict) -> None:
     
     st.markdown(header_html, unsafe_allow_html=True)
 
-    # ── 2. DNA ARMORY BAR ─────────────────────────────────────────────────────
-    if "GUEST_" not in str(st.session_state.get(K.USER_HASH, "")).upper():
-        
-        # Pull live memory state
+    # ── 2. DNA ARMORY & GHOST WARNING ────────────────────────────────────────
+    current_uid = st.session_state.get(K.USER_HASH)
+    is_guest = not current_uid or "GUEST_" in str(current_uid).upper()
+
+    if not is_guest:
+        # User is logged in: Show the Live Telemetry Monitors
         ink_live = bool(st.session_state.get(K.INK_DNA))
         intel_live = bool(st.session_state.get(K.INTEL_DNA))
         hikmah_live = bool(cfg.get("islamic_mode") or st.session_state.get(K.HIKMAH_DNA))
@@ -144,6 +148,27 @@ def render_workspace(cfg: dict) -> None:
         ).replace("\n", "")
         
         st.markdown(dna_html, unsafe_allow_html=True)
+    
+    else:
+        # User is a Ghost: Show the Custom Warning
+        ghost_html = (
+            f'<div style="background:linear-gradient(90deg, rgba(229,62,62,0.08) 0%, transparent 100%); border-left:2px solid var(--danger); padding:12px 15px; margin-bottom:10px; border-radius:2px;">'
+            f'<div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">'
+            f'<span style="height:6px; width:6px; background:var(--danger); border-radius:50%; box-shadow: 0 0 6px var(--danger);"></span>'
+            f'<span style="font-family:var(--font-m); font-size:0.65rem; color:var(--danger); letter-spacing:2px; font-weight:bold;">UNREGISTERED GHOST UPLINK</span></div>'
+            f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); line-height:1.6; margin-left:14px;">'
+            f'Neural persistence is currently disabled. Assets generated during this session cannot be secured in the Vault.<br>'
+            f'<span style="color:var(--text); opacity:0.7;">Awaiting Terminal Identity verification...</span></div></div>'
+        ).replace("\n", "")
+        st.markdown(ghost_html, unsafe_allow_html=True)
+        
+        # The CTA Button
+        col_cta, _ = st.columns([1, 2])
+        with col_cta:
+            if st.button("[ INITIATE LATCH ]", key="btn_latch_ghost", use_container_width=True):
+                st.toast("Awaiting identity credentials in the Sidebar Command Deck.", icon="📡")
+        st.markdown("<div style='height:15px;'></div>", unsafe_allow_html=True)
+
 
     # ── 3. INPUT AREA & VOICE UPLINK ──────────────────────────────────────────
     if "ta_input_widget" not in st.session_state:
