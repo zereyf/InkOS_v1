@@ -476,3 +476,97 @@ AMBIGUOUS (stylized vs realistic):
   Ask: Is the style more illustrated/artistic? → Midjourney/Flux
   Ask: Should it look like a photograph?       → DALL-E 3
 """
+"""
+config.py — Environment Bootstrap & Application Constants
+==========================================================
+v7.1: Master Sync Edition.
+      Centralized Engine Thresholds and Unified A.I.Z.E.N. Identity.
+"""
+
+import os
+import textwrap
+from types import MappingProxyType
+from typing import Optional
+from dotenv import load_dotenv
+from groq import Groq
+
+load_dotenv(override=True)
+
+# ── API CLIENT BOOTSTRAP ──────────────────────────────────────────────────────
+_api_key: str = os.getenv("GROQ_API_KEY", "").strip()
+API_KEY_MISSING: bool = not bool(_api_key)
+client: Optional[Groq] = Groq(api_key=_api_key) if _api_key else None
+
+# ── ENGINE PERFORMANCE THRESHOLDS ─────────────────────────────────────────────
+MODEL_ID:         str   = os.getenv("INKOS_MODEL_ID", "llama-3.3-70b-versatile")
+AUDIO_MODEL_ID:   str   = os.getenv("INKOS_AUDIO_MODEL", "whisper-large-v3-turbo")
+TEMPERATURE:      float = float(os.getenv("INKOS_TEMPERATURE", "0.3"))
+MAX_TOKENS:       int   = int(os.getenv("INKOS_MAX_TOKENS", "1536"))
+RETRY_THRESHOLD:  int   = 85   # Moved from refiner.py for central control
+MAX_RETRIES:      int   = 2    # Moved from refiner.py
+EVAL_TEMPERATURE: float = 0.1
+
+# ── RATE LIMITING & UI GUARDRAILS ─────────────────────────────────────────────
+RATE_WINDOW_SECONDS:  int = 60
+RATE_MAX_CALLS:       int = 10
+INPUT_MAX_CHARS:      int = 2000
+INPUT_WARN_THRESHOLD: int = 1800
+AUTO_SELECT_LABEL:    str = "⚡ Auto (CIPHER Selects)"
+
+# ── WHISPER PROMPT ────────────────────────────────────────────────────────────
+WHISPER_CONTEXT_PROMPT: str = (
+    "This is a voice command for InkOS. Transcribe English and Arabic exactly. "
+    "Maintain casing for: InkOS, CIPHER, A.I.Z.E.N., Tech-Noir, and Obsidian."
+)
+
+# ── IMMUTABLE REGISTRIES ──────────────────────────────────────────────────────
+
+TARGET_GUIDES = MappingProxyType({
+    "Manus AI": "Steps: 'Search → Analyze → Output'. Tags: [WEB_SEARCH], [CODE_EXEC].",
+    "Claude": "Requires <role>, <task>, <constraints>, <output_format> XML tags.",
+    "ChatGPT": "Requires 'You are a...' opener, numbered lists, markdown structure.",
+    "Midjourney/Flux": "Requires modular :: separators, --ar parameters, NO prose.",
+    "DALL-E 3": "Requires rich natural language, full sentences, NO parameters.",
+    "Gemini (Imagen 3)": "Requires spatial zoning and typography in quotes."
+})
+
+AESTHETIC_PRESETS = MappingProxyType({
+    "Raw (No Preset)": "Literal interpretation, no stylistic bias.",
+    "Velvet (Signature)": "Tech-Noir Minimalism. Obsidian black, deep gold. Chiaroscuro.",
+    "Tech-Noir Arabesque": "Cyberpunk fused with Islamic antiquity. Terminal green, aged gold.",
+    "Scholar (Traditional)": "Arabic Heritage. Sandstone, emerald green, geometric overlays.",
+    "Cyber-Radiant": "High-energy cyberpunk. Pure black, electric blue, volumetric neon.",
+    "Crimson Protocol": "Menacing tech-noir. Pure black, blood red, HUD elements."
+})
+
+LOGIC_FRAMEWORKS: tuple = (
+    "Professional (RACE)",
+    "Technical (Debugger)",
+    "Academic",
+    "Creative",
+    "Visual Director",
+)
+
+# ── MASTER IDENTITY ───────────────────────────────────────────────────────────
+# 🛡️ FIXED: Renamed from MARCEL to AIZEN for architectural clarity
+AIZEN_IDENTITY: str = textwrap.dedent("""
+    <role>
+    You are A.I.Z.E.N. — Algorithmic Intelligence Zenith & Execution Node.
+    Mastermind Architect of InkOS.
+    </role>
+    <operating_rules>
+      1. ZERO FLUFF: First sentence is always signal.
+      2. ANTICIPATE: Answer X, then provide the next two steps (X+1, X+2).
+      3. AUTHORITY: Do not hedge unless uncertainty is real.
+    </operating_rules>
+""")
+
+# ── TARGET SELECTION LOGIC ────────────────────────────────────────────────────
+TARGET_SELECTION_GUIDE: str = textwrap.dedent("""
+    CODE/TECHNICAL/ACADEMIC → Claude
+    MARKETING/CREATIVE/SOCIAL → ChatGPT
+    AUTOMATION/RESEARCH AGENTS → Manus AI
+    STYLIZED/ANIME/TECH-NOIR ART → Midjourney/Flux
+    PHOTO-REALISM/PROSE-HEAVY ART → DALL-E 3
+    TYPOGRAPHY/LOGO/UI → Gemini (Imagen 3)
+""")
