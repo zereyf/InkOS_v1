@@ -138,17 +138,34 @@ def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Opt
 
 def detect_best_target(user_text: str) -> tuple:
     """
-    🟢 UPDATED: Returns (Target, Reason) for the Workspace HUD.
+    🟢 HYBRID BILINGUAL MATRIX: 
+    Uses RegEx boundaries (\b) for English to prevent false positives (e.g., 'start' triggering 'art').
+    Uses raw substrings for Arabic to bypass attached prefixes (like 'التصميم').
     """
     text = user_text.lower()
     
-    if any(w in text for w in ["python", "code", "script", "terminal", "debug"]):
-        return "Claude", "Technical intent detected. Routing to Anthropic Core."
-        
-    if any(w in text for w in ["draw", "image", "logo", "visual", "art", "aesthetic"]):
+    # ── 1. EXPANDED VOCABULARY VECTORS ──
+    vis_eng = [r"\bdraw\b", r"\bimage\b", r"\blogo\b", r"\bvisual\b", r"\bart\b", r"\bdesign\b", r"\bdesigner\b", r"\bbanner\b", r"\bphoto\b", r"\bui\b", r"\bux\b", r"\billustration\b", r"\bcinematic\b"]
+    vis_ar  = ["صورة", "رسم", "شعار", "تصميم", "مصمم", "فني", "بنر", "واجهة", "خلفية"]
+    
+    tech_eng = [r"\bpython\b", r"\bcode\b", r"\bscript\b", r"\bterminal\b", r"\bdebug\b", r"\bapp\b", r"\bweb\b", r"\bhtml\b", r"\breact\b", r"\bapi\b", r"\bdev\b", r"\bsoftware\b", r"\bcss\b"]
+    tech_ar  = ["برمجة", "كود", "سكربت", "خوارزمية", "تطبيق", "موقع", "مطور", "برنامج"]
+    
+    ling_eng = [r"\bsummarize\b", r"\bwrite\b", r"\bemail\b", r"\bessay\b", r"\barticle\b", r"\btranslate\b", r"\bproofread\b", r"\bblog\b", r"\bcopy\b"]
+    ling_ar  = ["اكتب", "لخص", "مقال", "رسالة", "نص", "ترجم", "مراجعة", "محتوى"]
+
+    # ── 2. TACTICAL ROUTING LOGIC ──
+    
+    # Visual Matrix
+    if any(re.search(pat, text) for pat in vis_eng) or any(w in text for w in vis_ar):
         return "Midjourney/Flux", "Visual intent detected. Routing to Diffusion Matrix."
         
-    if any(w in text for w in ["summarize", "write", "email", "essay", "article"]):
+    # Technical Matrix
+    if any(re.search(pat, text) for pat in tech_eng) or any(w in text for w in tech_ar):
+        return "Claude", "Technical intent detected. Routing to Anthropic Core."
+        
+    # Linguistic Matrix
+    if any(re.search(pat, text) for pat in ling_eng) or any(w in text for w in ling_ar):
         return "ChatGPT", "Linguistic intent detected. Routing to GPT-4o."
         
     return "ChatGPT", "General purpose reasoning selected by default."
