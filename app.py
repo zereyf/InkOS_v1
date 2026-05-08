@@ -1,8 +1,8 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2026.4.1: Master Sync — Identity Rehydration Build.
-           Armored with Zero-Cost Persistence and Neural Flush protocols.
+v2026.4.2: Master Sync — Bootloader Fix & CSS Injection.
+           Repaired Rehydration logic trap and armored HUD variables.
 """
 
 import sys
@@ -43,32 +43,59 @@ if API_KEY_MISSING:
 # ── INITIALIZE STATE ────────────────────────────────────────────────────────
 init_session_state()
 
-# ── REHYDRATION PROTOCOL: Surving the Refresh (Zero-Cost) ────────────────────
-url_params = st.query_params
-if "sid" in url_params and not st.session_state.get(K.USER_HASH):
-    sid = url_params["sid"]
-    
-    # Check if this is a real user (not a GUEST) before querying the Vault
-    if not sid.upper().startswith("GUEST_"):
+# ── 🟢 CSS ROOT INJECTION: The "AmeerInk" Grit Variables ────────────────────
+st.markdown("""
+<style>
+    :root {
+        --gold: #C9A84C;
+        --gold-border: rgba(201, 168, 76, 0.3);
+        --gold-dim: rgba(201, 168, 76, 0.6);
+        --bg-card: rgba(18, 18, 18, 0.95);
+        --text: #E2E8F0;
+        --text-muted: #A0AEC0;
+        --text-dim: #718096;
+        --steel: #7C9EBF;
+        --danger: #E53E3E;
+        --font-m: 'Courier New', Courier, monospace;
+        --font-d: 'Impact', sans-serif;
+        --font-a: 'Amiri', serif;
+    }
+    @keyframes pulse-gold {
+        0% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(201, 168, 76, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0); }
+    }
+    @keyframes pulse-red {
+        0% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(229, 62, 62, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0); }
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown(STYLES, unsafe_allow_html=True)
+
+# ── REHYDRATION PROTOCOL (Zero-Cost Persistence) ─────────────────────────────
+current_sid = st.session_state.get(K.USER_HASH)
+
+if current_sid and not str(current_sid).upper().startswith("GUEST_"):
+    # 🟢 FIXED: Only run if we haven't already rehydrated this session
+    if not st.session_state.get("boot_rehydrated"):
         with st.spinner("Re-establishing Neural Uplink..."):
             from vault.vault_engine import rehydrate_session
-            recovered = rehydrate_session(sid)
+            recovered = rehydrate_session(current_sid)
             
             if recovered:
-                # 🟢 RE-INJECTING DATA FROM VAULT
-                st.session_state[K.USER_HASH] = sid
                 st.session_state[K.PERSONA_LIST] = recovered.get("personas", [])
                 
-                # Recover DNA Strings
+                # Recover DNA Strings (Only overwrite if data exists in DB)
                 dna = recovered.get("dna", {})
-                st.session_state[K.INK_DNA] = dna.get("ink", "")
-                st.session_state[K.INTEL_DNA] = dna.get("intel", "")
-                st.session_state[K.HIKMAH_DNA] = dna.get("hikmah", "")
+                if dna.get("ink"): st.session_state[K.INK_DNA] = dna["ink"]
+                if dna.get("intel"): st.session_state[K.INTEL_DNA] = dna["intel"]
+                if dna.get("hikmah"): st.session_state[K.HIKMAH_DNA] = dna["hikmah"]
                 
-                st.toast(f"Terminal Identity Rehydrated: {sid[:8]}", icon="⚡")
-
-# ── RENDER GLOBAL STYLES ────────────────────────────────────────────────────
-st.markdown(STYLES, unsafe_allow_html=True)
+                st.toast(f"Terminal Identity Rehydrated: {current_sid[:8]}", icon="⚡")
+        st.session_state["boot_rehydrated"] = True
 
 # ── SECURITY GATE: LOCKOUT CHECK ────────────────────────────────────────────
 lockout_ts = st.session_state.get(K.LOCKOUT_UNTIL)
@@ -95,7 +122,6 @@ if lockout_ts:
         st.session_state[K.FAILED_ATTEMPTS] = 0
 
 # 🔗 IDENTITY LATCHING: Persist SID in URL
-current_sid = st.session_state.get(K.USER_HASH)
 if current_sid:
     st.query_params["sid"] = current_sid
 
@@ -104,8 +130,7 @@ if "boot_complete" not in st.session_state:
     if not current_sid or "GUEST_" in str(current_sid).upper():
         st.toast("InkOS System Initialized. Running in Ghost Mode.", icon="📡")
     else:
-        # Don't show toast if rehydration already toasted
-        if "rehydrated" not in st.session_state:
+        if "boot_rehydrated" not in st.session_state:
             st.toast(f"Terminal Identity Latch: {current_sid[:8]}", icon="🔐")
     st.session_state["boot_complete"] = True
 
