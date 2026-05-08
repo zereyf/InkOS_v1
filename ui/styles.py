@@ -2,7 +2,7 @@
 ui/styles.py — InkOS Design System
 ==========================================
 The full CSS string exported as a single constant.
-Integrated Ghost Menu, Horizontal Switchers, and Mobile Macro Injectors.
+Integrated Ghost Menu, Horizontal Switchers, Mobile Macro Injectors, and Tactical Toggles.
 """
 
 STYLES: str = """
@@ -229,7 +229,40 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 [data-baseweb="menu"] li { font-family: var(--font-m) !important; font-size: 0.75rem !important; color: var(--text-muted) !important; padding: 10px 14px !important; transition: background 0.15s, color 0.15s !important; }
 [data-baseweb="menu"] li:hover, [data-baseweb="menu"] li[aria-selected="true"] { background: rgba(201, 168, 76, 0.1) !important; color: var(--gold) !important; border-left: 2px solid var(--gold) !important; }
 
- ══════════════════════════════════════════
+/* ══════════════════════════════════════════
+   TACTICAL TOGGLE SWITCHES
+══════════════════════════════════════════ */
+div[data-testid="stToggle"] label {
+    font-family: var(--font-m) !important;
+    font-size: 0.6rem !important;
+    letter-spacing: 1px !important;
+    color: var(--text-muted) !important;
+}
+
+div[data-testid="stToggle"] div[role="switch"] {
+    border-radius: 2px !important; 
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+div[data-testid="stToggle"] div[role="switch"] > div {
+    border-radius: 1px !important;
+    background-color: var(--text-dim) !important;
+    box-shadow: none !important;
+}
+
+div[data-testid="stToggle"] input:checked + div[role="switch"] {
+    background-color: rgba(201, 168, 76, 0.15) !important;
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 8px rgba(201, 168, 76, 0.3) !important;
+}
+
+div[data-testid="stToggle"] input:checked + div[role="switch"] > div {
+    background-color: var(--gold) !important;
+    box-shadow: 0 0 4px var(--gold) !important;
+}
+
+/* ══════════════════════════════════════════
    LEVEL 4 FIX: TOAST NOTIFICATIONS
 ══════════════════════════════════════════ */
 [data-testid="stToast"] {
