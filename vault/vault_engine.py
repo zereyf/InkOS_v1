@@ -1,8 +1,9 @@
 """
 vault/vault_engine.py — Prompt Memory Vault Engine
 ====================================================
-v18.1: Master Sync — Full Functional Parity.
-       Integrated delete_prompt and get_all_tags to resolve UI ImportErrors.
+v18.2: Master Sync — Identity Rehydration Edition.
+       Integrated rehydrate_session to support persistent 
+       identity across page refreshes (Zero-Cost Persistence).
 """
 
 import hashlib
@@ -12,6 +13,7 @@ from vault.supabase_client import sb, SUPABASE_MISSING
 
 TABLE_VAULT = "vault"
 TABLE_USERS = "users"
+TABLE_PERSONAS = "personas" # 🟢 Standardized table name
 
 # ── INTERNAL UTILITIES ────────────────────────────────────────────────────────
 
@@ -50,7 +52,8 @@ def authenticate_terminal(user_hash: str, pin: str, is_new: bool) -> Tuple[bool,
         if is_new:
             if user_exists: return False, "ID exists. Switch to Login."
             sb.table(TABLE_USERS).insert({
-                "id": clean_id, "pin_hash": hashed_pin, 
+                "id": clean_id, 
+                "pin_hash": hashed_pin, 
                 "created_at": datetime.now(timezone.utc).isoformat()
             }).execute()
             return True, None
@@ -61,12 +64,43 @@ def authenticate_terminal(user_hash: str, pin: str, is_new: bool) -> Tuple[bool,
     except Exception as e:
         return False, f"Auth Error: {str(e)}"
 
+# ── REHYDRATION PROTOCOL (Zero-Cost Persistence) ─────────────────────────────
+
+def rehydrate_session(user_hash: str) -> dict:
+    """
+    🟢 NEW: Recovers the entire terminal state from Supabase to survive refreshes.
+    Returns: {personas: [], dna: {ink, intel, hikmah}}
+    """
+    state = {
+        "personas": [],
+        "dna": {"ink": "", "intel": "", "hikmah": ""}
+    }
+    
+    if err := _require_sb() or not user_hash: return state
+
+    try:
+        # 1. Recover Personas
+        p_res = sb.table(TABLE_PERSONAS).select("*").eq("user_hash", user_hash).execute()
+        state["personas"] = p_res.data or []
+        
+        # 2. Recover DNA Strings from User Profile
+        u_res = sb.table(TABLE_USERS).select("ink_dna, intel_dna, hikmah_dna").eq("id", user_hash).execute()
+        if u_res.data:
+            profile = u_res.data[0]
+            state["dna"] = {
+                "ink": profile.get("ink_dna", ""),
+                "intel": profile.get("intel_dna", ""),
+                "hikmah": profile.get("hikmah_dna", "")
+            }
+        return state
+    except Exception:
+        return state
+
 # ── VAULT OPERATIONS ────────────────────────────────────────────────────────
 
 def save_prompt(user_hash: str, **data) -> Tuple[Optional[dict], Optional[str]]:
     if err := _require_sb(): return None, err
 
-    # 🛡️ Multi-factor hash to prevent content-only collisions
     seed = f"{user_hash}{data.get('content')}{data.get('title')}{data.get('target')}"
     record_id = hashlib.md5(seed.encode()).hexdigest()[:16]
 
@@ -109,7 +143,6 @@ def search_vault(user_hash: str, **filters) -> Tuple[List[dict], Optional[str]]:
         return [], str(e)
 
 def delete_prompt(user_hash: str, record_id: str) -> Tuple[bool, Optional[str]]:
-    """🟢 RESTORED: Required by Vault Tab UI"""
     if err := _require_sb(): return False, err
     try:
         sb.table(TABLE_VAULT).delete().eq("id", record_id).eq("user_hash", user_hash).execute()
@@ -136,7 +169,6 @@ def get_vault_stats(user_hash: str) -> Tuple[dict, Optional[str]]:
         return {}, str(e)
 
 def get_all_tags(user_hash: str) -> List[str]:
-    """🟢 RESTORED: Required by Vault Tab UI"""
     if SUPABASE_MISSING or sb is None: return []
     try:
         res = sb.table(TABLE_VAULT).select("tags").eq("user_hash", user_hash).execute()
