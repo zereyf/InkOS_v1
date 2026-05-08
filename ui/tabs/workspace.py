@@ -150,13 +150,45 @@ def render_workspace(cfg: dict) -> None:
             """)
     st.markdown(live_pattern_html, unsafe_allow_html=True)
 
-    # 4. INPUT AREA
-    st.text_area("intent", height=145, placeholder=t("workspace_placeholder", fallback="Input your raw idea here..."), label_visibility="collapsed", key="ta_input")
+    # 4. INPUT AREA & VOICE UPLINK
+    if "ta_input" not in st.session_state:
+        st.session_state["ta_input"] = ""
+
+    v_col1, v_col2 = st.columns([1, 6])
+    with v_col1:
+        audio_bytes = st.audio_input("Voice Uplink", label_visibility="collapsed")
+        if audio_bytes:
+            with st.spinner("Transcribing..."):
+                import os
+                from groq import Groq
+                try:
+                    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+                    transcription = client.audio.transcriptions.create(
+                        file=("audio.wav", audio_bytes.read()),
+                        model="whisper-large-v3",
+                    )
+                    if transcription.text:
+                        st.session_state["ta_input"] += f" {transcription.text}"
+                        st.toast("Voice Transcribed.", icon="🎙️")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Voice Uplink Failed: {e}")
+
+    with v_col2:
+        intent_val = st.text_area(
+            "intent", 
+            value=st.session_state.get("ta_input", ""), 
+            height=145, 
+            placeholder=t("workspace_placeholder", fallback="Input your raw idea or use Voice Uplink..."), 
+            label_visibility="collapsed", 
+            key="ta_input_widget" 
+        )
+        st.session_state["ta_input"] = intent_val
 
     if st.button(t("execute_btn", fallback="EXECUTE REFINEMENT"), use_container_width=True):
         st.session_state["athar_trace"] = False
-        cleaned, _ = sanitize_input(st.session_state.ta_input or "")
-        
+        cleaned, _ = sanitize_input(st.session_state.get("ta_input", ""))
+      
         if cleaned:
             with st.status("Neural Handshake...", expanded=True):
                 final_text, _ = _apply_dna_triggers(cleaned)
