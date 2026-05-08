@@ -6,6 +6,7 @@ v31.2: Hardened Header Build — The AmeerInk Protocol.
        - Fixed Tag Fractures (Removed textwrap.dedent).
        - Stabilized Thermal HUD (Zero-Lag Cognitive Metrics).
        - Fully Consolidated Section Flow (No duplicate keys).
+       - Injected Dynamic SYNCED/IDLE Telemetry Monitors.
 """
 
 import textwrap
@@ -116,18 +117,32 @@ def render_workspace(cfg: dict) -> None:
 
     # ── 2. DNA ARMORY BAR ─────────────────────────────────────────────────────
     if "GUEST_" not in str(st.session_state.get(K.USER_HASH, "")).upper():
+        
+        # Pull live memory state
+        ink_live = bool(st.session_state.get(K.INK_DNA))
+        intel_live = bool(st.session_state.get(K.INTEL_DNA))
+        hikmah_live = bool(cfg.get("islamic_mode") or st.session_state.get(K.HIKMAH_DNA))
+
+        def _dna_card(label: str, is_live: bool) -> str:
+            b_color = "rgba(201,168,76,0.4)" if is_live else "rgba(255,255,255,0.05)"
+            t_color = "var(--gold)" if is_live else "var(--text-dim)"
+            s_text  = "SYNCED" if is_live else "IDLE"
+            s_color = "var(--text-muted)" if is_live else "var(--bg-card)"
+            
+            return (
+                f'<div style="flex:1; border:1px solid {b_color}; border-radius:4px; padding:12px 5px; text-align:center; background:rgba(0,0,0,0.2);">'
+                f'<div style="font-family:var(--font-m); font-size:0.75rem; color:{t_color}; letter-spacing:1px; margin-bottom:4px;">DNA: /{label}</div>'
+                f'<div style="font-family:var(--font-m); font-size:0.55rem; color:{s_color}; letter-spacing:2px;">{s_text}</div></div>'
+            )
+
         dna_html = (
             f'<div style="display:flex; gap:10px; margin-bottom:20px;">'
-            f'<div style="flex:1; background:rgba(201,168,76,0.02); border:1px solid rgba(201,168,76,0.1); padding:8px; border-radius:3px; text-align:center;">'
-            f'<div style="font-size:0.5rem; color:var(--gold); font-family:var(--font-m);">DNA: /INK</div>'
-            f'<div style="font-size:0.4rem; color:var(--text-muted);">{"ARMED" if st.session_state.get(K.INK_DNA) else "OFFLINE"}</div></div>'
-            f'<div style="flex:1; background:rgba(201,168,76,0.02); border:1px solid rgba(201,168,76,0.1); padding:8px; border-radius:3px; text-align:center;">'
-            f'<div style="font-size:0.5rem; color:var(--gold); font-family:var(--font-m);">DNA: /INTEL</div>'
-            f'<div style="font-size:0.4rem; color:var(--text-muted);">{"ARMED" if st.session_state.get(K.INTEL_DNA) else "OFFLINE"}</div></div>'
-            f'<div style="flex:1; background:rgba(201,168,76,0.02); border:1px solid rgba(201,168,76,0.1); padding:8px; border-radius:3px; text-align:center;">'
-            f'<div style="font-size:0.5rem; color:var(--gold); font-family:var(--font-m);">DNA: /HIKMAH</div>'
-            f'<div style="font-size:0.4rem; color:var(--text-muted);">{"ARMED" if st.session_state.get(K.HIKMAH_DNA) else "OFFLINE"}</div></div></div>'
+            f'{_dna_card("INK", ink_live)}'
+            f'{_dna_card("INTEL", intel_live)}'
+            f'{_dna_card("HIKMAH", hikmah_live)}'
+            f'</div>'
         ).replace("\n", "")
+        
         st.markdown(dna_html, unsafe_allow_html=True)
 
     # ── 3. INPUT AREA & VOICE UPLINK ──────────────────────────────────────────
