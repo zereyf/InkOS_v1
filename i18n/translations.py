@@ -102,17 +102,27 @@ def set_lang(code: str) -> None:
     if code in {lg["code"] for lg in LANGUAGES}:
         st.session_state[K.UI_LANG] = code
 
-def t(key: str, **kwargs) -> str:
+def t(key: str, fallback: Optional[str] = None, **kwargs) -> str:
+    """
+    🟢 ARMORED: UI Translation with explicit fallback support.
+    Prevents AttributeError by guaranteeing a string output.
+    """
+    if not key: return fallback or ""
+    
     lang = get_lang()
-    lang_dict  = TRANSLATIONS.get(lang, {})
-    en_dict    = TRANSLATIONS.get("en", {})
-    raw = lang_dict.get(key) or en_dict.get(key) or key
-    if kwargs:
+    lang_dict = TRANSLATIONS.get(lang, {})
+    en_dict = TRANSLATIONS.get("en", {})
+    
+    # Priority: Current Lang -> English -> Fallback Arg -> Key Name
+    raw = lang_dict.get(key) or en_dict.get(key) or fallback or key
+    
+    if kwargs and isinstance(raw, str):
         try:
             return raw.format(**kwargs)
         except (KeyError, ValueError):
             return raw
-    return raw
+    return str(raw) # 🛡️ Force string conversion
+
 
 def is_rtl() -> bool:
     lang = get_lang()
