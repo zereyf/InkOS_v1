@@ -1,11 +1,12 @@
 """
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
-v9.0: Master Sync — Agent-Ready Refactor.
+v9.1: Ultra-Premium Director Sync.
       - Scored Signal Router Integration (Task 2)
       - Brutal Evaluator 429 Honesty (Task 3)
       - JSON Nested Brace Safety Regex (Task 4)
       - Deterministic Assembly Order (Task 7)
+      - Visual Director Framework Injection Active
 """
 
 import json
@@ -14,12 +15,13 @@ import textwrap
 import time
 from typing import Optional, Tuple
 
-# 🟢 NEW: Import constants and prompts from the newly split config directory
+# 🟢 NEW: Import constants, templates, and prompts from the config directory
 from config import (
     client, MODEL_ID, TEMPERATURE, MAX_TOKENS, 
     RETRY_THRESHOLD, MAX_RETRIES, EVAL_TEMPERATURE,
     TARGET_GUIDES, CIPHER_IDENTITY, CIPHER_EVALUATOR_PROMPT, 
-    CIPHER_OUTPUT_CONTRACT, CIPHER_RETRY_INJECTION
+    CIPHER_OUTPUT_CONTRACT, CIPHER_RETRY_INJECTION,
+    VISUAL_DIRECTOR_PROMPT, VISUAL_PROMPT_TEMPLATES, FRAMEWORK_BLUEPRINTS
 )
 
 from engine.router import route_to_target
@@ -144,8 +146,14 @@ def _build_system_prompt(target, framework, lang, cognitive_directive, persona, 
     parts.append(f'ACTIVE SESSION:\n'                       # 2. Session context
                  f'  Target AI: {target}\n'
                  f'  Target Syntax: {TARGET_GUIDES.get(target, "")}\n'
-                 f'  Framework: {framework}\n'
                  f'  Input Language: {lang}')
+                 
+    # 🟢 NEW: INJECTING THE ACTUAL FRAMEWORK LOGIC & VISUAL TEMPLATES
+    if framework == "Visual Director":
+        parts.append(f'ACTIVE FRAMEWORK RULES:\n{VISUAL_DIRECTOR_PROMPT}')
+        parts.append(f'REFERENCE BLUEPRINTS (Use these structures):\n{VISUAL_PROMPT_TEMPLATES}')
+    elif framework in FRAMEWORK_BLUEPRINTS:
+        parts.append(f'ACTIVE FRAMEWORK RULES:\n{FRAMEWORK_BLUEPRINTS[framework]}')
                  
     if cognitive_directive:
         parts.append(f'LANGUAGE DIRECTIVE:\n{cognitive_directive}')  # 3. Arabic/lang
