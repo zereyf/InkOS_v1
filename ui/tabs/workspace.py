@@ -1,11 +1,11 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v30.4: The "AmeerInk" Grit Build.
-       - Restored Expert Diagnostics (JSON Uplink).
-       - Re-injected Wordmark Density (Thermal/Cognitive Metrics).
+v30.5: The "Neural Intercept" Build.
+       - Integrated Live Linguistic Intercept (Arabic Pattern Detection).
+       - Restored Wordmark Density (Thermal/Cognitive Metrics).
+       - Fixed Indentation/Scope for Live Pattern Logic.
        - Locked Vault Keys (v_t, v_g) to Save Logic.
-       - Integrated DNA Status Bar.
 """
 
 import hashlib
@@ -18,6 +18,7 @@ from state import K
 from security.sanitizer import sanitize_input
 from security.rate_limiter import check_rate_limit
 from engine.refiner import run_refinement_and_audit, detect_best_target
+from engine.cognitive_map import detect_arabic_pattern # 🟢 REQUIRED FOR INTERCEPT
 from i18n.translations import t
 
 # ── DNA INJECTION ENGINE ─────────────────────────────────────────────────────
@@ -43,9 +44,8 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
     efficiency = int(safe_audit.get("efficiency", 0))
     critique = str(safe_audit.get("critique", ""))
     
-    # 🧪 GHOST METRIC: THERMAL EFFICIENCY (Derived from Audit Score)
+    # 🧪 GHOST METRIC: THERMAL EFFICIENCY
     thermal_status = "STABLE" if score > 80 else "CRITICAL" if score < 40 else "FLUCTUATING"
-    
     target, reason = st.session_state.get(K.AUTO_TARGET, "Unknown"), st.session_state.get(K.AUTO_REASON, "Manual")
     status_label, status_color = ("OPTIMIZED", "#4CAF9A") if score > 85 else ("SUB-OPTIMAL", "var(--gold)")
     
@@ -53,20 +53,17 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
 
     hud_html = textwrap.dedent(f"""
         <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); padding: 22px; position: relative; overflow: hidden; margin-bottom: 15px;">
-            <div style="position: absolute; top: 0; left: 0; width: 40px; height: 2px; background: {status_color}; box-shadow: 0 0 10px {status_color};"></div>
-            
+            <div style="position: absolute; top: 0; left: 0; width: 40px; height: 2px; background: {status_color};"></div>
             <div style="position: absolute; top: 10px; right: 10px; text-align: right;">
                 <div style="font-family: var(--font-m); font-size: 0.4rem; color: var(--text-dim); letter-spacing: 1px;">THERMAL_EFFICIENCY</div>
                 <div style="font-family: var(--font-m); font-size: 0.5rem; color: {status_color}; font-weight: bold;">{thermal_status}</div>
             </div>
-
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
                 <div>
                     <div style="font-family: var(--font-m); font-size: 0.55rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">Overall Fidelity</div>
                     <div style="font-family: var(--font-d); font-size: 3.2rem; color: {status_color}; line-height: 0.9; margin-top: 4px;">{score}<span style="font-size: 1.2rem;">%</span></div>
                 </div>
             </div>
-            
             <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <span style="font-family: var(--font-m); font-size: 0.6rem; color: var(--text-muted); width: 80px;">PRECISION</span>
@@ -79,7 +76,6 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
                     <span style="font-family: var(--font-m); font-size: 0.65rem; color: var(--steel);">{alignment}/40</span>
                 </div>
             </div>
-            
             <div style="background: rgba(201,168,76,0.03); border-left: 2px solid var(--gold-border); padding: 12px 16px;">
                 <div style="font-family: var(--font-m); font-size: 0.55rem; color: var(--gold); text-transform: uppercase; margin-bottom: 6px;">> Forensic Log</div>
                 <div style="font-family: var(--font-m); font-size: 0.75rem; color: var(--text); line-height: 1.6;">
@@ -90,10 +86,8 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
         </div>
     """)
     st.markdown(hud_html, unsafe_allow_html=True)
-    
-    # 🟢 GHOST FEATURE: EXPERT DIAGNOSTICS
     if expert_mode:
-        with st.expander("🛠️ NEURAL UPLINK DIAGNOSTICS", expanded=False):
+        with st.expander("🛠️ NEURAL UPLINK DIAGNOSTICS"):
             st.json(safe_audit)
 
 # ── MAIN RENDERER ─────────────────────────────────────────────────────────────
@@ -101,7 +95,8 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
 def render_workspace(cfg: dict) -> None:
     def flush_trace(): st.session_state["athar_trace"] = False
 
-    # 1. HEADER DENSITY UPGRADE
+    # 1. HEADER & COGNITIVE LOAD
+    source_lang = cfg.get("source_lang", "English")
     cognitive_load = len(st.session_state.get("ta_input", ""))
     header_html = textwrap.dedent(f"""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
@@ -135,20 +130,38 @@ def render_workspace(cfg: dict) -> None:
         """)
         st.markdown(dna_bar, unsafe_allow_html=True)
 
-    raw_input = st.text_area("intent", height=145, placeholder=t("workspace_placeholder"), label_visibility="collapsed", key="ta_input", on_change=flush_trace)
+    # 3. 📡 LIVE LINGUISTIC INTERCEPT (Placed inside function scope)
+    raw_input = st.session_state.get("ta_input", "")
+    live_pattern_html = '<div style="height:22px;"></div>'
+    if raw_input and source_lang == "Arabic (العربية)":
+        p_data = detect_arabic_pattern(raw_input)
+        if p_data:
+            live_pattern_html = textwrap.dedent(f"""
+                <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px; opacity:0.8;">
+                    <span style="height:6px; width:6px; background:var(--gold); border-radius:50%; box-shadow: 0 0 5px var(--gold);"></span>
+                    <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">
+                        PATTERN_INTERCEPT: <span style="color:var(--text); font-weight:bold;">{p_data['pattern'].upper()}</span>
+                    </div>
+                </div>
+            """)
+    st.markdown(live_pattern_html, unsafe_allow_html=True)
+
+    # 4. INPUT AREA
+    st.text_area("intent", height=145, placeholder=t("workspace_placeholder"), label_visibility="collapsed", key="ta_input", on_change=flush_trace)
 
     if st.button(t("execute_btn"), use_container_width=True):
         st.session_state["athar_trace"] = False
-        cleaned, _ = sanitize_input(raw_input or "")
+        cleaned, _ = sanitize_input(st.session_state.ta_input or "")
         if cleaned:
             with st.status("Neural Handshake...", expanded=True):
                 final_text, _ = _apply_dna_triggers(cleaned)
                 auto_target, auto_reason = detect_best_target(final_text)
                 st.session_state[K.AUTO_TARGET], st.session_state[K.AUTO_REASON] = auto_target, auto_reason
-                result, audit, pattern = run_refinement_and_audit(final_text, auto_target, cfg["framework"], cfg["source_lang"], cfg["aesthetic_choice"], cfg["islamic_mode"], cfg.get("active_persona"))
+                result, audit, _ = run_refinement_and_audit(final_text, auto_target, cfg["framework"], cfg["source_lang"], cfg["aesthetic_choice"], cfg["islamic_mode"], cfg.get("active_persona"))
                 st.session_state[K.LAST_RESULT], st.session_state[K.LAST_AUDIT], st.session_state[K.LAST_INPUT] = result, audit, cleaned
                 st.rerun()
 
+    # 5. OUTPUT LAYER
     if st.session_state.get(K.LAST_RESULT):
         left, right = st.columns([1, 2], gap="large")
         with left:
@@ -157,31 +170,8 @@ def render_workspace(cfg: dict) -> None:
             st.markdown(f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:2px; margin-bottom:8px;">[ REFINED_ASSET ]</div>', unsafe_allow_html=True)
             st.text_area("Asset", value=st.session_state.get(K.LAST_RESULT), height=320, label_visibility="collapsed")
             
-            # ── VAULT KEY SYNC ────────────────────────────────────────────────
             st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
             v1, v2, v3 = st.columns([2, 2, 1])
-
-
-# 📡 LIVE LINGUISTIC INTERCEPT
-live_pattern_html = ""
-if raw_input and source_lang == "Arabic (العربية)":
-    # Call the lightweight detection engine
-    p_data = detect_arabic_pattern(raw_input)
-    if p_data:
-        live_pattern_html = textwrap.dedent(f"""
-            <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px; opacity:0.8;">
-                <span style="height:6px; width:6px; background:var(--gold); border-radius:50%; animation: pulse-gold 2s infinite;"></span>
-                <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">
-                    PATTERN_INTERCEPT: <span style="color:var(--text); font-weight:bold;">{p_data['pattern'].upper()}</span>
-                </div>
-            </div>
-        """)
-else:
-    live_pattern_html = '<div style="height:22px;"></div>' # Spacer to prevent UI jumping
-
-st.markdown(live_pattern_html, unsafe_allow_html=True)
-
-
             with v1: st.text_input("Title", key="v_t", label_visibility="collapsed", placeholder="Asset Title...")
             with v2: st.text_input("Tags", key="v_g", label_visibility="collapsed", placeholder="Forensic Tags...")
             with v3: 
@@ -189,8 +179,8 @@ st.markdown(live_pattern_html, unsafe_allow_html=True)
                     from vault.vault_engine import save_prompt
                     res, err = save_prompt(
                         st.session_state.get(K.USER_HASH), 
-                        title=st.session_state.get("v_t"), # 🟢 KEY LOCKED
-                        tags=st.session_state.get("v_g"),  # 🟢 KEY LOCKED
+                        title=st.session_state.get("v_t"), 
+                        tags=st.session_state.get("v_g"), 
                         content=st.session_state.get(K.LAST_RESULT), 
                         target=st.session_state.get(K.AUTO_TARGET), 
                         framework=cfg["framework"], 
