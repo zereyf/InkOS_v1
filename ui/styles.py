@@ -229,53 +229,6 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 [data-baseweb="menu"] li { font-family: var(--font-m) !important; font-size: 0.75rem !important; color: var(--text-muted) !important; padding: 10px 14px !important; transition: background 0.15s, color 0.15s !important; }
 [data-baseweb="menu"] li:hover, [data-baseweb="menu"] li[aria-selected="true"] { background: rgba(201, 168, 76, 0.1) !important; color: var(--gold) !important; border-left: 2px solid var(--gold) !important; }
 
-/* ══════════════════════════════════════════
-   TACTICAL TOGGLE SWITCHES (WILDCARD NUKE)
-══════════════════════════════════════════ */
-/* 1. Terminal Font & Color */
-div[data-testid="stToggle"] * {
-    font-family: var(--font-m) !important;
-}
-div[data-testid="stToggle"] p, 
-div[data-testid="stToggle"] span {
-    font-size: 0.65rem !important;
-    letter-spacing: 1px !important;
-    color: var(--text-muted) !important;
-    text-transform: uppercase !important;
-}
-
-/* 2. BRUTE FORCE SQUARE CORNERS ON EVERYTHING */
-/* This strips the round "pill" shape from Streamlit's hidden nodes */
-div[data-testid="stToggle"] div {
-    border-radius: 2px !important;
-}
-
-/* 3. COLOR OVERRIDES */
-/* Force the background of the actual toggle track */
-div[data-testid="stToggle"] div[data-baseweb="checkbox"] > div:first-child,
-div[data-testid="stToggle"] label > div:first-of-type {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-}
-
-/* 4. ACTIVE COLOR FORCING (The Amber Glow) */
-/* Uses the :has() pseudo-class to find when the hidden checkbox is clicked */
-div[data-testid="stToggle"] label:has(input:checked) > div:first-of-type,
-div[data-testid="stToggle"] input:checked + div,
-div[data-testid="stToggle"] input:checked ~ div {
-    background-color: rgba(201, 168, 76, 0.15) !important;
-    border-color: var(--gold) !important;
-    box-shadow: inset 0 0 8px rgba(201, 168, 76, 0.2) !important;
-}
-
-/* 5. ACTIVE THUMB COLOR */
-div[data-testid="stToggle"] label:has(input:checked) > div:first-of-type > div,
-div[data-testid="stToggle"] input:checked + div > div,
-div[data-testid="stToggle"] input:checked ~ div > div {
-    background-color: var(--gold) !important;
-    box-shadow: 0 0 5px var(--gold) !important;
-}
-
 
 /* ══════════════════════════════════════════
    LEVEL 4 FIX: TOAST NOTIFICATIONS
