@@ -1,9 +1,12 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v12.1: Master Sync — Indentation Repair.
-       Fixed SyntaxError on return SidebarConfig.
-       Synchronized with v20.4 State Ledger and v2026.4 Master Sync.
+v12.3: Master Sync — The AmeerInk Protocol.
+       - Fixed Indentation on `is_guest` block.
+       - Restored ID Availability Scanner.
+       - Restored Auto-Cipher Feedback UI.
+       - Restored Export Archive JSON builder.
+       - Destroyed Persona Callback Trap.
 """
 
 import streamlit as st
@@ -91,17 +94,16 @@ def render_sidebar() -> SidebarConfig:
         """)
         st.markdown(wordmark_html, unsafe_allow_html=True)
 
-                # ── TERMINAL IDENTITY HUD ─────────────────────────────────────────────
+        # ── TERMINAL IDENTITY HUD ─────────────────────────────────────────────
         current_sid = st.session_state.get(K.USER_HASH)
         
-        # 🟢 FIXED: Explicitly handle None so the login screen actually appears
         is_guest = not current_sid or "GUEST_" in str(current_sid).upper()
         sess_ref = str(current_sid)[:8] if current_sid else "GHOST_ID"
 
         st.markdown(f'<div class="vc-header" style="font-size:0.55rem; color:var(--text-muted); margin-top:20px;">SESS_REF: {sess_ref}</div>', unsafe_allow_html=True)
 
-        
-         if is_guest:
+        # 🟢 FIXED: Indentation repaired
+        if is_guest:
             new_sid = st.text_input("ID", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
             new_pin = st.text_input("PIN", placeholder="PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
             is_new_user = st.toggle("Register New?", value=False, key="is_new_user_toggle")
@@ -119,7 +121,6 @@ def render_sidebar() -> SidebarConfig:
                     st.error("Cannot latch: ID is unavailable or reserved.")
                 elif new_sid.strip() and new_pin.strip():
                     with st.spinner("Uplinking..."):
-
                         success, error_msg = authenticate_terminal(new_sid.strip(), new_pin.strip(), is_new=is_new_user)
                     
                     if success:
@@ -138,21 +139,30 @@ def render_sidebar() -> SidebarConfig:
         st.markdown("<hr>", unsafe_allow_html=True)
 
         # ── LOGIC CONFIGURATION ───────────────────────────────────────────────
-        st.subheader(t("logic_config"))
+        st.subheader(t("logic_config", fallback="Logic Configuration"))
         target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
         target_model = st.selectbox("Target Model", options=target_options, key="sb_target")
 
-        framework = st.selectbox(t("logic_framework"), LOGIC_FRAMEWORKS, key="sb_framework")
+        # 🟢 RESTORED: Cipher visual feedback
+        if target_model == AUTO_SELECT_LABEL:
+            auto_tgt = st.session_state.get(K.AUTO_TARGET)
+            if auto_tgt:
+                st.markdown(f"""
+                    <div style="background:rgba(255,255,255,0.02); border-left:2px solid var(--gold); padding:6px 10px; font-size:0.55rem; color:var(--text-muted); font-family:var(--font-m); margin-top:-10px; margin-bottom:10px;">
+                        CIPHER LOCK: <span style="color:var(--gold); font-weight:bold;">{auto_tgt.upper()}</span>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        framework = st.selectbox(t("logic_framework", fallback="Framework"), LOGIC_FRAMEWORKS, key="sb_framework")
         source_lang = st.radio("Input Language", ["English", "Arabic (العربية)"], key="sb_lang")
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-                # ── PERSONA SELECTOR ──────────────────────────────────────────────────
+        # ── PERSONA SELECTOR ──────────────────────────────────────────────────
         st.subheader(t("active_persona", fallback="Active Persona"))
         user_personas = _load_user_personas(st.session_state.get(K.USER_HASH, ""))
         all_names = list(STARTER_PERSONAS.keys()) + [p["name"] for p in user_personas]
 
-        # 🟢 ARMORED: Removed the on_change callback trap. Evaluated synchronously.
         sel_persona = st.selectbox(
             "Persona Select", 
             options=["None"] + all_names, 
@@ -160,7 +170,6 @@ def render_sidebar() -> SidebarConfig:
             label_visibility="collapsed"
         )
         
-        # Determine which persona object to lock in
         if sel_persona == "None":
             active_p = None
         elif sel_persona in STARTER_PERSONAS:
@@ -168,7 +177,6 @@ def render_sidebar() -> SidebarConfig:
         else:
             active_p = next((p for p in user_personas if p["name"] == sel_persona), None)
 
-        # Lock to state
         st.session_state[K.ACTIVE_PERSONA] = active_p
 
         if active_p:
@@ -180,8 +188,9 @@ def render_sidebar() -> SidebarConfig:
             """, unsafe_allow_html=True)
 
         # ── OPTIONS ───────────────────────────────────────────────────────────
-        aesthetic_choice = st.selectbox(t("aesthetic_preset"), options=list(AESTHETIC_PRESETS.keys()), key="sb_aesthetic")
-        islamic_mode = st.toggle(t("islamic_mode"), value=False, key="sb_islamic")
+        st.markdown("<hr style='margin-top:5px;'>", unsafe_allow_html=True)
+        aesthetic_choice = st.selectbox(t("aesthetic_preset", fallback="Aesthetic"), options=list(AESTHETIC_PRESETS.keys()), key="sb_aesthetic")
+        islamic_mode = st.toggle(t("islamic_mode", fallback="Islamic Mode"), value=False, key="sb_islamic")
         expert_mode = st.toggle("Expert Diagnostics", value=False, key="sb_expert")
 
         st.markdown("<hr>", unsafe_allow_html=True)
@@ -197,12 +206,21 @@ def render_sidebar() -> SidebarConfig:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        if st.button(t("reset_session"), use_container_width=True):
+        if st.button(t("reset_session", fallback="Reset Session"), use_container_width=True):
             from state import reset_session
             reset_session()
             st.rerun()
 
-    # 🟢 THE RETURN: Indented by 4 spaces (INSIDE render_sidebar)
+        # 🟢 RESTORED: Quick Archive Export
+        if st.session_state.get(K.HISTORY):
+            st.download_button(
+                t("export_archive", fallback="Export Archive"),
+                data=json.dumps(st.session_state[K.HISTORY], ensure_ascii=False, indent=2),
+                file_name=f"inkos_archive_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+
     return SidebarConfig(
         target_model     = target_model,
         framework        = framework,
