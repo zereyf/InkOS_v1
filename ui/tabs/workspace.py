@@ -186,7 +186,7 @@ def render_workspace(cfg: dict) -> None:
                     except Exception as e:
                         st.error(f"Voice Uplink Failed: {e}")
 
-     with v_col2:
+        with v_col2:
         intent_val = st.text_area(
             "intent", 
             height=145, 
