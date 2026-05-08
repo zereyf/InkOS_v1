@@ -1,9 +1,9 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v13.1: Final Persistence Latch.
-       - Removed Duplicate Widget ID collision.
-       - Stabilized URL Rehydration.
+v13.2: Typographic Hardening Build.
+       - Stripped default Streamlit subheaders.
+       - Injected custom translation-ready vc-headers.
 """
 
 import streamlit as st
@@ -137,7 +137,7 @@ def render_sidebar() -> SidebarConfig:
         st.markdown("<hr>", unsafe_allow_html=True)
 
         # ── LOGIC CONFIGURATION ───────────────────────────────────────────────
-        st.subheader(t("logic_config", fallback="Logic Configuration"))
+        st.markdown(f'<div class="vc-header" style="margin-top:20px; font-size:0.65rem;">[ {t("logic_config", fallback="LOGIC_CONFIGURATION").upper()} ]</div>', unsafe_allow_html=True)
         target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
         target_model = st.selectbox("Target Model", options=target_options, key="sb_target")
 
@@ -156,7 +156,7 @@ def render_sidebar() -> SidebarConfig:
         st.markdown("<hr>", unsafe_allow_html=True)
 
         # ── PERSONA SELECTOR (v2026.4 LATCH) ──────────────────────────────────
-        st.subheader(t('active_persona', fallback='Active Persona'))
+        st.markdown(f'<div class="vc-header" style="margin-top:20px; font-size:0.65rem;">[ {t("active_persona", fallback="ACTIVE_PERSONA").upper()} ]</div>', unsafe_allow_html=True)
         user_personas = _load_user_personas(st.session_state.get(K.USER_HASH, ''))
 
         # 🟢 PERSISTENCE LATCH: Recover Persona from URL on Refresh
