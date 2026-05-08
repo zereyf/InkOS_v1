@@ -228,39 +228,47 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 [data-baseweb="popover"] > div { background: var(--bg-deep) !important; border: 1px solid var(--gold) !important; border-radius: 2px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important; }
 [data-baseweb="menu"] li { font-family: var(--font-m) !important; font-size: 0.75rem !important; color: var(--text-muted) !important; padding: 10px 14px !important; transition: background 0.15s, color 0.15s !important; }
 [data-baseweb="menu"] li:hover, [data-baseweb="menu"] li[aria-selected="true"] { background: rgba(201, 168, 76, 0.1) !important; color: var(--gold) !important; border-left: 2px solid var(--gold) !important; }
-
 /* ══════════════════════════════════════════
-   TACTICAL TOGGLE SWITCHES
+   TACTICAL TOGGLE SWITCHES (V2 BASEWEB OVERRIDE)
 ══════════════════════════════════════════ */
-div[data-testid="stToggle"] label {
+/* 1. Terminal Font for the Label */
+div[data-testid="stToggle"] label p {
     font-family: var(--font-m) !important;
-    font-size: 0.6rem !important;
+    font-size: 0.65rem !important;
     letter-spacing: 1px !important;
     color: var(--text-muted) !important;
+    text-transform: uppercase !important;
 }
 
-div[data-testid="stToggle"] div[role="switch"] {
-    border-radius: 2px !important; 
+/* 2. Square the Track (Inactive) */
+div[data-testid="stToggle"] [data-baseweb="checkbox"] > div:first-of-type {
     background-color: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 2px !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    transition: all 0.3s ease !important;
 }
 
-div[data-testid="stToggle"] div[role="switch"] > div {
-    border-radius: 1px !important;
+/* 3. Square the Thumb (Inactive) */
+div[data-testid="stToggle"] [data-baseweb="checkbox"] > div:first-of-type > div {
     background-color: var(--text-dim) !important;
+    border-radius: 1px !important;
     box-shadow: none !important;
+    transition: all 0.3s ease !important;
 }
 
-div[data-testid="stToggle"] input:checked + div[role="switch"] {
+/* 4. ACTIVE STATE: The Amber Forensic Track */
+div[data-testid="stToggle"] input:checked + div {
     background-color: rgba(201, 168, 76, 0.15) !important;
     border-color: var(--gold) !important;
-    box-shadow: 0 0 8px rgba(201, 168, 76, 0.3) !important;
+    box-shadow: inset 0 0 8px rgba(201, 168, 76, 0.1) !important;
 }
 
-div[data-testid="stToggle"] input:checked + div[role="switch"] > div {
+/* 5. ACTIVE STATE: The Glowing Amber Thumb */
+div[data-testid="stToggle"] input:checked + div > div {
     background-color: var(--gold) !important;
-    box-shadow: 0 0 4px var(--gold) !important;
+    box-shadow: 0 0 8px rgba(201, 168, 76, 0.6) !important;
 }
+
 
 /* ══════════════════════════════════════════
    LEVEL 4 FIX: TOAST NOTIFICATIONS
