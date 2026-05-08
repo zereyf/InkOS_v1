@@ -100,7 +100,8 @@ def render_workspace(cfg: dict) -> None:
             <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; letter-spacing:1px; text-shadow: 0 0 10px rgba(201,168,76,0.3);">حبر وفكرة</div>
         </div>
         <div style="display:flex; justify-content:space-between; font-family:var(--font-m); font-size:0.5rem; color:var(--text-dim); letter-spacing:2px; margin-bottom:15px; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
-            <div>A.I.Z.E.N. TERMINAL // REF: {st.session_state.get(K.USER_HASH, "NULL")[:8]}</div>
+            <div>A.I.Z.E.N. TERMINAL // REF: {(st.session_state.get(K.USER_HASH) or "GHOST_ID")[:8]}</div>
+
             <div>COGNITIVE_LOAD: {cognitive_load} BYTES</div>
         </div>
     """)
