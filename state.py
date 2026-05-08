@@ -51,7 +51,7 @@ _DEFAULTS: dict = {
     K.USER_HASH:       None,
     K.USER_PIN:        None,
     K.FAILED_ATTEMPTS: 0,
-    K.LOCK_OUT_UNTIL:  None,
+    K.LOCKOUT_UNTIL:  None,
     K.VAULT_SEARCH:    "",
     K.VAULT_STATS:     {},
     K.ACTIVE_PERSONA:  None,
