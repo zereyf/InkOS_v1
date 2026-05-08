@@ -1,8 +1,9 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2026.4.2: Master Sync — Bootloader Fix & CSS Injection.
-           Repaired Rehydration logic trap and armored HUD variables.
+v2026.4.3: Master Sync — Bootloader Hardened.
+           - Destroyed duplicate Persona Rehydration trap.
+           - Injected Task 10 Startup Validation matrix.
 """
 
 import sys
@@ -40,24 +41,23 @@ if API_KEY_MISSING:
     st.error("SYSTEM ERROR: GROQ_API_KEY not found in environment.")
     st.stop()
 
-# ── 🟢 FIXED: URL REHYDRATION (SID + PERSONA) ─────────────────────────────
+# ── URL REHYDRATION (SID ONLY) ──────────────────────────────────────────────
 if "sid" in st.query_params:
     st.session_state[K.USER_HASH] = st.query_params["sid"]
-
-# ── 🟢 INJECTION: URL PERSONA REHYDRATION ────────────────────────────────────
-if "p" in st.query_params and not st.session_state.get(K.ACTIVE_PERSONA):
-    from forge.persona_engine import STARTER_PERSONAS
-    p_name = st.query_params["p"]
-    if p_name in STARTER_PERSONAS:
-        st.session_state[K.ACTIVE_PERSONA] = STARTER_PERSONAS[p_name]
-
-
 
 # ── INITIALIZE STATE ────────────────────────────────────────────────────────
 init_session_state()
 
+# ── 🟢 TASK 10: BOOTSTRAP VALIDATION MATRIX ─────────────────────────────────
+from config import validate_config
+config_errors = validate_config()
+if config_errors:
+    for err in config_errors:
+        st.error(f'CONFIG ERROR: {err}')
+    st.stop()
 
-# ── 🟢 CSS ROOT INJECTION: The "AmeerInk" Grit Variables ────────────────────
+# ── CSS ROOT INJECTION: The "AmeerInk" Grit Variables ──────────────────────
+# [TODO: Move this block to ui/styles.py in a future refactor]
 st.markdown("""
 <style>
     :root {
@@ -93,7 +93,6 @@ st.markdown(STYLES, unsafe_allow_html=True)
 current_sid = st.session_state.get(K.USER_HASH)
 
 if current_sid and not str(current_sid).upper().startswith("GUEST_"):
-    # 🟢 FIXED: Only run if we haven't already rehydrated this session
     if not st.session_state.get("boot_rehydrated"):
         with st.spinner("Re-establishing Neural Uplink..."):
             from vault.vault_engine import rehydrate_session
