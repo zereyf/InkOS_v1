@@ -252,7 +252,15 @@ def render_workspace(cfg: dict) -> None:
             
             st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
             v1, v2, v3 = st.columns([2, 2, 1])
-            with v1: st.text_input("Title", key="v_t", label_visibility="collapsed", placeholder="Asset Title...")
+                        # ── 🟢 FIXED: WORKSPACE TITLE LATCH ──────────────────────────────
+            with v1: 
+                st.text_input(
+                    "Title", 
+                    key="v_t", 
+                    label_visibility="collapsed", 
+                    placeholder=t("asset_title_placeholder", fallback="CODENAME / DESIGNATION...")
+                )
+
             with v2: st.text_input("Tags", key="v_g", label_visibility="collapsed", placeholder="Forensic Tags...")
             with v3: 
                 if st.button("SECURE"):
