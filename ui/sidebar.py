@@ -136,25 +136,37 @@ def render_sidebar() -> SidebarConfig:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── PERSONA SELECTOR ──────────────────────────────────────────────────
-        st.subheader(t("active_persona"))
+                # ── PERSONA SELECTOR ──────────────────────────────────────────────────
+        st.subheader(t("active_persona", fallback="Active Persona"))
         user_personas = _load_user_personas(st.session_state.get(K.USER_HASH, ""))
         all_names = list(STARTER_PERSONAS.keys()) + [p["name"] for p in user_personas]
 
-        def _sb_persona_changed():
-            sel = st.session_state.sb_persona
-            if sel == "None":
-                st.session_state[K.ACTIVE_PERSONA] = None
-            elif sel in STARTER_PERSONAS:
-                st.session_state[K.ACTIVE_PERSONA] = STARTER_PERSONAS[sel]
-            else:
-                st.session_state[K.ACTIVE_PERSONA] = next((p for p in user_personas if p["name"] == sel), None)
-
-        st.selectbox("Persona Select", options=["None"] + all_names, key="sb_persona", on_change=_sb_persona_changed, label_visibility="collapsed")
+        # 🟢 ARMORED: Removed the on_change callback trap. Evaluated synchronously.
+        sel_persona = st.selectbox(
+            "Persona Select", 
+            options=["None"] + all_names, 
+            key="sb_persona", 
+            label_visibility="collapsed"
+        )
         
-        active_p = st.session_state.get(K.ACTIVE_PERSONA)
+        # Determine which persona object to lock in
+        if sel_persona == "None":
+            active_p = None
+        elif sel_persona in STARTER_PERSONAS:
+            active_p = STARTER_PERSONAS[sel_persona]
+        else:
+            active_p = next((p for p in user_personas if p["name"] == sel_persona), None)
 
-        st.markdown("<hr>", unsafe_allow_html=True)
+        # Lock to state
+        st.session_state[K.ACTIVE_PERSONA] = active_p
+
+        if active_p:
+            st.markdown(f"""
+                <div style="background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.25); padding:8px; border-radius:3px; font-size:0.6rem; color:var(--gold);">
+                    <strong>{active_p.get('name','')}</strong><br>
+                    <span style="color:var(--text-muted); font-style:italic;">{active_p.get('role','')[:60]}...</span>
+                </div>
+            """, unsafe_allow_html=True)
 
         # ── OPTIONS ───────────────────────────────────────────────────────────
         aesthetic_choice = st.selectbox(t("aesthetic_preset"), options=list(AESTHETIC_PRESETS.keys()), key="sb_aesthetic")
