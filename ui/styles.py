@@ -245,6 +245,59 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 [data-testid="stToast"] button:hover { color: var(--danger) !important; background: transparent !important; }
 
 /* ══════════════════════════════════════════
+   VOICE UPLINK (AUDIO SCANNER) OVERRIDE
+══════════════════════════════════════════ */
+/* 1. The Main Chassis: Dark, Sharp, and Inset */
+div[data-testid="stAudioInput"] > div,
+div[data-testid="stAudioInput"] section {
+    background: linear-gradient(180deg, var(--bg-input) 0%, #05070A 100%) !important;
+    border: 1px solid rgba(201, 168, 76, 0.2) !important;
+    border-radius: 2px !important;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.8) !important;
+    transition: all 0.3s ease !important;
+}
+
+/* 2. Hover State: The System Wakes Up */
+div[data-testid="stAudioInput"] > div:hover,
+div[data-testid="stAudioInput"] section:hover {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 12px rgba(201, 168, 76, 0.1), inset 0 0 15px rgba(0,0,0,0.8) !important;
+}
+
+/* 3. The Timer & Text: Monospace & Tech-Dim */
+div[data-testid="stAudioInput"] span,
+div[data-testid="stAudioInput"] p {
+    font-family: var(--font-m) !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 2px !important;
+    color: var(--text) !important;
+}
+
+/* 4. The Microphone Icon & SVG Assets: Pure Amber */
+div[data-testid="stAudioInput"] svg {
+    fill: var(--gold) !important;
+    color: var(--gold) !important;
+    opacity: 0.9 !important;
+}
+
+/* 5. Internal Buttons (Record/Stop/Clear): Squared & Tactical */
+div[data-testid="stAudioInput"] button {
+    border-radius: 2px !important;
+    background: transparent !important;
+    transition: all 0.2s ease !important;
+}
+
+/* 6. Button Active/Hover State */
+div[data-testid="stAudioInput"] button:hover {
+    background: var(--gold-glow) !important;
+}
+div[data-testid="stAudioInput"] button:active svg {
+    fill: var(--danger) !important; /* Flashes red when pressed */
+    color: var(--danger) !important;
+}
+
+
+/* ══════════════════════════════════════════
    MOBILE OVERRIDES & MISC
 ══════════════════════════════════════════ */
 @media (max-width: 768px) {
