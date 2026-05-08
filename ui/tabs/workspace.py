@@ -1,24 +1,23 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v30.5: The "Neural Intercept" Build.
-       - Integrated Live Linguistic Intercept (Arabic Pattern Detection).
-       - Restored Wordmark Density (Thermal/Cognitive Metrics).
-       - Fixed Indentation/Scope for Live Pattern Logic.
-       - Locked Vault Keys (v_t, v_g) to Save Logic.
+v30.6: Master Sync — Indentation Repair & Silent Fault Fix.
+       - Repaired HISTORY append indentation block.
+       - Added 'else' block to Vault SECURE logic to prevent silent failures.
+       - Removed 'on_change' from intent area to stop double-click bug.
 """
 
 import hashlib
 import textwrap
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Tuple
 
 from state import K
 from security.sanitizer import sanitize_input
 from security.rate_limiter import check_rate_limit
 from engine.refiner import run_refinement_and_audit, detect_best_target
-from engine.cognitive_map import detect_arabic_pattern # 🟢 REQUIRED FOR INTERCEPT
+from engine.cognitive_map import detect_arabic_pattern
 from i18n.translations import t
 
 # ── DNA INJECTION ENGINE ─────────────────────────────────────────────────────
@@ -44,7 +43,6 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
     efficiency = int(safe_audit.get("efficiency", 0))
     critique = str(safe_audit.get("critique", ""))
     
-    # 🧪 GHOST METRIC: THERMAL EFFICIENCY
     thermal_status = "STABLE" if score > 80 else "CRITICAL" if score < 40 else "FLUCTUATING"
     target, reason = st.session_state.get(K.AUTO_TARGET, "Unknown"), st.session_state.get(K.AUTO_REASON, "Manual")
     status_label, status_color = ("OPTIMIZED", "#4CAF9A") if score > 85 else ("SUB-OPTIMAL", "var(--gold)")
@@ -93,8 +91,6 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
 # ── MAIN RENDERER ─────────────────────────────────────────────────────────────
 
 def render_workspace(cfg: dict) -> None:
-    def flush_trace(): st.session_state["athar_trace"] = False
-
     # 1. HEADER & COGNITIVE LOAD
     source_lang = cfg.get("source_lang", "English")
     cognitive_load = len(st.session_state.get("ta_input", ""))
@@ -130,7 +126,7 @@ def render_workspace(cfg: dict) -> None:
         """)
         st.markdown(dna_bar, unsafe_allow_html=True)
 
-    # 3. 📡 LIVE LINGUISTIC INTERCEPT (Placed inside function scope)
+    # 3. 📡 LIVE LINGUISTIC INTERCEPT
     raw_input = st.session_state.get("ta_input", "")
     live_pattern_html = '<div style="height:22px;"></div>'
     if raw_input and source_lang == "Arabic (العربية)":
@@ -147,26 +143,33 @@ def render_workspace(cfg: dict) -> None:
     st.markdown(live_pattern_html, unsafe_allow_html=True)
 
     # 4. INPUT AREA
-    st.text_area("intent", height=145, placeholder=t("workspace_placeholder"), label_visibility="collapsed", key="ta_input", on_change=flush_trace)
+    # 🟢 FIXED: Removed on_change to prevent double-click bug
+    st.text_area("intent", height=145, placeholder=t("workspace_placeholder"), label_visibility="collapsed", key="ta_input")
 
     if st.button(t("execute_btn"), use_container_width=True):
         st.session_state["athar_trace"] = False
         cleaned, _ = sanitize_input(st.session_state.ta_input or "")
+        
         if cleaned:
             with st.status("Neural Handshake...", expanded=True):
                 final_text, _ = _apply_dna_triggers(cleaned)
                 auto_target, auto_reason = detect_best_target(final_text)
                 st.session_state[K.AUTO_TARGET], st.session_state[K.AUTO_REASON] = auto_target, auto_reason
+                
                 result, audit, _ = run_refinement_and_audit(final_text, auto_target, cfg["framework"], cfg["source_lang"], cfg["aesthetic_choice"], cfg["islamic_mode"], cfg.get("active_persona"))
-                st.session_state[K.LAST_RESULT], st.session_state[K.LAST_AUDIT], st.session_state[K.LAST_INPUT] = result, audit, cleaned
+                
+                st.session_state[K.LAST_RESULT] = result
+                st.session_state[K.LAST_AUDIT] = audit
+                st.session_state[K.LAST_INPUT] = cleaned
 
-st.session_state[K.HISTORY].append({
-    "timestamp": datetime.now(timezone.utc).isoformat(),
-    "intent": cleaned,
-    "target": auto_target,
-    "score": audit.get("score", 0),
-    "asset": result
-})
+                # 🟢 FIXED: Properly indented block to log the run
+                st.session_state[K.HISTORY].append({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "intent": cleaned,
+                    "target": auto_target,
+                    "score": audit.get("score", 0),
+                    "asset": result
+                })
 
                 st.rerun()
 
@@ -199,3 +202,6 @@ st.session_state[K.HISTORY].append({
                         st.session_state[K.LAST_SAVED] = datetime.now().strftime("%H:%M")
                         st.toast("Neural Vault Updated.")
                         st.rerun()
+                    else:
+                        # 🟢 FIXED: Prevents silent failure if DB rejects save
+                        st.error(f"Vault Lock Failed: {err}")
