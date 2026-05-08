@@ -1,18 +1,16 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v12.3: Master Sync — The AmeerInk Protocol.
-       - Fixed Indentation on `is_guest` block.
-       - Restored ID Availability Scanner.
-       - Restored Auto-Cipher Feedback UI.
-       - Restored Export Archive JSON builder.
-       - Destroyed Persona Callback Trap.
+v13.0: Agent-Ready Refactor.
+       - Destroyed Persona Callback Trap (Task 8).
+       - Implemented Single-Write Persona Latch.
+       - Stabilized URL Rehydration.
 """
 
 import streamlit as st
 import json
 import textwrap
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import TypedDict, Optional
 
 from state import K, get_remaining_calls
@@ -23,7 +21,7 @@ from vault.vault_engine import (
     authenticate_terminal, 
     check_id_availability
 )
-from i18n.translations import t, set_lang, get_lang, LANGUAGES, is_rtl
+from i18n.translations import t, set_lang, get_lang, LANGUAGES
 
 
 class SidebarConfig(TypedDict):
@@ -63,6 +61,7 @@ def render_language_switcher() -> None:
                 if not is_active:
                     set_lang(lang["code"])
                     st.rerun()
+
 def render_sidebar() -> SidebarConfig:
     """
     🟢 MASTER RENDERER: Identity-Locked Uplink
@@ -77,9 +76,9 @@ def render_sidebar() -> SidebarConfig:
         if SUPABASE_MISSING:
             uplink_color, uplink_label = "#E53E3E", "DB_FAULT"
         elif is_guest:
-            uplink_color, uplink_label = "var(--text-dim)", "OFFLINE" # Steel/Dim color
+            uplink_color, uplink_label = "var(--text-dim)", "OFFLINE" 
         else:
-            uplink_color, uplink_label = "#4CAF9A", "ACTIVE" # Green
+            uplink_color, uplink_label = "#4CAF9A", "ACTIVE" 
 
         link_html = textwrap.dedent(f"""
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 5px;">
@@ -143,7 +142,6 @@ def render_sidebar() -> SidebarConfig:
         target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
         target_model = st.selectbox("Target Model", options=target_options, key="sb_target")
 
-        # 🟢 RESTORED: Cipher visual feedback
         if target_model == AUTO_SELECT_LABEL:
             auto_tgt = st.session_state.get(K.AUTO_TARGET)
             if auto_tgt:
@@ -158,97 +156,43 @@ def render_sidebar() -> SidebarConfig:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── 🟢 FIXED: PERSONA SELECTOR         # ── 🟢 FIXED: UNIQUE IDENTITY MAPPING (SHADOW STATE COLLISION FIX) ─────
-        st.subheader(t("active_persona", fallback="Active Persona"))
-        user_personas = _load_user_personas(st.session_state.get(K.USER_HASH, ""))
-        
-        # Build unique display names to prevent selectbox collisions
-        # format: "Name [S]" for Starters, "Name [C]" for Custom
-        s_options = {f"{name} [S]": p for name, p in STARTER_PERSONAS.items() if name != "None"}
-        c_options = {f"{p['name']} [C]": p for p in user_personas}
-        
-        # Final options map: Display Name -> Persona Object
-        options_map = {"None": None, **s_options, **c_options}
+        # ── PERSONA SELECTOR (v2026.4 LATCH) ──────────────────────────────────
+        st.subheader(t('active_persona', fallback='Active Persona'))
+        user_personas = _load_user_personas(st.session_state.get(K.USER_HASH, ''))
+
+        options_map: dict = {'None': None}
+        for name, p in STARTER_PERSONAS.items():
+            if name != 'None':
+                options_map[f'{name} [S]'] = p
+        for p in user_personas:
+            options_map[f"{p['name']} [C]"] = p
         options_list = list(options_map.keys())
 
-        # 1. URL REHYDRATION (Enhanced for Unique IDs)
-        url_p_name = st.query_params.get("p")
-        if url_p_name and not st.session_state.get(K.ACTIVE_PERSONA):
-            # Try to match name in either dictionary
-            if url_p_name in STARTER_PERSONAS:
-                st.session_state[K.ACTIVE_PERSONA] = STARTER_PERSONAS[url_p_name]
-            else:
-                st.session_state[K.ACTIVE_PERSONA] = next((p for p in user_personas if p["name"] == url_p_name), None)
-
-        # 2. DYNAMIC INDEX: Calculate index based on persona name + type suffix
+        # Resolve current persona to display key
         current_active = st.session_state.get(K.ACTIVE_PERSONA)
-        p_name = get_persona_display_name(current_active)
-        
-        # Determine the correct key suffix for the index search
-        # If the active persona is in STARTER_PERSONAS, it's [S], else [C]
         if not current_active:
-            current_key = "None"
+            current_key = 'None'
         else:
-            current_key = f"{p_name} [S]" if p_name in STARTER_PERSONAS else f"{p_name} [C]"
-        
+            p_name = get_persona_display_name(current_active)
+            is_starter = p_name in STARTER_PERSONAS
+            current_key = f'{p_name} [S]' if is_starter else f'{p_name} [C]'
+            
         p_index = options_list.index(current_key) if current_key in options_list else 0
 
-        # 3. SELECTBOX WIDGET
-        sel_key = st.selectbox(
-            "Persona Select", 
-            options=options_list, 
-            index=p_index,
-            key="sb_persona_unique", # Rotated key to clear old state
-            label_visibility="collapsed"
+        # 🟢 SINGLE SELECTBOX — SINGLE STATE WRITE
+        selected_key = st.selectbox(
+            'Persona Select', options=options_list,
+            index=p_index, key='sb_persona', label_visibility='collapsed',
         )
         
-        # 4. SYNC STATE & URL
-        active_p = options_map[sel_key]
-        st.session_state[K.ACTIVE_PERSONA] = active_p
-        
-        if sel_key == "None":
-            if "p" in st.query_params: del st.query_params["p"]
-        else:
-            # Latch pure name into URL for rehydration logic
-            st.query_params["p"] = active_p.get("name", "Unknown")
-
-
-        # 2. DYNAMIC INDEX: Sync Sidebar with Forge "Engage" clicks
-        current_active = st.session_state.get(K.ACTIVE_PERSONA)
-        current_name = get_persona_display_name(current_active) if current_active else "None"
-        
-        try:
-            p_index = options_list.index(current_name)
-        except ValueError:
-            p_index = 0
-
-        # 3. CALLBACK: Update URL when persona changes via Sidebar
-        def _on_sidebar_persona_change():
-            val = st.session_state.sb_persona
-            if val == "None":
-                if "p" in st.query_params: del st.query_params["p"]
-            else:
-                st.query_params["p"] = val
-
-        sel_persona = st.selectbox(
-            "Persona Select", 
-            options=options_list, 
-            index=p_index,
-            key="sb_persona", 
-            on_change=_on_sidebar_persona_change,
-            label_visibility="collapsed"
-        )
-        
-        # Map selected name back to persona object and update state
-        if sel_persona == "None":
-            active_p = None
-        elif sel_persona in STARTER_PERSONAS:
-            active_p = STARTER_PERSONAS[sel_persona]
-        else:
-            active_p = next((p for p in user_personas if p["name"] == sel_persona), None)
-
+        active_p = options_map[selected_key]
         st.session_state[K.ACTIVE_PERSONA] = active_p
 
+        # URL sync protocol
+        if active_p:
+            st.query_params['p'] = active_p.get('name', '')
+        elif 'p' in st.query_params:
+            del st.query_params['p']
 
         if active_p:
             st.markdown(f"""
@@ -282,7 +226,6 @@ def render_sidebar() -> SidebarConfig:
             reset_session()
             st.rerun()
 
-        # 🟢 RESTORED: Quick Archive Export
         if st.session_state.get(K.HISTORY):
             st.download_button(
                 t("export_archive", fallback="Export Archive"),
