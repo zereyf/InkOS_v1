@@ -224,7 +224,6 @@ def render_workspace(cfg: dict) -> None:
                 })
 
                 st.rerun()
-
     # 5. OUTPUT LAYER
     if st.session_state.get(K.LAST_RESULT):
         left, right = st.columns([1, 2], gap="large")
@@ -234,13 +233,12 @@ def render_workspace(cfg: dict) -> None:
             st.markdown(f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:2px; margin-bottom:8px;">[ REFINED_ASSET ]</div>', unsafe_allow_html=True)
             st.text_area("Asset", value=st.session_state.get(K.LAST_RESULT), height=320, label_visibility="collapsed")
             
-                        st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
+            st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
             v1, v2, v3 = st.columns([2, 2, 1])
             with v1: st.text_input("Title", key="v_t", label_visibility="collapsed", placeholder="Asset Title...")
             with v2: st.text_input("Tags", key="v_g", label_visibility="collapsed", placeholder="Forensic Tags...")
             with v3: 
                 if st.button("SECURE"):
-                    # 🟢 FIXED: Indentation repaired for the v3 block
                     current_user = st.session_state.get(K.USER_HASH)
                     
                     if not current_user or "GUEST_" in str(current_user).upper():
@@ -262,4 +260,5 @@ def render_workspace(cfg: dict) -> None:
                             st.rerun()
                         else:
                             st.error(f"Vault Lock Failed: {err}")
+
 
