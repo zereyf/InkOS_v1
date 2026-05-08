@@ -91,19 +91,10 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
 # ── MAIN RENDERER ─────────────────────────────────────────────────────────────
 
 def render_workspace(cfg: dict) -> None:
-    # 1. HEADER & COGNITIVE LOAD
-    source_lang = cfg.get("source_lang", "English")
-    cognitive_load = len(st.session_state.get("ta_input", ""))
-    
-    expert_badge = "<span style='background:rgba(229, 62, 62, 0.1); color:var(--danger); border:1px solid rgba(229, 62, 62, 0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; position:relative; top:-2px;'>EXPERT</span>" if cfg.get("expert_mode") else ""
-    islamic_badge = "<span style='background:rgba(76, 175, 154, 0.1); color:#4CAF9A; border:1px solid rgba(76, 175, 154, 0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; position:relative; top:-2px;'>HIKMAH LATCH</span>" if cfg.get("islamic_mode") else ""
-
-    header_html = textwrap.dedent(f"""
+      header_html = textwrap.dedent(f"""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
             <div class="vc-header" style="margin:0; display:flex; align-items:center;">
-                <span class="status-dot"></span>{t("tab_workspace", fallback="WORKSPACE")}
-                {expert_badge}
-                {islamic_badge}
+                <span class="status-dot"></span>{t("tab_workspace", fallback="WORKSPACE")}{expert_badge}{islamic_badge}
             </div>
             <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; letter-spacing:1px; text-shadow: 0 0 10px rgba(201,168,76,0.3);">حبر وفكرة</div>
         </div>
@@ -113,6 +104,7 @@ def render_workspace(cfg: dict) -> None:
         </div>
     """)
     st.markdown(header_html, unsafe_allow_html=True)
+
 
     # 2. DNA ARMORY BAR
     if "GUEST_" not in str(st.session_state.get(K.USER_HASH, "")).upper():
