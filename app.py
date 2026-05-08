@@ -1,10 +1,10 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2026.4.3: Master Sync — Bootloader Hardened.
+v2026.4.4: Master Sync — Bootloader Hardened.
            - Destroyed duplicate Persona Rehydration trap.
            - Injected Task 10 Startup Validation matrix.
-           - V2 Tactical Toggle Baseweb Override Active.
+           - V3 Brute-Force Tactical Toggle Override Active.
 """
 
 import sys
@@ -58,7 +58,6 @@ if config_errors:
     st.stop()
 
 # ── CSS ROOT INJECTION: The "AmeerInk" Grit Variables ──────────────────────
-# [TODO: Move this block to ui/styles.py in a future refactor]
 st.markdown("""
 <style>
     :root {
@@ -80,16 +79,12 @@ st.markdown("""
         70% { box-shadow: 0 0 0 6px rgba(201, 168, 76, 0); }
         100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0); }
     }
-    @keyframes pulse-red {
-        0% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.7); }
-        70% { box-shadow: 0 0 0 6px rgba(229, 62, 62, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0); }
-    }
     
-    /* ── TACTICAL TOGGLE SWITCHES (V2 BASEWEB OVERRIDE) ── */
+    /* ── TACTICAL TOGGLE SWITCHES (V3 BRUTE-FORCE OVERRIDE) ── */
     
     /* 1. Terminal Font for the Label */
-    div[data-testid="stToggle"] label p {
+    div[data-testid="stToggle"] label p,
+    div[data-testid="stToggle"] label span {
         font-family: var(--font-m) !important;
         font-size: 0.65rem !important;
         letter-spacing: 1px !important;
@@ -98,19 +93,17 @@ st.markdown("""
     }
 
     /* 2. Square the Track (Inactive) */
-    div[data-testid="stToggle"] [data-baseweb="checkbox"] > div:first-of-type {
+    div[data-testid="stToggle"] label > div:first-of-type {
         background-color: rgba(255, 255, 255, 0.05) !important;
         border-radius: 2px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        transition: all 0.3s ease !important;
     }
 
     /* 3. Square the Thumb (Inactive) */
-    div[data-testid="stToggle"] [data-baseweb="checkbox"] > div:first-of-type > div {
+    div[data-testid="stToggle"] label > div:first-of-type > div {
         background-color: var(--text-dim) !important;
         border-radius: 1px !important;
         box-shadow: none !important;
-        transition: all 0.3s ease !important;
     }
 
     /* 4. ACTIVE STATE: The Amber Forensic Track */
