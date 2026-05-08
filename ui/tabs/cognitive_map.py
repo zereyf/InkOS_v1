@@ -1,56 +1,61 @@
 """
 ui/tabs/cognitive_map.py — Cognitive Map Reference Tab
 ========================================================
-Tab 4: Full Arabic rhetorical device reference.
-v15.0: Upgraded for InkOS. Advanced Tech-Noir UI, Matrix Routing styling, 
-       and Streamlit Callback persistence.
+v20.1: Master Sync — Linguistic Architecture Edition.
+       Integrated Dedent protocol and synchronized K-class latching.
 """
 
 import streamlit as st
+import textwrap
+from state import K
 from engine.cognitive_map import ARABIC_COGNITIVE_MAP
 from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
 
-# Maps the Arabic rhetorical device to the backend system framework
+# 🧠 THE ARCHITECTURAL ROUTER
+# Maps Arabic rhetorical devices (Balagha) to InkOS Logic Frameworks
 FRAMEWORK_ROUTER = {
-    "التدرج": "Creative",            # Gradualism -> Chain-of-Thought
-    "الإيجاز": "Professional (RACE)", # Conciseness -> RACE Framework
-    "التفصيل": "Academic",            # Elaboration -> Academic Rigor
+    "التدرج": "Creative",            # Gradualism -> Narrative Arc
+    "الإيجاز": "Professional (RACE)", # Conciseness -> Precision Logic
+    "التفصيل": "Academic",            # Elaboration -> Scholarly Depth
     "التصوير": "Visual Director",     # Imagery -> Visual DNA Compiler
-    "default": "Technical (Debugger)" # Fallback
+    "default": "Technical (Debugger)" 
 }
 
-# ── STREAMLIT CALLBACKS ───────────────────────────────────────────────────────
-# Callbacks execute BEFORE the main script runs, bypassing the render lock.
+# ── STREAMLIT CALLBACKS (Operational Layer) ──────────────────────────────────
 
 def apply_framework_callback(target_framework: str, name: str):
+    # Synchronized with Sidebar Keys
     st.session_state["sb_framework"] = target_framework
-    st.toast(f"⚡️LATCHED: {name} → {target_framework} Logic") 
+    st.toast(f"⚡ LATCHED: {name} → {target_framework} Framework") 
 
 def toggle_islamic_callback():
     current_state = st.session_state.get("sb_islamic", False)
     st.session_state["sb_islamic"] = not current_state
-    status_msg = "Activated" if not current_state else "Deactivated"
+    status_msg = "Initialized" if not current_state else "Deactivated"
     st.toast(f"☪ Protocol {status_msg}")
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ── RENDER ENGINE ────────────────────────────────────────────────────────────
 
 def render_cognitive_map() -> None:
-    st.markdown(
-        '<div class="vc-header"><span class="status-dot" style="background:#90CDF4;box-shadow:0 0 8px #90CDF4;"></span>Linguistic Routing Matrix</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<p style="font-family:var(--font-m);font-size:0.72rem;color:var(--text-muted);'
-        'line-height:1.8;margin-bottom:24px;">'
-        'Neural translation logic mapping Classical Arabic rhetorical structures '
-        '(<strong style="color:var(--gold);">علم البيان</strong> & <strong style="color:var(--gold);">علم المعاني</strong>) '
-        'to algorithmic AI prompt frameworks. Latch a node below to override current session logic.</p>',
-        unsafe_allow_html=True,
-    )
+    # Header Logic
+    header_html = textwrap.dedent("""
+        <div class="vc-header">
+            <span class="status-dot" style="background:#90CDF4;box-shadow:0 0 8px #90CDF4;"></span>
+            Linguistic Routing Matrix
+        </div>
+        <p style="font-family:var(--font-m);font-size:0.72rem;color:var(--text-muted);line-height:1.8;margin-bottom:24px;">
+            Neural translation logic mapping Classical Arabic rhetorical structures 
+            (<strong style="color:var(--gold);">علم البيان</strong> & <strong style="color:var(--gold);">علم المعاني</strong>) 
+            to algorithmic AI prompt frameworks. Latch a node below to override current session logic.
+        </p>
+    """)
+    st.markdown(header_html, unsafe_allow_html=True)
 
+    # Matrix Iteration
     for i, (name, data) in enumerate(ARABIC_COGNITIVE_MAP.items()):
         color = data.get("color", "#90CDF4")
         
+        # Build detection trigger chips
         triggers_html = " ".join(
             f'<span style="display:inline-block;background:rgba(124,158,191,0.1);border:1px solid rgba(124,158,191,0.25);border-radius:2px;padding:2px 8px;margin:2px;font-size:0.75rem;font-family:var(--font-a);color:#E2E8F0;">{w}</span>'
             for w in data["trigger_words"]
@@ -61,65 +66,57 @@ def render_cognitive_map() -> None:
         col1, col2 = st.columns([4, 1])
         
         with col1:
-            st.markdown(f"""
-            <div style="
-                background:rgba(255,255,255,0.015);
-                border:1px solid rgba(255,255,255,0.05);
-                border-left:3px solid {color};
-                border-radius:0 4px 4px 0;
-                padding:16px; margin-bottom:12px;
-            ">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-                    <div>
-                        <div style="font-family:var(--font-a);font-size:1.4rem;color:{color};line-height:1.2;">{name}</div>
-                        <div style="font-family:var(--font-m);font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-top:6px;">
-                            ENGINE MAPPING: <span style="color:var(--gold);">{data['prompt_paradigm']}</span>
+            # The Matrix Node Card (Dedent Protected)
+            node_html = textwrap.dedent(f"""
+                <div style="background:rgba(255,255,255,0.015); border:1px solid rgba(255,255,255,0.05); border-left:3px solid {color}; border-radius:0 4px 4px 0; padding:16px; margin-bottom:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                        <div>
+                            <div style="font-family:var(--font-a);font-size:1.4rem;color:{color};line-height:1.2;">{name}</div>
+                            <div style="font-family:var(--font-m);font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-top:6px;">
+                                ENGINE MAPPING: <span style="color:var(--gold);">{data['prompt_paradigm']}</span>
+                            </div>
+                        </div>
+                        <div style="text-align:right;direction:rtl;max-width:60%;">
+                            <div style="font-size:0.55rem;color:var(--steel);letter-spacing:0.1em;margin-bottom:6px;font-family:var(--font-m);">DETECTION TRIGGERS</div>
+                            {triggers_html}
                         </div>
                     </div>
-                    <div style="text-align:right;direction:rtl;max-width:60%;">
-                        <div style="font-size:0.55rem;color:var(--steel);letter-spacing:0.1em;margin-bottom:6px;font-family:var(--font-m);">DETECTION TRIGGERS</div>
-                        {triggers_html}
+                    <div style="font-family:var(--font-m);font-size:0.75rem;color:#E2E8F0;line-height:1.6;background:rgba(0,0,0,0.3);padding:12px;border-radius:4px;border:1px solid rgba(255,255,255,0.03);">
+                        <span style="color:{color};font-weight:bold;margin-right:8px;font-size:0.65rem;letter-spacing:0.05em;">SYSTEM DIRECTIVE:</span><br>
+                        {data['prompt_instruction']}
                     </div>
                 </div>
-                <div style="font-family:var(--font-m);font-size:0.75rem;color:#E2E8F0;line-height:1.6;background:rgba(0,0,0,0.3);padding:12px;border-radius:4px;border:1px solid rgba(255,255,255,0.03);">
-                    <span style="color:{color};font-weight:bold;margin-right:8px;font-size:0.65rem;letter-spacing:0.05em;">SYSTEM DIRECTIVE:</span><br>
-                    {data['prompt_instruction']}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            """)
+            st.markdown(node_html, unsafe_allow_html=True)
             
         with col2:
-            st.markdown("<div style='height:35px'></div>", unsafe_allow_html=True) # Vertical alignment trick
+            st.markdown("<div style='height:35px'></div>", unsafe_allow_html=True)
             st.button(
                 f"LATCH {target_framework.upper()}", 
                 key=f"btn_apply_{name}", 
                 on_click=apply_framework_callback,
                 args=(target_framework, name),
-                use_container_width=True,
-                help=f"Locks the {target_framework} framework to your sidebar."
+                use_container_width=True
             )
 
     st.markdown("<hr>", unsafe_allow_html=True)
     
-    # ── ISLAMIC CONTEXT LAYER ────────────────────────────────────────────────
+    # ── ISLAMIC COMPLIANCE PROTOCOL ──────────────────────────────────────────
     is_active = st.session_state.get("sb_islamic", False)
     status_color = "#4CAF9A" if is_active else "var(--text-dim)"
     status_text = "ONLINE" if is_active else "STANDBY"
     
-    st.markdown(f"""
-    <div style="
-        display:flex;justify-content:space-between;align-items:center;
-        border-bottom:1px dashed rgba(255,255,255,0.1);
-        padding-bottom:12px;margin-bottom:16px;
-    ">
-        <div style="font-family:var(--font-m);font-size:0.8rem;color:#6EE7B7;letter-spacing:0.1em;text-transform:uppercase;">
-            ✦ Islamic Compliance Protocol
+    compliance_header = textwrap.dedent(f"""
+        <div style="display:flex;justify-content:space-between;align-items:center; border-bottom:1px dashed rgba(255,255,255,0.1); padding-bottom:12px;margin-bottom:16px;">
+            <div style="font-family:var(--font-m);font-size:0.8rem;color:#6EE7B7;letter-spacing:0.1em;text-transform:uppercase;">
+                ✦ Islamic Compliance Protocol
+            </div>
+            <div style="font-family:var(--font-m);font-size:0.65rem;color:{status_color};letter-spacing:0.1em;">
+                STATUS: {status_text}
+            </div>
         </div>
-        <div style="font-family:var(--font-m);font-size:0.65rem;color:{status_color};letter-spacing:0.1em;">
-            STATUS: {status_text}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    """)
+    st.markdown(compliance_header, unsafe_allow_html=True)
     
     col_a, col_b = st.columns([4, 1])
     with col_a:
