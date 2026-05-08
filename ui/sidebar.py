@@ -156,9 +156,21 @@ def render_sidebar() -> SidebarConfig:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── PERSONA SELECTOR (v2026.4 LATCH) ──────────────────────────────────
+              # ── PERSONA SELECTOR (v2026.4 LATCH) ──────────────────────────────────
         st.subheader(t('active_persona', fallback='Active Persona'))
         user_personas = _load_user_personas(st.session_state.get(K.USER_HASH, ''))
+
+        # 🟢 PERSISTENCE LATCH: Recover Persona from URL on Refresh
+        url_p_name = st.query_params.get("p")
+        if url_p_name and not st.session_state.get(K.ACTIVE_PERSONA):
+            # Check if it's a Starter Persona
+            if url_p_name in STARTER_PERSONAS:
+                st.session_state[K.ACTIVE_PERSONA] = STARTER_PERSONAS[url_p_name]
+            else:
+                # Check if it's a Custom Persona from the Database
+                custom_match = next((p for p in user_personas if p['name'] == url_p_name), None)
+                if custom_match:
+                    st.session_state[K.ACTIVE_PERSONA] = custom_match
 
         options_map: dict = {'None': None}
         for name, p in STARTER_PERSONAS.items():
@@ -168,7 +180,7 @@ def render_sidebar() -> SidebarConfig:
             options_map[f"{p['name']} [C]"] = p
         options_list = list(options_map.keys())
 
-        # Resolve current persona to display key
+        # Resolve current persona to display key for the dropdown index
         current_active = st.session_state.get(K.ACTIVE_PERSONA)
         if not current_active:
             current_key = 'None'
@@ -178,6 +190,22 @@ def render_sidebar() -> SidebarConfig:
             current_key = f'{p_name} [S]' if is_starter else f'{p_name} [C]'
             
         p_index = options_list.index(current_key) if current_key in options_list else 0
+
+        # SINGLE selectbox — SINGLE state write
+        selected_key = st.selectbox(
+            'Persona Select', options=options_list,
+            index=p_index, key='sb_persona', label_visibility='collapsed',
+        )
+        
+        active_p = options_map[selected_key]
+        st.session_state[K.ACTIVE_PERSONA] = active_p
+
+        # Keep URL in sync
+        if active_p:
+            st.query_params['p'] = active_p.get('name', '')
+        elif 'p' in st.query_params:
+            del st.query_params['p']
+
 
         # 🟢 SINGLE SELECTBOX — SINGLE STATE WRITE
         selected_key = st.selectbox(
