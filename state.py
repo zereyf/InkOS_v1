@@ -1,9 +1,8 @@
 """
 state.py — Session State Contract
 ===================================
-v20.4: Master Sync — Neural Core Edition.
-       Initialized dicts and strings to prevent NoneType collisions.
-       Synchronized with Athar Protocol and Identity Rehydration.
+v20.5: Master Sync — Neural Core Edition.
+       RESTORED: K.HISTORY to prevent Sidebar AttributeError.
 """
 
 import uuid
@@ -14,15 +13,18 @@ import streamlit as st
 
 
 class K:
+    # ── ENGINE & HISTORY (RESTORED) ──────────────────────────────────────────
+    HISTORY         = "prompt_history"  # 🟢 RESTORED
+    
     # ── IDENTITY & SECURITY ──────────────────────────────────────────────────
     USER_HASH       = "user_hash"
     USER_PIN        = "user_pin"
-    FAILED_ATTEMPTS  = "failed_attempts"
+    FAILED_ATTEMPTS = "failed_attempts"
     LOCKOUT_UNTIL   = "lockout_until"
     SECURITY_LOG    = "security_log"
     TIMESTAMPS      = "call_timestamps"
     
-    # ── ENGINE & HUD METRICS ─────────────────────────────────────────────────
+    # ── HUD METRICS ─────────────────────────────────────────────────
     LAST_RESULT     = "last_result"
     LAST_AUDIT      = "last_audit"
     LAST_INPUT      = "last_input"
@@ -30,7 +32,7 @@ class K:
     LAST_SAVED      = "last_saved"      
     AUTO_TARGET     = "auto_target"      
     AUTO_REASON     = "auto_reason"      
-    ATHAR_TRACE     = "athar_trace"     # 🟢 VISUAL DECAY PROTOCOL
+    ATHAR_TRACE     = "athar_trace"     
     
     # ── FORGE & VAULT ────────────────────────────────────────────────────────
     ACTIVE_PERSONA  = "active_persona"
@@ -50,6 +52,7 @@ class K:
 
 
 _DEFAULTS: dict = {
+    K.HISTORY:         [],              # 🟢 RESTORED
     K.USER_HASH:       None,
     K.USER_PIN:        None,
     K.FAILED_ATTEMPTS: 0,
@@ -58,13 +61,13 @@ _DEFAULTS: dict = {
     K.TIMESTAMPS:      [],
     
     K.LAST_RESULT:     None,
-    K.LAST_AUDIT:      {},              # 🛡️ ARMORED: Prevents NoneType crash
+    K.LAST_AUDIT:      {},              
     K.LAST_INPUT:      "",
-    K.LAST_PATTERN:    {},              # 🛡️ ARMORED: Prevents NoneType crash
+    K.LAST_PATTERN:    {},              
     K.LAST_SAVED:      "Never",
-    K.AUTO_TARGET:     "ChatGPT",        # 🟢 HUD SAFE
-    K.AUTO_REASON:     "Awaiting Uplink...", # 🟢 HUD SAFE
-    K.ATHAR_TRACE:     False,           # 🟢 INITIALIZED
+    K.AUTO_TARGET:     "ChatGPT",        
+    K.AUTO_REASON:     "Awaiting Uplink...", 
+    K.ATHAR_TRACE:     False,           
     
     K.ACTIVE_PERSONA:  None,
     K.PERSONA_LIST:    [],
@@ -111,30 +114,27 @@ def reset_session() -> None:
         K.HIKMAH_DNA:      st.session_state.get(K.HIKMAH_DNA),
         K.PERSONA_LIST:    st.session_state.get(K.PERSONA_LIST, []),
         K.UI_LANG:         st.session_state.get(K.UI_LANG, "en"),
+        K.LAST_SAVED:      st.session_state.get(K.LAST_SAVED, "Never"),
     }
     
     st.session_state.clear()
     init_session_state()
     
-    # 🛡️ RESTORATION
     for key, value in preserved.items():
         if value is not None:
             st.session_state[key] = value
 
 
 def get_remaining_calls(window_seconds: int = 60, max_calls: int = 10) -> int:
-    """Forensic rate limiting calculator with None-safety."""
+    """Forensic rate limiting calculator."""
     now = datetime.now(timezone.utc)
-    # 🛡️ ARMORED: Ensure we always iterate over a list, even if state is None
-    timestamps = st.session_state.get(K.TIMESTAMPS) or [] 
-    
+    timestamps = st.session_state.get(K.TIMESTAMPS) or []
     valid_timestamps = [
-        ts for ts in timestamps
-        if ts > now - timedelta(seconds=window_seconds)
+        t for t in timestamps
+        if t > now - timedelta(seconds=window_seconds)
     ]
     st.session_state[K.TIMESTAMPS] = valid_timestamps
     return max(0, max_calls - len(valid_timestamps))
-
 
 
 def record_api_call() -> None:
