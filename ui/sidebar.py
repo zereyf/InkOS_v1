@@ -211,13 +211,34 @@ def render_sidebar() -> SidebarConfig:
                 </div>
             """, unsafe_allow_html=True)
 
-        # ── OPTIONS ───────────────────────────────────────────────────────────
+           # ── OPTIONS ───────────────────────────────────────────────────────────
         st.markdown("<hr style='margin-top:5px;'>", unsafe_allow_html=True)
         aesthetic_choice = st.selectbox(t("aesthetic_preset", fallback="Aesthetic"), options=list(AESTHETIC_PRESETS.keys()), key="sb_aesthetic")
-        islamic_mode = st.toggle("[ SYS: HIKMAH PROTOCOL ]", value=False, key="sb_islamic")
-        expert_mode = st.toggle("[ SYS: TELEMETRY OVERRIDE ]", value=False, key="sb_expert")
+        
+        # Initialize States in Session Memory
+        if "hikmah_active" not in st.session_state:
+            st.session_state.hikmah_active = False
+        if "expert_active" not in st.session_state:
+            st.session_state.expert_active = False
 
-        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+        # Tactical Button 1: HIKMAH PROTOCOL
+        hikmah_lbl = "[ ⚡ ] HIKMAH: ARMED" if st.session_state.hikmah_active else "[ ◯ ] HIKMAH: OFFLINE"
+        if st.button(hikmah_lbl, use_container_width=True, key="btn_hikmah"):
+            st.session_state.hikmah_active = not st.session_state.hikmah_active
+            st.rerun()
+
+        # Tactical Button 2: TELEMETRY OVERRIDE
+        expert_lbl = "[ ⚡ ] TELEMETRY: OVERRIDE" if st.session_state.expert_active else "[ ◯ ] TELEMETRY: STANDBY"
+        if st.button(expert_lbl, use_container_width=True, key="btn_expert"):
+            st.session_state.expert_active = not st.session_state.expert_active
+            st.rerun()
+
+        # Route the boolean values back to the core engine
+        islamic_mode = st.session_state.hikmah_active
+        expert_mode = st.session_state.expert_active
+)
 
         # ── METRICS ───────────────────────────────────────────────────────────
         m1, m2, m3 = st.columns(3)
