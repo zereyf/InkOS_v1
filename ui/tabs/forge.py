@@ -1,10 +1,9 @@
 """
 ui/tabs/forge.py — Persona Forge Tab
 ======================================
-v18.1: Hardened Persistence & Callback Sync.
-       - Restored toggle_preview_callback (Fixes NameError).
-       - Synchronized with Workspace v30.8 HUD logic.
-       - URL-Synced Identity Engagement.
+v18.2: Hardened Persistence & Callback Sync.
+       - Fixed Sidebar State Collision (Widget Key Sync).
+       - Styled XML Payload Preview block.
 """
 
 import streamlit as st
@@ -20,20 +19,27 @@ from i18n.translations import t
 # ── STREAMLIT CALLBACKS ───────────────────────────────────────────────────────
 
 def toggle_persona_callback(persona_data: dict, is_currently_active: bool):
-    """Latches or unlatches a persona while syncing with URL parameters."""
+    """Latches or unlatches a persona while syncing with Sidebar widget state."""
     if is_currently_active:
         st.session_state[K.ACTIVE_PERSONA] = None
+        # 🟢 FIXED: Force the Sidebar widget to reset
+        st.session_state["sb_persona_unique"] = "None" 
         if "p" in st.query_params:
             del st.query_params["p"]
         st.toast("🎭 Identity Matrix Reset.")
     else:
         st.session_state[K.ACTIVE_PERSONA] = persona_data
-        # Latch name into URL parameter for refresh survival
-        st.query_params["p"] = persona_data.get("name", "Unknown")
-        st.toast(f"🎭 LATCHED: {persona_data.get('name', 'Unknown')}")
+        p_name = persona_data.get("name", "Unknown")
+        st.query_params["p"] = p_name
+        
+        # 🟢 FIXED: Force the Sidebar dropdown to sync with the Forge button
+        is_starter = p_name in STARTER_PERSONAS
+        st.session_state["sb_persona_unique"] = f"{p_name} [S]" if is_starter else f"{p_name} [C]"
+        
+        st.toast(f"🎭 LATCHED: {p_name}")
 
 def toggle_preview_callback(pid: str):
-    """Toggles the prompt code injection preview window."""
+    """Toggles the XML prompt payload window."""
     key = f"show_preview_{pid}"
     st.session_state[key] = not st.session_state.get(key, False)
 
@@ -66,7 +72,7 @@ def _render_persona_card(persona: dict, is_active: bool, user_hash: str, is_star
             )
         with c2:
             st.button(
-                t("preview_injection", fallback="Preview Injection"), 
+                t("preview_injection", fallback="Preview XML Payload"), 
                 key=f"pre_{pid}", 
                 on_click=toggle_preview_callback, 
                 args=(pid,), 
@@ -89,8 +95,10 @@ def _render_persona_card(persona: dict, is_active: bool, user_hash: str, is_star
                         st.session_state[confirm_key] = True
                         st.rerun()
 
+        # 🟢 FIXED: The "Raw HTML" is actually standard XML AI Prompting. Styled appropriately.
         if st.session_state.get(f"show_preview_{pid}"):
-            st.code(inject_persona(persona, "Claude"), language="text")
+            st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--steel); letter-spacing:1px; margin-top:10px; margin-bottom:4px; text-transform:uppercase;">[ XML NEURAL PAYLOAD ]</div>', unsafe_allow_html=True)
+            st.code(inject_persona(persona, "Claude"), language="xml")
 
 # ── MAIN RENDERER ─────────────────────────────────────────────────────────────
 
