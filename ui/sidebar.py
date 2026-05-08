@@ -184,21 +184,23 @@ def render_sidebar() -> SidebarConfig:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── METRICS ───────────────────────────────────────────────────────────
-        m1, m2, m3 = st.columns(3)
-        with m1:
-            st.metric(t("session_runs"), len(st.session_state.get(K.HISTORY, [])))
-        with m2:
-            st.metric("Calls", get_remaining_calls())
-        with m3:
-            st.metric("Saved", st.session_state.get(K.LAST_SAVED, "Never"))
+ # ── METRICS (The Armored Deck) ─────────────────────────────────────────
+m1, m2, m3 = st.columns(3)
+with m1:
+    # Ensure HISTORY is a list before calling len()
+    history_count = len(st.session_state.get(K.HISTORY) or [])
+    st.metric(t("session_runs", fallback="Runs"), history_count)
+    
+with m2:
+    # Safely call the rate limiter
+    remaining = get_remaining_calls()
+    st.metric(t("session_remaining", fallback="Calls"), remaining)
+    
+with m3:
+    # Safely fetch the last saved timestamp
+    last_saved = st.session_state.get(K.LAST_SAVED) or "Never"
+    st.metric(t("last_saved", fallback="Saved"), last_saved)
 
-        st.markdown("<hr>", unsafe_allow_html=True)
-
-        if st.button(t("reset_session"), use_container_width=True):
-            from state import reset_session
-            reset_session()
-            st.rerun()
 
     return SidebarConfig(
         target_model     = target_model,
