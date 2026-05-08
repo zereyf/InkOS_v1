@@ -238,21 +238,27 @@ def render_workspace(cfg: dict) -> None:
             v1, v2, v3 = st.columns([2, 2, 1])
             with v1: st.text_input("Title", key="v_t", label_visibility="collapsed", placeholder="Asset Title...")
             with v2: st.text_input("Tags", key="v_g", label_visibility="collapsed", placeholder="Forensic Tags...")
-            with v3: 
+                        with v3: 
                 if st.button("SECURE"):
-                    from vault.vault_engine import save_prompt
-                    res, err = save_prompt(
-                        st.session_state.get(K.USER_HASH), 
-                        title=st.session_state.get("v_t"), 
-                        tags=st.session_state.get("v_g"), 
-                        content=st.session_state.get(K.LAST_RESULT), 
-                        target=st.session_state.get(K.AUTO_TARGET), 
-                        framework=cfg["framework"], 
-                        score=(st.session_state.get(K.LAST_AUDIT) or {}).get("score", 0)
-                    )
-                    if not err:
-                        st.session_state[K.LAST_SAVED] = datetime.now().strftime("%H:%M")
-                        st.toast("Neural Vault Updated.")
-                        st.rerun()
+                    # 🟢 FIXED: Extract user identity and validate before hitting the DB
+                    current_user = st.session_state.get(K.USER_HASH)
+                    
+                    if not current_user or "GUEST_" in str(current_user).upper():
+                        st.error("Vault Lock Failed: Identity Unlatched. Please Latch Identity in Sidebar.")
                     else:
-                        st.error(f"Vault Lock Failed: {err}")
+                        from vault.vault_engine import save_prompt
+                        res, err = save_prompt(
+                            current_user, 
+                            title=st.session_state.get("v_t"), 
+                            tags=st.session_state.get("v_g"), 
+                            content=st.session_state.get(K.LAST_RESULT), 
+                            target=st.session_state.get(K.AUTO_TARGET), 
+                            framework=cfg["framework"], 
+                            score=(st.session_state.get(K.LAST_AUDIT) or {}).get("score", 0)
+                        )
+                        if not err:
+                            st.session_state[K.LAST_SAVED] = datetime.now().strftime("%H:%M")
+                            st.toast("Neural Vault Updated.")
+                            st.rerun()
+                        else:
+                            st.error(f"Vault Lock Failed: {err}")
