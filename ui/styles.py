@@ -228,13 +228,13 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 [data-baseweb="popover"] > div { background: var(--bg-deep) !important; border: 1px solid var(--gold) !important; border-radius: 2px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important; }
 [data-baseweb="menu"] li { font-family: var(--font-m) !important; font-size: 0.75rem !important; color: var(--text-muted) !important; padding: 10px 14px !important; transition: background 0.15s, color 0.15s !important; }
 [data-baseweb="menu"] li:hover, [data-baseweb="menu"] li[aria-selected="true"] { background: rgba(201, 168, 76, 0.1) !important; color: var(--gold) !important; border-left: 2px solid var(--gold) !important; }
-
 /* ══════════════════════════════════════════
-   TACTICAL TOGGLE SWITCHES (V5 CHECKBOX NUKE)
+   TACTICAL TOGGLE SWITCHES (OMNI-SELECTOR STRAT)
 ══════════════════════════════════════════ */
-/* 1. Terminal Font for the Label */
-div[data-testid="stToggle"] p,
-div[data-testid="stToggle"] span {
+/* 1. Terminal Font for Label */
+div[data-testid="stToggle"] label p,
+div[data-testid="stToggle"] label span,
+div[data-testid="stToggle"] p {
     font-family: var(--font-m) !important;
     font-size: 0.65rem !important;
     letter-spacing: 1px !important;
@@ -242,31 +242,42 @@ div[data-testid="stToggle"] span {
     text-transform: uppercase !important;
 }
 
-/* 2. Square the Track (using the hidden checkbox as the anchor) */
-div[data-testid="stToggle"] input[type="checkbox"] + div {
+/* 2. Square Track (Targets ALL known Streamlit versions) */
+div[data-testid="stToggle"] [data-baseweb="checkbox"] > div:first-child,
+div[data-testid="stToggle"] label > div:first-of-type,
+div[data-testid="stToggle"] div[role="switch"],
+div[data-testid="stToggle"] label > div:not(:last-child) {
     background-color: rgba(255, 255, 255, 0.05) !important;
     border-radius: 2px !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    transition: all 0.3s ease !important;
 }
 
-/* 3. Square the Thumb */
-div[data-testid="stToggle"] input[type="checkbox"] + div > div {
+/* 3. Square Thumb */
+div[data-testid="stToggle"] [data-baseweb="checkbox"] > div:first-child > div,
+div[data-testid="stToggle"] label > div:first-of-type > div,
+div[data-testid="stToggle"] div[role="switch"] > div,
+div[data-testid="stToggle"] label > div:not(:last-child) > div {
     background-color: var(--text-dim) !important;
     border-radius: 1px !important;
     box-shadow: none !important;
-    transition: all 0.3s ease !important;
 }
 
-/* 4. ACTIVE STATE: The Amber Forensic Track */
-div[data-testid="stToggle"] input[type="checkbox"]:checked + div {
+/* 4. ACTIVE Amber Track */
+div[data-testid="stToggle"] input:checked ~ div:first-of-type,
+div[data-testid="stToggle"] input:checked + div,
+div[data-testid="stToggle"] input[type="checkbox"]:checked + div,
+div[data-testid="stToggle"] [data-baseweb="checkbox"]:has(input:checked) > div:first-child,
+div[data-testid="stToggle"] label:has(input:checked) > div:first-of-type {
     background-color: rgba(201, 168, 76, 0.15) !important;
     border-color: var(--gold) !important;
-    box-shadow: inset 0 0 8px rgba(201, 168, 76, 0.1) !important;
 }
 
-/* 5. ACTIVE STATE: The Glowing Amber Thumb */
-div[data-testid="stToggle"] input[type="checkbox"]:checked + div > div {
+/* 5. ACTIVE Amber Thumb */
+div[data-testid="stToggle"] input:checked ~ div:first-of-type > div,
+div[data-testid="stToggle"] input:checked + div > div,
+div[data-testid="stToggle"] input[type="checkbox"]:checked + div > div,
+div[data-testid="stToggle"] [data-baseweb="checkbox"]:has(input:checked) > div:first-child > div,
+div[data-testid="stToggle"] label:has(input:checked) > div:first-of-type > div {
     background-color: var(--gold) !important;
     box-shadow: 0 0 8px rgba(201, 168, 76, 0.6) !important;
 }
