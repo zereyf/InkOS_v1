@@ -186,16 +186,17 @@ def render_workspace(cfg: dict) -> None:
                     except Exception as e:
                         st.error(f"Voice Uplink Failed: {e}")
 
-    with v_col2:
-        # THE ONLY INSTANCE: ta_input_widget
+     with v_col2:
         intent_val = st.text_area(
             "intent", 
             height=145, 
-            placeholder=t("workspace_placeholder"), 
+            # 🟢 FIXED: Proper fallback string so it doesn't show the raw key
+            placeholder=t("workspace_placeholder", fallback="Input your raw idea or use Voice Uplink..."), 
             label_visibility="collapsed", 
             key="ta_input_widget" 
         )
         st.session_state["ta_input"] = intent_val
+
 
     # ── 4. 📡 LIVE LINGUISTIC INTERCEPT ──────────────────────────────────────
     # Placed after text area to avoid one-frame delay in Arabic detection
