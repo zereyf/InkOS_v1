@@ -230,11 +230,11 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 [data-baseweb="menu"] li:hover, [data-baseweb="menu"] li[aria-selected="true"] { background: rgba(201, 168, 76, 0.1) !important; color: var(--gold) !important; border-left: 2px solid var(--gold) !important; }
 
 /* ══════════════════════════════════════════
-   TACTICAL TOGGLE SWITCHES (V4 UNIVERSAL OVERRIDE)
+   TACTICAL TOGGLE SWITCHES (V5 CHECKBOX NUKE)
 ══════════════════════════════════════════ */
 /* 1. Terminal Font for the Label */
-div[data-testid="stToggle"] label p,
-div[data-testid="stToggle"] label span {
+div[data-testid="stToggle"] p,
+div[data-testid="stToggle"] span {
     font-family: var(--font-m) !important;
     font-size: 0.65rem !important;
     letter-spacing: 1px !important;
@@ -242,18 +242,16 @@ div[data-testid="stToggle"] label span {
     text-transform: uppercase !important;
 }
 
-/* 2. Square the Track (Inactive) - Targets both old and new Streamlit DOMs */
-div[data-testid="stToggle"] label [data-baseweb="checkbox"] > div:first-of-type,
-div[data-testid="stToggle"] label > div:first-of-type {
+/* 2. Square the Track (using the hidden checkbox as the anchor) */
+div[data-testid="stToggle"] input[type="checkbox"] + div {
     background-color: rgba(255, 255, 255, 0.05) !important;
     border-radius: 2px !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     transition: all 0.3s ease !important;
 }
 
-/* 3. Square the Thumb (Inactive) */
-div[data-testid="stToggle"] label [data-baseweb="checkbox"] > div:first-of-type > div,
-div[data-testid="stToggle"] label > div:first-of-type > div {
+/* 3. Square the Thumb */
+div[data-testid="stToggle"] input[type="checkbox"] + div > div {
     background-color: var(--text-dim) !important;
     border-radius: 1px !important;
     box-shadow: none !important;
@@ -261,19 +259,18 @@ div[data-testid="stToggle"] label > div:first-of-type > div {
 }
 
 /* 4. ACTIVE STATE: The Amber Forensic Track */
-div[data-testid="stToggle"] input:checked ~ div:first-of-type,
-div[data-testid="stToggle"] input:checked + div {
+div[data-testid="stToggle"] input[type="checkbox"]:checked + div {
     background-color: rgba(201, 168, 76, 0.15) !important;
     border-color: var(--gold) !important;
     box-shadow: inset 0 0 8px rgba(201, 168, 76, 0.1) !important;
 }
 
 /* 5. ACTIVE STATE: The Glowing Amber Thumb */
-div[data-testid="stToggle"] input:checked ~ div:first-of-type > div,
-div[data-testid="stToggle"] input:checked + div > div {
+div[data-testid="stToggle"] input[type="checkbox"]:checked + div > div {
     background-color: var(--gold) !important;
     box-shadow: 0 0 8px rgba(201, 168, 76, 0.6) !important;
 }
+
 
 /* ══════════════════════════════════════════
    LEVEL 4 FIX: TOAST NOTIFICATIONS
