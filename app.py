@@ -84,6 +84,43 @@ st.markdown("""
         70% { box-shadow: 0 0 0 6px rgba(229, 62, 62, 0); }
         100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0); }
     }
+    /* ── TACTICAL TOGGLE SWITCHES ── */
+    
+    /* 1. Terminal Font for the Label */
+    div[data-testid="stToggle"] label {
+        font-family: var(--font-m) !important;
+        font-size: 0.6rem !important;
+        letter-spacing: 1px !important;
+        color: var(--text-muted) !important;
+    }
+
+    /* 2. Square the Track (The background of the switch) */
+    div[data-testid="stToggle"] div[role="switch"] {
+        border-radius: 2px !important; 
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* 3. Square the Thumb (The part that moves) */
+    div[data-testid="stToggle"] div[role="switch"] > div {
+        border-radius: 1px !important;
+        background-color: var(--text-dim) !important;
+        box-shadow: none !important;
+    }
+
+    /* 4. ACTIVE STATE: The Amber Forensic Glow */
+    div[data-testid="stToggle"] input:checked + div[role="switch"] {
+        background-color: rgba(201, 168, 76, 0.15) !important;
+        border-color: var(--gold) !important;
+        box-shadow: 0 0 8px rgba(201, 168, 76, 0.3) !important;
+    }
+
+    /* 5. ACTIVE STATE: Thumb Color */
+    div[data-testid="stToggle"] input:checked + div[role="switch"] > div {
+        background-color: var(--gold) !important;
+        box-shadow: 0 0 4px var(--gold) !important;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
