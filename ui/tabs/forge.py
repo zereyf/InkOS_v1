@@ -16,14 +16,15 @@ from vault.supabase_client import SUPABASE_MISSING
 from config import TARGET_GUIDES
 from i18n.translations import t
 
+
 # ── STREAMLIT CALLBACKS ───────────────────────────────────────────────────────
 
 def toggle_persona_callback(persona_data: dict, is_currently_active: bool):
     """Latches or unlatches a persona while syncing with Sidebar widget state."""
     if is_currently_active:
         st.session_state[K.ACTIVE_PERSONA] = None
-        # 🟢 FIXED: Force the Sidebar widget to reset
-        st.session_state["sb_persona_unique"] = "None" 
+        # 🟢 UPDATED: Target the new sidebar widget key 'sb_persona'
+        st.session_state["sb_persona"] = "None" 
         if "p" in st.query_params:
             del st.query_params["p"]
         st.toast("🎭 Identity Matrix Reset.")
@@ -32,11 +33,12 @@ def toggle_persona_callback(persona_data: dict, is_currently_active: bool):
         p_name = persona_data.get("name", "Unknown")
         st.query_params["p"] = p_name
         
-        # 🟢 FIXED: Force the Sidebar dropdown to sync with the Forge button
+        # 🟢 UPDATED: Sync the dropdown with the correct suffix format [S] or [C]
         is_starter = p_name in STARTER_PERSONAS
-        st.session_state["sb_persona_unique"] = f"{p_name} [S]" if is_starter else f"{p_name} [C]"
+        st.session_state["sb_persona"] = f"{p_name} [S]" if is_starter else f"{p_name} [C]"
         
         st.toast(f"🎭 LATCHED: {p_name}")
+
 
 def toggle_preview_callback(pid: str):
     """Toggles the XML prompt payload window."""
