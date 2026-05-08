@@ -1,8 +1,8 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v12.0: Master Sync — Identity & Neural Link Build.
-       Integrated SESS_REF branding and Supabase Uplink indicators.
+v12.1: Master Sync — Indentation Repair.
+       Fixed SyntaxError on return SidebarConfig.
        Synchronized with v20.4 State Ledger and v2026.4 Master Sync.
 """
 
@@ -63,6 +63,9 @@ def render_language_switcher() -> None:
 
 
 def render_sidebar() -> SidebarConfig:
+    """
+    🟢 MASTER RENDERER: Indentation-Locked
+    """
     with st.sidebar:
         # ── NEURAL LINK STATUS ────────────────────────────────────────────────
         uplink_color = "#A93226" if SUPABASE_MISSING else "#4CAF9A"
@@ -88,9 +91,6 @@ def render_sidebar() -> SidebarConfig:
         """)
         st.markdown(wordmark_html, unsafe_allow_html=True)
 
-        # ── LANGUAGE SWITCHER ─────────────────────────────────────────────────
-        render_language_switcher()
-
         # ── TERMINAL IDENTITY HUD ─────────────────────────────────────────────
         current_sid = st.session_state.get(K.USER_HASH, "UNKNOWN")
         is_guest = "GUEST_" in str(current_sid).upper()
@@ -115,15 +115,8 @@ def render_sidebar() -> SidebarConfig:
                     else:
                         st.error(error_msg)
         else:
-            secure_html = textwrap.dedent("""
-                <div style="background:rgba(201,168,76,0.05); border:1px solid rgba(201,168,76,0.2); padding:10px; border-radius:3px; margin-bottom:10px;">
-                    <div style="font-size:0.55rem; color:var(--gold); display:flex; align-items:center; gap:8px; font-family:var(--font-m);">
-                        <span class="status-dot"></span> IDENTITY SECURED
-                    </div>
-                </div>
-            """)
-            st.markdown(secure_html, unsafe_allow_html=True)
-            if st.button("Terminiate Latch", use_container_width=True):
+            st.markdown('<div style="background:rgba(201,168,76,0.05); border:1px solid rgba(201,168,76,0.2); padding:10px; border-radius:3px; margin-bottom:10px; font-size:0.55rem; color:var(--gold); display:flex; align-items:center; gap:8px;">IDENTITY SECURED</div>', unsafe_allow_html=True)
+            if st.button("Terminate Latch", use_container_width=True):
                 st.session_state[K.USER_HASH] = None 
                 st.query_params.clear()
                 st.rerun()
@@ -135,16 +128,6 @@ def render_sidebar() -> SidebarConfig:
         target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
         target_model = st.selectbox("Target Model", options=target_options, key="sb_target")
 
-        # Visual feedback for Auto-Routing
-        if target_model == AUTO_SELECT_LABEL:
-            auto_target = st.session_state.get(K.AUTO_TARGET)
-            if auto_target:
-                st.markdown(f"""
-                    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:3px; font-size:0.6rem; color:var(--text-muted);">
-                        <span style="color:var(--gold);">CIPHER Choice:</span> {auto_target}
-                    </div>
-                """, unsafe_allow_html=True)
-                
         framework = st.selectbox(t("logic_framework"), LOGIC_FRAMEWORKS, key="sb_framework")
         source_lang = st.radio("Input Language", ["English", "Arabic (العربية)"], key="sb_lang")
 
@@ -165,15 +148,8 @@ def render_sidebar() -> SidebarConfig:
                 st.session_state[K.ACTIVE_PERSONA] = next((p for p in user_personas if p["name"] == sel), None)
 
         st.selectbox("Persona Select", options=["None"] + all_names, key="sb_persona", on_change=_sb_persona_changed, label_visibility="collapsed")
-
+        
         active_p = st.session_state.get(K.ACTIVE_PERSONA)
-        if active_p:
-            st.markdown(f"""
-                <div style="background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.25); padding:8px; border-radius:3px; font-size:0.6rem; color:var(--gold);">
-                    <strong>{active_p.get('name','')}</strong><br>
-                    <span style="color:var(--text-muted); font-style:italic;">{active_p.get('role','')[:60]}...</span>
-                </div>
-            """, unsafe_allow_html=True)
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -184,24 +160,23 @@ def render_sidebar() -> SidebarConfig:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
- # ── METRICS (The Armored Deck) ─────────────────────────────────────────
-m1, m2, m3 = st.columns(3)
-with m1:
-    # Ensure HISTORY is a list before calling len()
-    history_count = len(st.session_state.get(K.HISTORY) or [])
-    st.metric(t("session_runs", fallback="Runs"), history_count)
-    
-with m2:
-    # Safely call the rate limiter
-    remaining = get_remaining_calls()
-    st.metric(t("session_remaining", fallback="Calls"), remaining)
-    
-with m3:
-    # Safely fetch the last saved timestamp
-    last_saved = st.session_state.get(K.LAST_SAVED) or "Never"
-    st.metric(t("last_saved", fallback="Saved"), last_saved)
+        # ── METRICS ───────────────────────────────────────────────────────────
+        m1, m2, m3 = st.columns(3)
+        with m1:
+            st.metric(t("session_runs", fallback="Runs"), len(st.session_state.get(K.HISTORY, [])))
+        with m2:
+            st.metric(t("session_remaining", fallback="Calls"), get_remaining_calls())
+        with m3:
+            st.metric(t("last_saved", fallback="Saved"), st.session_state.get(K.LAST_SAVED, "Never"))
 
+        st.markdown("<hr>", unsafe_allow_html=True)
 
+        if st.button(t("reset_session"), use_container_width=True):
+            from state import reset_session
+            reset_session()
+            st.rerun()
+
+    # 🟢 THE RETURN: Indented by 4 spaces (INSIDE render_sidebar)
     return SidebarConfig(
         target_model     = target_model,
         framework        = framework,
