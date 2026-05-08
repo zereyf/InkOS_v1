@@ -88,7 +88,9 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
         with st.expander("🛠️ NEURAL UPLINK DIAGNOSTICS"):
             st.json(safe_audit)
 
-# ── MAIN RENDERER ────────────────────────────────────────────────────def render_workspace(cfg: dict) -> None:
+# ── MAIN RENDERER ────────────────────────────────────────────────────
+
+def render_workspace(cfg: dict) -> None:
     # 1. HEADER & COGNITIVE LOAD
     source_lang = cfg.get("source_lang", "English")
     cognitive_load = len(st.session_state.get("ta_input", ""))
