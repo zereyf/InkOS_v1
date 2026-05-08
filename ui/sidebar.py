@@ -91,12 +91,15 @@ def render_sidebar() -> SidebarConfig:
         """)
         st.markdown(wordmark_html, unsafe_allow_html=True)
 
-        # ── TERMINAL IDENTITY HUD ─────────────────────────────────────────────
-        current_sid = st.session_state.get(K.USER_HASH, "UNKNOWN")
-        is_guest = "GUEST_" in str(current_sid).upper()
-        sess_ref = current_sid[:8] if current_sid else "NULL"
+                # ── TERMINAL IDENTITY HUD ─────────────────────────────────────────────
+        current_sid = st.session_state.get(K.USER_HASH)
+        
+        # 🟢 FIXED: Explicitly handle None so the login screen actually appears
+        is_guest = not current_sid or "GUEST_" in str(current_sid).upper()
+        sess_ref = str(current_sid)[:8] if current_sid else "GHOST_ID"
 
         st.markdown(f'<div class="vc-header" style="font-size:0.55rem; color:var(--text-muted); margin-top:20px;">SESS_REF: {sess_ref}</div>', unsafe_allow_html=True)
+
         
         if is_guest:
             new_sid = st.text_input("ID", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
