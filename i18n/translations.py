@@ -32,6 +32,13 @@ TRANSLATIONS: dict = {
         "last_saved":           "Last Saved", # 🟢 SYNCED
         "reset_session":        "Reset Session",
         "export_archive":       "Export Archive",
+  "tab_workspace":        "WORKSPACE",
+        "tab_archive":          "ARCHIVE",
+        "tab_security":         "SECURITY LOG",
+        "tab_cognitive_map":    "COGNITIVE MAP",
+        "tab_vault":            "VAULT",
+        "tab_forge":            "FORGE",
+        "tab_guide":            "GUIDE",
         
         # ... [Logic Config & Tab translations remain identical] ...
         "logic_config":         "⚙️ Logic Configuration",
