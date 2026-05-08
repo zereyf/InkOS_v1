@@ -157,12 +157,13 @@ def render_workspace(cfg: dict) -> None:
         """)
         st.markdown(dna_bar, unsafe_allow_html=True)
 
-    # ── 3. INPUT AREA & VOICE UPLINK ──────────────────────────────────────────
+     # ── 4. INPUT AREA & VOICE UPLINK (INDENTATION REPAIR) ─────────────────────
     if "ta_input_widget" not in st.session_state:
         st.session_state["ta_input_widget"] = ""
 
     v_col1, v_col2 = st.columns([1, 6])
     with v_col1:
+        # 🟢 FIXED: Indented block for v_col1
         audio_bytes = st.audio_input("Voice Uplink", label_visibility="collapsed")
         if audio_bytes:
             current_audio_hash = hash(audio_bytes.getvalue())
@@ -186,16 +187,17 @@ def render_workspace(cfg: dict) -> None:
                     except Exception as e:
                         st.error(f"Voice Uplink Failed: {e}")
 
-        with v_col2:
+    with v_col2:
+        # 🟢 FIXED: Indented block for v_col2 (Line 190 Repair)
         intent_val = st.text_area(
             "intent", 
             height=145, 
-            # 🟢 FIXED: Proper fallback string so it doesn't show the raw key
             placeholder=t("workspace_placeholder", fallback="Input your raw idea or use Voice Uplink..."), 
             label_visibility="collapsed", 
             key="ta_input_widget" 
         )
         st.session_state["ta_input"] = intent_val
+
 
 
     # ── 4. 📡 LIVE LINGUISTIC INTERCEPT ──────────────────────────────────────
