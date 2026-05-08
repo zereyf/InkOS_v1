@@ -296,6 +296,16 @@ div[data-testid="stAudioInput"] button:active svg {
     color: var(--danger) !important;
 }
 
+/* 7. Nuke the grey box behind the 00:00 timer */
+div[data-testid="stAudioInput"] p, 
+div[data-testid="stAudioInput"] span,
+div[data-testid="stAudioInput"] [data-baseweb="typography"],
+div[data-testid="stAudioInput"] section div {
+    background-color: transparent !important;
+    background: none !important;
+}
+
+
 
 /* ══════════════════════════════════════════
    MOBILE OVERRIDES & MISC
