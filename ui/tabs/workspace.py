@@ -118,13 +118,13 @@ def render_workspace(cfg: dict) -> None:
             <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; letter-spacing:1px;">حبر وفكرة</div>
         </div>
         <div style="font-family:var(--font-m); font-size:0.5rem; color:var(--text-dim); letter-spacing:2px; margin-bottom:15px; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
-            A.I.Z.E.N. COGNITIVE TERMINAL // SESS_REF: {st.session_state.get(K.USER_HASH, "NULL")[:8]}
+            A.I.Z.E.N. COGNITIVE TERMINAL // User: {st.session_state.get(K.USER_HASH, "NULL")[:8]}
         </div>
     """)
     st.markdown(header_html, unsafe_allow_html=True)
 
     st.audio_input("Record", label_visibility="collapsed")
-    raw_input = st.text_area("intent", height=145, placeholder="English or Arabic intent...", label_visibility="collapsed", key="ta_input", on_change=flush_trace)
+    raw_input = st.text_area("intent", height=145, placeholder="Input your raw idea in Arabic or English", label_visibility="collapsed", key="ta_input", on_change=flush_trace)
 
     if st.button(t("execute_btn"), use_container_width=True):
         st.session_state["athar_trace"] = False
