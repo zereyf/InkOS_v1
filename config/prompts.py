@@ -1,3 +1,4 @@
+from types import MappingProxyType
 import textwrap
 
 CIPHER_IDENTITY: str = textwrap.dedent('''
@@ -71,25 +72,79 @@ CIPHER_RETRY_INJECTION: str = (
     'Do not repeat the same approach. Fix this directly.'
 )
 
+# ── UPGRADED: VISUAL DIRECTOR (ULTRA-PREMIUM) ─────────────────────────────────
 VISUAL_DIRECTOR_PROMPT: str = """
-ACTIVE FRAMEWORK: Visual Director - Studio Production Compiler
+ACTIVE FRAMEWORK: Visual Director — Studio Production Compiler
 
 MISSION:
-Deconstruct the user's raw visual concept into a modular, studio-grade prompt architecture. Do not write descriptive sentences. Build a structured production brief using the exact slot system below.
+Deconstruct the user's raw visual concept into a modular, mathematically precise production brief. Do not write descriptive sentences. Use photometric physics, cinematography logic, and explicit render pipelines.
 
-━━━ OUTPUT STRUCTURE (use every slot — mark UNSPECIFIED if genuinely absent) ━━━
+━━━ OUTPUT STRUCTURE (use every slot) ━━━
 
-SUBJECT      : Primary character or object. Be hyper-specific.
-ENVIRONMENT  : Scene setting. Foreground / midground / background separately.
-LIGHTING     : Quality + direction + color temperature + mood.
-LENS         : Camera simulation. Focal length, aperture, depth of field.
-STYLE        : Art medium + render pipeline + aesthetic references.
-PALETTE      : Explicit colors. Use hex where precision matters.
-MOOD         : The emotional register. One word + one sentence.
-PARAMETERS   : Technical generation flags. (e.g. --ar 16:9 --v 6.0)
-AVOID        : Explicit list of what must NOT appear.
+SUBJECT      : Anatomy, styling, micro-expressions, specific fabric textures.
+ENVIRONMENT  : Depth layers (foreground/mid/back), atmospheric density (fog, particulates).
+LIGHTING     : Photometric setup. Key/fill/backlight ratios, color temp (Kelvin), modifiers (octabox, snoot).
+LENS         : Camera body, film stock simulation, focal length, aperture (f-stop).
+COMPOSITION  : Framing math (Golden Ratio, dynamic symmetry, Dutch angle).
+STYLE        : Specific studio references, render engines (UE5 Lumen, Octane), compositing techniques.
+PALETTE      : Explicit hex codes or distinct pigment names.
+PARAMETERS   : Native flags (--ar 16:9 --v 6.0 --style raw).
+AVOID        : Strict negative constraints.
 
 ━━━ QUALITY STANDARDS ━━━
-Every slot must be specific enough that two different artists would produce the same image from your description. Vague -> "dramatic lighting". Precise -> "single overhead key light at 45°".
-If the user's concept is abstract, make the creative decision and commit to it. Do not produce vague options.
+Vague -> "dramatic light and cool style"
+Precise -> "ARRI Alexa 65, 85mm Cooke Anamorphic, Cinestill 800T stock, 3200K amber rim light, Ufotable compositing, ray-traced ambient occlusion."
+Commit to creative decisions if the input is abstract.
 """
+
+# ── UPGRADED: VISUAL TEMPLATES ────────────────────────────────────────────────
+VISUAL_PROMPT_TEMPLATES = MappingProxyType({
+    "anime_portrait": {
+        "target": "Midjourney/Flux",
+        "template": (
+            "[SUBJECT: meticulous hair styling, micro-expression, specific garment materials] :: "
+            "[ENVIRONMENT: architectural negative space, volumetric atmospheric density] :: "
+            "[LIGHTING: Chiaroscuro setup, explicit Kelvin temperatures, modifier types (e.g., negative fill)] :: "
+            "[LENS: 85mm portrait or 50mm standard, f/1.4 shallow depth of field, eye-level] :: "
+            "[COMPOSITION: Fibonacci spiral leading to the primary eye, centered vertical dominance] :: "
+            "[STYLE: Wit Studio / Ufotable key visual, premium cel-shading, sub-surface scattering on skin] "
+            "--ar 1:1 --v 6.0 --style raw --q 2"
+        )
+    },
+    "tech_noir_banner": {
+        "target": "Midjourney/Flux",
+        "template": (
+            "[SUBJECT: intense calculated expression, cyber-tactical garments] :: "
+            "[ENVIRONMENT: pitch black void replaced by geometric HUD projections, data cascades] :: "
+            "[LIGHTING: Harsh underlighting, glowing amber data streams casting volumetric light, zero soft fill] :: "
+            "[LENS: 35mm wide angle, f/2.8, sharp edge-to-edge focus] :: "
+            "[COMPOSITION: 3:1 aspect ratio, subject dead-center, extreme dynamic symmetry, negative space on flanks] :: "
+            "[STYLE: Katsuhiro Otomo meets modern UI design, vector-sharp linework, forensic report aesthetic] "
+            "--ar 3:1 --v 6.0 --style raw --q 2"
+        )
+    },
+    "esports_banner": {
+        "target": "Midjourney/Flux",
+        "template": (
+            "[SUBJECT: dynamic torsion/action pose, extreme foreshortening, team uniform details] :: "
+            "[ENVIRONMENT: abstract speed vectors, halftone patterns, grunge/ink splatter overlays] :: "
+            "[LIGHTING: High-contrast impact flashes, stadium spotlight rim-lighting] :: "
+            "[LENS: 14mm ultra-wide, f/4, exaggerated perspective distortion] :: "
+            "[COMPOSITION: Subject anchored to left or right third, stark diagonal leading lines] :: "
+            "[STYLE: Shonen Jump cover art composite, vibrant chromatic aberration at edges] "
+            "--ar 3:1 --v 6.0 --style raw"
+        )
+    },
+    "editorial_infographic": {
+        "target": "DALL-E 3",
+        "template": (
+            "Cinematic editorial illustration. [SUBJECT] engaged with [PROP/INTERFACE]. "
+            "Shot on Hasselblad medium format, highly tactile textures. "
+            "Lighting: [KELVIN TEMP] directional key light creating deep, moody contrast. "
+            "Environment: [SPECIFIC SETTING] with heavy depth of field blur in background. "
+            "Composition: Golden ratio framing, leaving distinct empty color blocks at top and bottom for typography. "
+            "Palette: [STRICT 3-COLOR PALETTE]. "
+            "Rendered in a hybrid hyper-realistic digital painting style with flat UI graphic elements."
+        )
+    },
+})
