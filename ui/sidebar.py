@@ -1,8 +1,9 @@
 """
-ui/sidebar.py — Sidebar Rendering
+ui/sidebar.py — Sidebar Command Deck
 ====================================
-v28.0: The Synchronized Build.
-       Integrated LAST_SAVED metrics and dedent protocol for UI stability.
+v12.0: Master Sync — Identity & Neural Link Build.
+       Integrated SESS_REF branding and Supabase Uplink indicators.
+       Synchronized with v20.4 State Ledger and v2026.4 Master Sync.
 """
 
 import streamlit as st
@@ -50,9 +51,10 @@ def render_language_switcher() -> None:
         with cols[i]:
             is_active = lang["code"] == current
             if st.button(
-                f"{lang['flag']} {lang['label']}",
+                f"{lang['flag']}",
                 key=f"lang_btn_{lang['code']}",
                 use_container_width=True,
+                help=lang['label'],
                 type="primary" if is_active else "secondary"
             ):
                 if not is_active:
@@ -62,11 +64,26 @@ def render_language_switcher() -> None:
 
 def render_sidebar() -> SidebarConfig:
     with st.sidebar:
+        # ── NEURAL LINK STATUS ────────────────────────────────────────────────
+        uplink_color = "#A93226" if SUPABASE_MISSING else "#4CAF9A"
+        uplink_label = "OFFLINE" if SUPABASE_MISSING else "ACTIVE"
+        
+        link_html = textwrap.dedent(f"""
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 5px;">
+                <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-dim); letter-spacing:1px;">NEURAL_UPLINK</div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="height:6px; width:6px; background:{uplink_color}; border-radius:50%; box-shadow: 0 0 5px {uplink_color};"></span>
+                    <span style="font-family:var(--font-m); font-size:0.55rem; color:{uplink_color}; font-weight:bold;">{uplink_label}</span>
+                </div>
+            </div>
+        """)
+        st.markdown(link_html, unsafe_allow_html=True)
+
         # ── WORDMARK ──────────────────────────────────────────────────────────
         wordmark_html = textwrap.dedent(f"""
-            <div style="padding:10px 0 14px 0;">
-                <div class="vc-wordmark">⚡ {t('app_name')}</div>
-                <div class="vc-wordmark-sub">{t('app_subtitle')}</div>
+            <div style="padding:0 0 14px 0; border-bottom:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
+                <div class="vc-wordmark" style="font-size:1.4rem;">⚡ {t('app_name')}</div>
+                <div class="vc-wordmark-sub" style="letter-spacing:2px; font-size:0.5rem; color:var(--gold);">حبر وفكرة // INKOS v2026.4</div>
             </div>
         """)
         st.markdown(wordmark_html, unsafe_allow_html=True)
@@ -75,65 +92,39 @@ def render_sidebar() -> SidebarConfig:
         render_language_switcher()
 
         # ── TERMINAL IDENTITY HUD ─────────────────────────────────────────────
-        st.markdown('<div class="vc-header" style="font-size:0.55rem; color:var(--text-muted); margin-top:14px;">TERMINAL IDENTITY</div>', unsafe_allow_html=True)
-        
         current_sid = st.session_state.get(K.USER_HASH, "UNKNOWN")
         is_guest = "GUEST_" in str(current_sid).upper()
-        
-        st.code(current_sid, language=None)
+        sess_ref = current_sid[:8] if current_sid else "NULL"
+
+        st.markdown(f'<div class="vc-header" style="font-size:0.55rem; color:var(--text-muted); margin-top:20px;">SESS_REF: {sess_ref}</div>', unsafe_allow_html=True)
         
         if is_guest:
-            new_sid = st.text_input("Access Key", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
-            new_pin = st.text_input("Security PIN", placeholder="4-6 Digit PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
-            is_new_user = st.toggle("Registering new identity?", value=False, key="is_new_user_toggle")
+            new_sid = st.text_input("ID", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
+            new_pin = st.text_input("PIN", placeholder="PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
+            is_new_user = st.toggle("Register New?", value=False, key="is_new_user_toggle")
             
-            id_is_valid = True
-            if is_new_user and new_sid.strip():
-                available, status_msg = check_id_availability(new_sid.strip())
-                color = "#4CAF9A" if available else "#A93226"
-                if "Reserved Prefix" in status_msg:
-                    color = "#C9A84C"
-                
-                status_html = textwrap.dedent(f"""
-                    <div style="color:{color}; font-size:0.6rem; margin-bottom:10px; font-family:var(--font-m);">
-                        {status_msg}
-                    </div>
-                """)
-                st.markdown(status_html, unsafe_allow_html=True)
-                id_is_valid = available
-
             if st.button("LATCH IDENTITY", use_container_width=True, key="btn_latch_sid"):
-                if not id_is_valid and is_new_user:
-                    st.error("Cannot latch: ID is unavailable.")
-                elif new_sid.strip() and new_pin.strip():
-                    with st.spinner("Authenticating..."):
+                if new_sid.strip() and new_pin.strip():
+                    with st.spinner("Uplinking..."):
                         success, error_msg = authenticate_terminal(new_sid.strip(), new_pin.strip(), is_new=is_new_user)
                     
                     if success:
                         st.session_state[K.USER_HASH] = new_sid.strip()
-                        st.session_state[K.USER_PIN]  = new_pin.strip()
-                        st.session_state[K.FAILED_ATTEMPTS] = 0
                         st.query_params["sid"] = new_sid.strip()
                         st.rerun()
                     else:
-                        st.session_state[K.FAILED_ATTEMPTS] += 1
-                        if st.session_state[K.FAILED_ATTEMPTS] >= 5:
-                            st.session_state[K.LOCKOUT_UNTIL] = datetime.now(timezone.utc) + timedelta(minutes=10)
-                            st.rerun()
                         st.error(error_msg)
         else:
             secure_html = textwrap.dedent("""
-                <div style="font-size:0.62rem; color:var(--gold); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
-                    <span class="status-dot"></span>
-                    IDENTITY SECURED
+                <div style="background:rgba(201,168,76,0.05); border:1px solid rgba(201,168,76,0.2); padding:10px; border-radius:3px; margin-bottom:10px;">
+                    <div style="font-size:0.55rem; color:var(--gold); display:flex; align-items:center; gap:8px; font-family:var(--font-m);">
+                        <span class="status-dot"></span> IDENTITY SECURED
+                    </div>
                 </div>
             """)
             st.markdown(secure_html, unsafe_allow_html=True)
-            
-            if st.button("Logout / Clear Latch", use_container_width=True):
+            if st.button("Terminiate Latch", use_container_width=True):
                 st.session_state[K.USER_HASH] = None 
-                st.session_state[K.USER_PIN]  = None
-                st.session_state[K.FAILED_ATTEMPTS] = 0
                 st.query_params.clear()
                 st.rerun()
 
@@ -142,20 +133,17 @@ def render_sidebar() -> SidebarConfig:
         # ── LOGIC CONFIGURATION ───────────────────────────────────────────────
         st.subheader(t("logic_config"))
         target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
-        target_model = st.selectbox("Target AI Model", options=target_options, key="sb_target")
+        target_model = st.selectbox("Target Model", options=target_options, key="sb_target")
 
+        # Visual feedback for Auto-Routing
         if target_model == AUTO_SELECT_LABEL:
             auto_target = st.session_state.get(K.AUTO_TARGET)
-            auto_reason = st.session_state.get(K.AUTO_REASON)
             if auto_target:
-                auto_html = textwrap.dedent(f"""
-                    <div style="background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.25); border-radius:3px; padding:8px 12px; font-family:var(--font-m); font-size:0.62rem; color:var(--gold); line-height:1.6; margin-top:4px;">
-                        <span class="status-dot"></span>
-                        CIPHER: <strong>{auto_target}</strong><br>
-                        <span style="color:var(--text-muted);">{auto_reason}</span>
+                st.markdown(f"""
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:3px; font-size:0.6rem; color:var(--text-muted);">
+                        <span style="color:var(--gold);">CIPHER Choice:</span> {auto_target}
                     </div>
-                """)
-                st.markdown(auto_html, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
                 
         framework = st.selectbox(t("logic_framework"), LOGIC_FRAMEWORKS, key="sb_framework")
         source_lang = st.radio("Input Language", ["English", "Arabic (العربية)"], key="sb_lang")
@@ -180,33 +168,30 @@ def render_sidebar() -> SidebarConfig:
 
         active_p = st.session_state.get(K.ACTIVE_PERSONA)
         if active_p:
-            persona_html = textwrap.dedent(f"""
-                <div style="background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.25); border-radius:3px; padding:8px 12px; font-family:var(--font-m); font-size:0.62rem; color:var(--gold); line-height:1.6; margin-top:6px;">
-                    <span class="status-dot"></span>
-                    {active_p.get('name','')}<br>
-                    <span style="color:var(--text-muted);">{active_p.get('role','')[:80]}...</span>
+            st.markdown(f"""
+                <div style="background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.25); padding:8px; border-radius:3px; font-size:0.6rem; color:var(--gold);">
+                    <strong>{active_p.get('name','')}</strong><br>
+                    <span style="color:var(--text-muted); font-style:italic;">{active_p.get('role','')[:60]}...</span>
                 </div>
-            """)
-            st.markdown(persona_html, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── AESTHETIC & EXPERT MODE ───────────────────────────────────────────
+        # ── OPTIONS ───────────────────────────────────────────────────────────
         aesthetic_choice = st.selectbox(t("aesthetic_preset"), options=list(AESTHETIC_PRESETS.keys()), key="sb_aesthetic")
         islamic_mode = st.toggle(t("islamic_mode"), value=False, key="sb_islamic")
-        expert_mode = st.toggle("Enable Expert Diagnostics", value=False, key="sb_expert")
+        expert_mode = st.toggle("Expert Diagnostics", value=False, key="sb_expert")
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── METRICS (3-Column Layout) ─────────────────────────────────────────
+        # ── METRICS ───────────────────────────────────────────────────────────
         m1, m2, m3 = st.columns(3)
         with m1:
             st.metric(t("session_runs"), len(st.session_state.get(K.HISTORY, [])))
         with m2:
-            st.metric(t("session_remaining"), get_remaining_calls())
+            st.metric("Calls", get_remaining_calls())
         with m3:
-            # 🟢 SYNCED: Displays Last Saved timestamp from Workspace actions
-            st.metric(t("last_saved", fallback="Saved"), st.session_state.get(K.LAST_SAVED, "Never"))
+            st.metric("Saved", st.session_state.get(K.LAST_SAVED, "Never"))
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -214,15 +199,6 @@ def render_sidebar() -> SidebarConfig:
             from state import reset_session
             reset_session()
             st.rerun()
-
-        if st.session_state.get(K.HISTORY):
-            st.download_button(
-                t("export_archive"),
-                data=json.dumps(st.session_state[K.HISTORY], ensure_ascii=False, indent=2),
-                file_name=f"inkos_archive_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
-                mime="application/json",
-                use_container_width=True
-            )
 
     return SidebarConfig(
         target_model     = target_model,
