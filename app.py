@@ -44,12 +44,13 @@ if API_KEY_MISSING:
 if "sid" in st.query_params:
     st.session_state[K.USER_HASH] = st.query_params["sid"]
 
+# ── 🟢 INJECTION: URL PERSONA REHYDRATION ────────────────────────────────────
 if "p" in st.query_params and not st.session_state.get(K.ACTIVE_PERSONA):
     from forge.persona_engine import STARTER_PERSONAS
     p_name = st.query_params["p"]
-    # Check starters first, then fallback to rehydrated custom personas
     if p_name in STARTER_PERSONAS:
         st.session_state[K.ACTIVE_PERSONA] = STARTER_PERSONAS[p_name]
+
 
 
 # ── INITIALIZE STATE ────────────────────────────────────────────────────────
