@@ -1,17 +1,27 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v1.0: Security Gate Implementation (PIN & Lockout Logic)
+v2026.4: Master Sync.
+Security Gate, Identity Latching, and Ghost Navigation.
 """
 
 import sys
 import os
+import textwrap
 from datetime import datetime, timezone
 
+# Ensure local imports work correctly
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
-st.set_page_config(page_title="InkOS", page_icon="⚡", layout="wide", initial_sidebar_state="expanded")
+
+# 1. Page Config must be first
+st.set_page_config(
+    page_title="InkOS", 
+    page_icon="⚡", 
+    layout="wide", 
+    initial_sidebar_state="expanded"
+)
 
 from config import API_KEY_MISSING
 from state import init_session_state, K
@@ -33,37 +43,41 @@ if API_KEY_MISSING:
 # ── INITIALIZE STATE & IDENTITY ─────────────────────────────────────────────
 init_session_state()
 
+# ── RENDER GLOBAL STYLES ────────────────────────────────────────────────────
+st.markdown(STYLES, unsafe_allow_html=True)
+
 # ── SECURITY GATE: LOCKOUT CHECK ────────────────────────────────────────────
 lockout_ts = st.session_state.get(K.LOCKOUT_UNTIL)
 if lockout_ts:
     now = datetime.now(timezone.utc)
     if now < lockout_ts:
-        st.markdown(STYLES, unsafe_allow_html=True)
         remaining = int((lockout_ts - now).total_seconds() / 60)
-        st.markdown(f"""
+        lockout_html = textwrap.dedent(f"""
             <div style="height:80vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
                 <div style="font-family:var(--font-m); color:var(--danger); font-size:2rem; letter-spacing:4px; margin-bottom:10px;">
                     TERMINAL LOCKED
                 </div>
                 <div style="font-family:var(--font-m); color:var(--text-muted); font-size:0.8rem; max-width:400px; line-height:1.6;">
-                    Multiple failed authentication attempts detected. <br>
-                    System self-destruct protocol active. <br><br>
+                    Multiple failed authentication attempts detected.<br>
+                    System self-destruct protocol active.<br><br>
                     <span style="color:var(--gold);">Access restored in: {remaining + 1} minutes.</span>
                 </div>
             </div>
-        """, unsafe_allow_html=True)
+        """)
+        st.markdown(lockout_html, unsafe_allow_html=True)
         st.stop()
     else:
-        # Lockout expired, clear it
         st.session_state[K.LOCKOUT_UNTIL] = None
-        st.session_state[K.FAILED_ATTEMPTS] = 0
+        # Reset failed attempts in the background
+        if hasattr(K, 'FAILED_ATTEMPTS'):
+            st.session_state[K.FAILED_ATTEMPTS] = 0
 
-# 🔗 Proactive Sync: Ensure URL always reflects current Terminal ID
+# 🔗 IDENTITY LATCHING
 current_sid = st.session_state.get(K.USER_HASH)
 if current_sid:
     st.query_params["sid"] = current_sid
 
-# ── INITIAL BOOT SEQUENCE (One-time Toast) ──────────────────────────────────
+# ── BOOT SEQUENCE ───────────────────────────────────────────────────────────
 if "boot_complete" not in st.session_state:
     if "GUEST_" in str(current_sid):
         st.toast("InkOS System Initialized. Running in Ghost Mode.", icon="📡")
@@ -71,14 +85,12 @@ if "boot_complete" not in st.session_state:
         st.toast(f"Identity Locked: {current_sid}", icon="🔐")
     st.session_state["boot_complete"] = True
 
-# ── RENDER STYLES & RTL ──────────────────────────────────────────────────────
-st.markdown(STYLES, unsafe_allow_html=True)
+# ── RTL CLASS INJECTION ─────────────────────────────────────────────────────
+rtl_js = "<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.add('rtl-mode');</script>"
+ltr_js = "<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.remove('rtl-mode');</script>"
+st.markdown(rtl_js if is_rtl() else ltr_js, unsafe_allow_html=True)
 
-if is_rtl():
-    st.markdown("<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.add('rtl-mode');</script>", unsafe_allow_html=True)
-else:
-    st.markdown("<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.remove('rtl-mode');</script>", unsafe_allow_html=True)
-
+# ── NAVIGATION MATRIX ───────────────────────────────────────────────────────
 nav_options = {
     t("tab_workspace"):     render_workspace,
     t("tab_archive"):       render_archive,
@@ -89,22 +101,22 @@ nav_options = {
     t("tab_guide"):         render_guide,
 }
 
-# 1. Render the top Navigation FIRST
 with st.sidebar:
+    # Navigation acts as the "Ghost Menu"
     selected_nav = st.radio(
         "Navigation", 
         list(nav_options.keys()), 
         label_visibility="collapsed"
     )
     st.markdown("---")
+    
+    # Render rest of sidebar config
+    cfg = render_sidebar()
 
-# 2. Render the rest of the sidebar config below it
-cfg = render_sidebar()
+# Store config globally for the execution loop
+st.session_state["app_config"] = cfg
 
-# 3. Store config globally
-st.session_state[K.APP_CONFIG] = cfg
-
-# 4. Execute selected tab
+# ── EXECUTE SELECTED TAB ────────────────────────────────────────────────────
 if selected_nav == t("tab_workspace"):
     nav_options[selected_nav](cfg)
 else:
