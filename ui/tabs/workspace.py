@@ -1,8 +1,8 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v30.0: The "Athar" Persistence Build.
-       Integrated visual decay (Athar Protocol) and branded error synchronization.
+v30.1: The "Athar" Persistence Build (STABILIZED).
+       Fixed NoneType AttributeError in Vault Secure logic.
 """
 
 import hashlib
@@ -46,13 +46,14 @@ def _render_guest_warning():
         st.markdown(warning_html, unsafe_allow_html=True)
 
 def _render_score_block(audit: dict, pattern: Optional[dict], archived: bool = False) -> None:
-    score = int(audit.get("score", 0))
-    precision = int(audit.get("precision", 0))
-    alignment = int(audit.get("alignment", 0))
-    efficiency = int(audit.get("efficiency", 0))
-    critique = str(audit.get("critique", ""))
+    # 🛡️ INTERNAL DEFENSE
+    safe_audit = audit or {}
+    score = int(safe_audit.get("score", 0))
+    precision = int(safe_audit.get("precision", 0))
+    alignment = int(safe_audit.get("alignment", 0))
+    efficiency = int(safe_audit.get("efficiency", 0))
+    critique = str(safe_audit.get("critique", ""))
     
-    # 🧠 THE "ATHAR" DYNAMIC HUD LOGIC
     hud_opacity = "0.3" if archived else "1.0"
     
     if archived:
@@ -71,7 +72,7 @@ def _render_score_block(audit: dict, pattern: Optional[dict], archived: bool = F
         status_label, status_color = "OPTIMIZED", "#4CAF9A"
         log_content = critique
 
-    p_pct, a_pct, e_pct = min(100, (precision/40)*100), min(100, (alignment/40)*100), min(100, (efficiency/20)*100)
+    p_pct, a_pct = min(100, (precision/40)*100), min(100, (alignment/40)*100)
 
     hud_html = textwrap.dedent(f"""
         <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 3px; padding: 22px; position: relative; overflow: hidden; margin-bottom: 15px; opacity: {hud_opacity}; transition: opacity 0.4s ease;">
@@ -109,7 +110,6 @@ def _render_score_block(audit: dict, pattern: Optional[dict], archived: bool = F
 def render_workspace(cfg: dict) -> None:
     _render_guest_warning()
     
-    # ── RESET TRIGGER (Neural Flush) ──────────────────────────────────────────
     def flush_trace(): st.session_state["athar_trace"] = False
 
     header_html = textwrap.dedent(f"""
@@ -123,7 +123,6 @@ def render_workspace(cfg: dict) -> None:
     """)
     st.markdown(header_html, unsafe_allow_html=True)
 
-    # ── INTENT INPUT ──────────────────────────────────────────────────────────
     st.audio_input("Record", label_visibility="collapsed")
     raw_input = st.text_area("intent", height=145, placeholder="English or Arabic intent...", label_visibility="collapsed", key="ta_input", on_change=flush_trace)
 
@@ -139,11 +138,11 @@ def render_workspace(cfg: dict) -> None:
                 st.session_state[K.LAST_RESULT], st.session_state[K.LAST_AUDIT], st.session_state[K.LAST_INPUT], st.session_state[K.LAST_PATTERN] = result, audit, cleaned, pattern
                 st.rerun()
 
-    # ── HUD & ASSET DISPLAY ───────────────────────────────────────────────────
     if st.session_state.get(K.LAST_RESULT):
         left, right = st.columns([1, 2], gap="large")
         with left:
-            _render_score_block(st.session_state.get(K.LAST_AUDIT, {}), st.session_state.get(K.LAST_PATTERN), archived=st.session_state.get("athar_trace", False))
+            # 🛡️ Safe retrieval for HUD rendering
+            _render_score_block(st.session_state.get(K.LAST_AUDIT) or {}, st.session_state.get(K.LAST_PATTERN), archived=st.session_state.get("athar_trace", False))
         with right:
             st.text_area("Asset", value=st.session_state.get(K.LAST_RESULT), height=320, label_visibility="collapsed")
             st.download_button("💾 Download", st.session_state.get(K.LAST_RESULT), file_name="Refined_Asset.txt", use_container_width=True)
@@ -155,7 +154,23 @@ def render_workspace(cfg: dict) -> None:
             with v3: 
                 if st.button("SECURE"):
                     from vault.vault_engine import save_prompt
-                    res, err = save_prompt(user_hash=st.session_state.get(K.USER_HASH), title=st.session_state.get("v_t"), tags=st.session_state.get("v_g"), content=st.session_state.get(K.LAST_RESULT), target=st.session_state.get(K.AUTO_TARGET), framework=cfg["framework"], score=st.session_state.get(K.LAST_AUDIT, {}).get("score", 0), pattern=st.session_state.get(K.LAST_PATTERN, {}).get("pattern", ""), islamic=cfg["islamic_mode"], aesthetic=cfg["aesthetic_choice"])
+                    
+                    # 🛡️ NEURAL SHIELD: Force dict conversion to prevent NoneType crashes
+                    last_audit = st.session_state.get(K.LAST_AUDIT) or {}
+                    last_pattern = st.session_state.get(K.LAST_PATTERN) or {}
+
+                    res, err = save_prompt(
+                        user_hash=st.session_state.get(K.USER_HASH), 
+                        title=st.session_state.get("v_t"), 
+                        tags=st.session_state.get("v_g"), 
+                        content=st.session_state.get(K.LAST_RESULT), 
+                        target=st.session_state.get(K.AUTO_TARGET), 
+                        framework=cfg["framework"], 
+                        score=last_audit.get("score", 0), 
+                        pattern=last_pattern.get("pattern", ""), 
+                        islamic=cfg["islamic_mode"], 
+                        aesthetic=cfg["aesthetic_choice"]
+                    )
                     if not err:
                         st.session_state[K.LAST_SAVED] = datetime.now().strftime("%H:%M")
                         st.session_state["athar_trace"] = True
