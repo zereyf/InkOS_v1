@@ -160,6 +160,28 @@ def render_workspace(cfg: dict) -> None:
             # ── VAULT KEY SYNC ────────────────────────────────────────────────
             st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
             v1, v2, v3 = st.columns([2, 2, 1])
+
+
+# 📡 LIVE LINGUISTIC INTERCEPT
+live_pattern_html = ""
+if raw_input and source_lang == "Arabic (العربية)":
+    # Call the lightweight detection engine
+    p_data = detect_arabic_pattern(raw_input)
+    if p_data:
+        live_pattern_html = textwrap.dedent(f"""
+            <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px; opacity:0.8;">
+                <span style="height:6px; width:6px; background:var(--gold); border-radius:50%; animation: pulse-gold 2s infinite;"></span>
+                <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">
+                    PATTERN_INTERCEPT: <span style="color:var(--text); font-weight:bold;">{p_data['pattern'].upper()}</span>
+                </div>
+            </div>
+        """)
+else:
+    live_pattern_html = '<div style="height:22px;"></div>' # Spacer to prevent UI jumping
+
+st.markdown(live_pattern_html, unsafe_allow_html=True)
+
+
             with v1: st.text_input("Title", key="v_t", label_visibility="collapsed", placeholder="Asset Title...")
             with v2: st.text_input("Tags", key="v_g", label_visibility="collapsed", placeholder="Forensic Tags...")
             with v3: 
