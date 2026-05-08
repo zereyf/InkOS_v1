@@ -30,7 +30,11 @@ def toggle_persona_callback(persona_data: dict, is_currently_active: bool):
         st.toast(f"🎭 LATCHED: {persona_data.get('name', 'Unknown')}")
 
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ── 🟢 FIXED: RESTORED MISSING PREVIEW CALLBACK ──────────────────────────────
+def toggle_preview_callback(pid: str):
+    """Toggles the prompt code injection preview window."""
+    key = f"show_preview_{pid}"
+    st.session_state[key] = not st.session_state.get(key, False)
 
 def _render_persona_card(
     persona:   dict,
