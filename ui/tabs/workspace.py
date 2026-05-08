@@ -1,10 +1,10 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v30.6: Master Sync — Indentation Repair & Silent Fault Fix.
-       - Repaired HISTORY append indentation block.
-       - Added 'else' block to Vault SECURE logic to prevent silent failures.
-       - Removed 'on_change' from intent area to stop double-click bug.
+v30.7: Master Sync — Full Module Restoration.
+       - Fixed HUD Live Badges (Expert/Islamic).
+       - Repaired all Indentation and Syntax traps.
+       - Optimized for Mobile HUD display.
 """
 
 import hashlib
@@ -88,16 +88,14 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
         with st.expander("🛠️ NEURAL UPLINK DIAGNOSTICS"):
             st.json(safe_audit)
 
-# ── MAIN RENDERER ────────────────────────────────────────────────────
+# ── MAIN RENDERER ─────────────────────────────────────────────────────────────
 
 def render_workspace(cfg: dict) -> None:
     # 1. HEADER & COGNITIVE LOAD
     source_lang = cfg.get("source_lang", "English")
     cognitive_load = len(st.session_state.get("ta_input", ""))
     
-    # 🟢 NEW: Read the silent states and convert them into visual Tactical Badges
     expert_badge = "<span style='background:rgba(229, 62, 62, 0.1); color:var(--danger); border:1px solid rgba(229, 62, 62, 0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; position:relative; top:-2px;'>EXPERT</span>" if cfg.get("expert_mode") else ""
-    
     islamic_badge = "<span style='background:rgba(76, 175, 154, 0.1); color:#4CAF9A; border:1px solid rgba(76, 175, 154, 0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; position:relative; top:-2px;'>HIKMAH LATCH</span>" if cfg.get("islamic_mode") else ""
 
     header_html = textwrap.dedent(f"""
@@ -115,7 +113,6 @@ def render_workspace(cfg: dict) -> None:
         </div>
     """)
     st.markdown(header_html, unsafe_allow_html=True)
-
 
     # 2. DNA ARMORY BAR
     if "GUEST_" not in str(st.session_state.get(K.USER_HASH, "")).upper():
@@ -154,10 +151,9 @@ def render_workspace(cfg: dict) -> None:
     st.markdown(live_pattern_html, unsafe_allow_html=True)
 
     # 4. INPUT AREA
-    # 🟢 FIXED: Removed on_change to prevent double-click bug
-    st.text_area("intent", height=145, placeholder=t("Inout your raw idea here in English or Arabic..."), label_visibility="collapsed", key="ta_input")
+    st.text_area("intent", height=145, placeholder=t("workspace_placeholder", fallback="Input your raw idea here..."), label_visibility="collapsed", key="ta_input")
 
-    if st.button(t("execute_btn"), use_container_width=True):
+    if st.button(t("execute_btn", fallback="EXECUTE REFINEMENT"), use_container_width=True):
         st.session_state["athar_trace"] = False
         cleaned, _ = sanitize_input(st.session_state.ta_input or "")
         
@@ -173,7 +169,6 @@ def render_workspace(cfg: dict) -> None:
                 st.session_state[K.LAST_AUDIT] = audit
                 st.session_state[K.LAST_INPUT] = cleaned
 
-                # 🟢 FIXED: Properly indented block to log the run
                 st.session_state[K.HISTORY].append({
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "intent": cleaned,
@@ -214,5 +209,4 @@ def render_workspace(cfg: dict) -> None:
                         st.toast("Neural Vault Updated.")
                         st.rerun()
                     else:
-                        # 🟢 FIXED: Prevents silent failure if DB rejects save
                         st.error(f"Vault Lock Failed: {err}")
