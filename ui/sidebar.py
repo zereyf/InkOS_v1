@@ -214,8 +214,8 @@ def render_sidebar() -> SidebarConfig:
         # ── OPTIONS ───────────────────────────────────────────────────────────
         st.markdown("<hr style='margin-top:5px;'>", unsafe_allow_html=True)
         aesthetic_choice = st.selectbox(t("aesthetic_preset", fallback="Aesthetic"), options=list(AESTHETIC_PRESETS.keys()), key="sb_aesthetic")
-        islamic_mode = st.toggle(t("islamic_mode", fallback="Islamic Mode"), value=False, key="sb_islamic")
-        expert_mode = st.toggle("Expert Diagnostics", value=False, key="sb_expert")
+        islamic_mode = st.toggle("[ SYS: HIKMAH PROTOCOL ]", value=False, key="sb_islamic")
+expert_mode = st.toggle("[ SYS: TELEMETRY OVERRIDE ]", value=False, key="sb_expert")
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
