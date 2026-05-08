@@ -101,14 +101,25 @@ def render_sidebar() -> SidebarConfig:
         st.markdown(f'<div class="vc-header" style="font-size:0.55rem; color:var(--text-muted); margin-top:20px;">SESS_REF: {sess_ref}</div>', unsafe_allow_html=True)
 
         
-        if is_guest:
+         if is_guest:
             new_sid = st.text_input("ID", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
             new_pin = st.text_input("PIN", placeholder="PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
             is_new_user = st.toggle("Register New?", value=False, key="is_new_user_toggle")
             
+            # 🟢 RESTORED: Real-time ID Scanner
+            id_is_valid = True
+            if is_new_user and new_sid.strip():
+                available, status_msg = check_id_availability(new_sid.strip())
+                color = "#4CAF9A" if available else "#E53E3E"
+                st.markdown(f"<div style='color:{color}; font-size:0.55rem; font-family:var(--font-m); margin-bottom:8px;'>{status_msg}</div>", unsafe_allow_html=True)
+                id_is_valid = available
+            
             if st.button("LATCH IDENTITY", use_container_width=True, key="btn_latch_sid"):
-                if new_sid.strip() and new_pin.strip():
+                if is_new_user and not id_is_valid:
+                    st.error("Cannot latch: ID is unavailable or reserved.")
+                elif new_sid.strip() and new_pin.strip():
                     with st.spinner("Uplinking..."):
+
                         success, error_msg = authenticate_terminal(new_sid.strip(), new_pin.strip(), is_new=is_new_user)
                     
                     if success:
