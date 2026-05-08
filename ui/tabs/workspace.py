@@ -94,16 +94,20 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
 def render_workspace(cfg: dict) -> None:
     # 1. HEADER & COGNITIVE LOAD
     source_lang = cfg.get("source_lang", "English")
-    # 🟢 FIXED: Safety fallback for NoneType values
-    cognitive_load = len(st.session_state.get("ta_input") or "")
+    
+    # 🟢 IMPROVEMENT: Read from the widget key for real-time load tracking
+    raw_text = st.session_state.get("ta_input_widget") or st.session_state.get("ta_input") or ""
+    cognitive_load = len(raw_text)
 
-    # 🟢 NEW: Persona Data Extraction
+    # 🟢 PRECISION: Persona Data Extraction with type safety
     active_persona = st.session_state.get(K.ACTIVE_PERSONA)
-    p_name = active_persona.get("name", "").upper() if active_persona else ""
+    p_name = ""
+    if isinstance(active_persona, dict):
+        p_name = active_persona.get("name", "").upper()
 
+    # Badge Logic
     expert_badge = "<span style='background:rgba(229, 62, 62, 0.1); color:var(--danger); border:1px solid rgba(229, 62, 62, 0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; position:relative; top:-2px;'>EXPERT</span>" if cfg.get("expert_mode") else ""
     islamic_badge = "<span style='background:rgba(76, 175, 154, 0.1); color:#4CAF9A; border:1px solid rgba(76, 175, 154, 0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; position:relative; top:-2px;'>HIKMAH LATCH</span>" if cfg.get("islamic_mode") else ""
-    # 🟢 NEW: Persona Badge definition
     persona_badge = f"<span style='background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; position:relative; top:-2px;'>PERSONA: {p_name}</span>" if p_name else ""
 
     header_html = textwrap.dedent(f"""
@@ -119,6 +123,7 @@ def render_workspace(cfg: dict) -> None:
         </div>
     """)
     st.markdown(header_html, unsafe_allow_html=True)
+
 
 
     # 2. DNA ARMORY BAR
