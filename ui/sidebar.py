@@ -238,7 +238,7 @@ def render_sidebar() -> SidebarConfig:
         # Route the boolean values back to the core engine
         islamic_mode = st.session_state.hikmah_active
         expert_mode = st.session_state.expert_active
-)
+
 
         # ── METRICS ───────────────────────────────────────────────────────────
         m1, m2, m3 = st.columns(3)
