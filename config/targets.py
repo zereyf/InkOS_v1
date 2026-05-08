@@ -21,6 +21,9 @@ TARGET_GUIDES = MappingProxyType({
         'Best for text-integrated visuals and signage. '
         'Describe the exact text to be rendered within the image.'
     ),
+    DALL-E 3': (
+        'Requires rich natural language, cinematic scene descriptions, full sentences, NO :: separators.'
+    ),
     'Manus AI': (
         'Multi-step agentic workflows. Routing to Claude fallback for local processing.'
     )
