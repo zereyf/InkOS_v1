@@ -1,8 +1,8 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2026.4: Master Sync.
-Security Gate, Identity Latching, and Ghost Navigation.
+v2026.4.1: Master Sync — Identity Rehydration Build.
+           Armored with Zero-Cost Persistence and Neural Flush protocols.
 """
 
 import sys
@@ -40,8 +40,32 @@ if API_KEY_MISSING:
     st.error("SYSTEM ERROR: GROQ_API_KEY not found in environment.")
     st.stop()
 
-# ── INITIALIZE STATE & IDENTITY ─────────────────────────────────────────────
+# ── INITIALIZE STATE ────────────────────────────────────────────────────────
 init_session_state()
+
+# ── REHYDRATION PROTOCOL: Surving the Refresh (Zero-Cost) ────────────────────
+url_params = st.query_params
+if "sid" in url_params and not st.session_state.get(K.USER_HASH):
+    sid = url_params["sid"]
+    
+    # Check if this is a real user (not a GUEST) before querying the Vault
+    if not sid.upper().startswith("GUEST_"):
+        with st.spinner("Re-establishing Neural Uplink..."):
+            from vault.vault_engine import rehydrate_session
+            recovered = rehydrate_session(sid)
+            
+            if recovered:
+                # 🟢 RE-INJECTING DATA FROM VAULT
+                st.session_state[K.USER_HASH] = sid
+                st.session_state[K.PERSONA_LIST] = recovered.get("personas", [])
+                
+                # Recover DNA Strings
+                dna = recovered.get("dna", {})
+                st.session_state[K.INK_DNA] = dna.get("ink", "")
+                st.session_state[K.INTEL_DNA] = dna.get("intel", "")
+                st.session_state[K.HIKMAH_DNA] = dna.get("hikmah", "")
+                
+                st.toast(f"Terminal Identity Rehydrated: {sid[:8]}", icon="⚡")
 
 # ── RENDER GLOBAL STYLES ────────────────────────────────────────────────────
 st.markdown(STYLES, unsafe_allow_html=True)
@@ -68,21 +92,21 @@ if lockout_ts:
         st.stop()
     else:
         st.session_state[K.LOCKOUT_UNTIL] = None
-        # Reset failed attempts in the background
-        if hasattr(K, 'FAILED_ATTEMPTS'):
-            st.session_state[K.FAILED_ATTEMPTS] = 0
+        st.session_state[K.FAILED_ATTEMPTS] = 0
 
-# 🔗 IDENTITY LATCHING
+# 🔗 IDENTITY LATCHING: Persist SID in URL
 current_sid = st.session_state.get(K.USER_HASH)
 if current_sid:
     st.query_params["sid"] = current_sid
 
 # ── BOOT SEQUENCE ───────────────────────────────────────────────────────────
 if "boot_complete" not in st.session_state:
-    if "GUEST_" in str(current_sid):
+    if not current_sid or "GUEST_" in str(current_sid).upper():
         st.toast("InkOS System Initialized. Running in Ghost Mode.", icon="📡")
     else:
-        st.toast(f"Identity Locked: {current_sid}", icon="🔐")
+        # Don't show toast if rehydration already toasted
+        if "rehydrated" not in st.session_state:
+            st.toast(f"Terminal Identity Latch: {current_sid[:8]}", icon="🔐")
     st.session_state["boot_complete"] = True
 
 # ── RTL CLASS INJECTION ─────────────────────────────────────────────────────
@@ -102,15 +126,8 @@ nav_options = {
 }
 
 with st.sidebar:
-    # Navigation acts as the "Ghost Menu"
-    selected_nav = st.radio(
-        "Navigation", 
-        list(nav_options.keys()), 
-        label_visibility="collapsed"
-    )
+    selected_nav = st.radio("Nav", list(nav_options.keys()), label_visibility="collapsed")
     st.markdown("---")
-    
-    # Render rest of sidebar config
     cfg = render_sidebar()
 
 # Store config globally for the execution loop
