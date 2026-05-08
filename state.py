@@ -1,8 +1,8 @@
 """
 state.py — Session State Contract
 ===================================
-v20.0: Terminal DNA Refactor.
-       Integrated INK, INTEL, and HIKMAH architectural payloads.
+v20.1: Identity & HUD Synchronization.
+       Integrated LAST_SAVED metric and preserved state protocols.
 """
 
 import uuid
@@ -13,30 +13,31 @@ import streamlit as st
 
 
 class K:
-    HISTORY        = "prompt_history"
-    TIMESTAMPS     = "call_timestamps"
-    SECURITY_LOG   = "security_log"
-    LAST_RESULT    = "last_result"
-    LAST_AUDIT     = "last_audit"
-    LAST_INPUT     = "last_input"
-    LAST_PATTERN   = "last_pattern"
-    USER_HASH      = "user_hash"
-    USER_PIN       = "user_pin"
-    FAILED_ATTEMPTS = "failed_attempts"
-    LOCKOUT_UNTIL  = "lockout_until"
-    VAULT_SEARCH   = "vault_search"
-    VAULT_STATS    = "vault_stats"
-    ACTIVE_PERSONA = "active_persona"
-    PERSONA_LIST   = "persona_list"
-    UI_LANG        = "ui_lang"          
-    AUTO_TARGET    = "auto_target"      
-    AUTO_REASON    = "auto_reason"      
-    APP_CONFIG     = "app_config"
+    HISTORY         = "prompt_history"
+    TIMESTAMPS      = "call_timestamps"
+    SECURITY_LOG    = "security_log"
+    LAST_RESULT     = "last_result"
+    LAST_AUDIT      = "last_audit"
+    LAST_INPUT      = "last_input"
+    LAST_PATTERN    = "last_pattern"
+    USER_HASH       = "user_hash"
+    USER_PIN        = "user_pin"
+    FAILED_ATTEMPTS  = "failed_attempts"
+    LOCKOUT_UNTIL   = "lockout_until"
+    VAULT_SEARCH    = "vault_search"
+    VAULT_STATS     = "vault_stats"
+    ACTIVE_PERSONA  = "active_persona"
+    PERSONA_LIST    = "persona_list"
+    UI_LANG         = "ui_lang"          
+    AUTO_TARGET     = "auto_target"      
+    AUTO_REASON     = "auto_reason"      
+    APP_CONFIG      = "app_config"
+    LAST_SAVED      = "last_saved"      # 🟢 SYNCED: HUD Metric
     
     # 🧪 ADVANCED DNA KEYS (The AmeerInk Trifecta)
-    INK_DNA        = "ink_dna"          # AmeerInk Visuals & Branding
-    INTEL_DNA      = "intel_dna"        # Tech Observer & Forensics
-    HIKMAH_DNA     = "hikmah_dna"       # Arabic Linguistics & Islamic Scholarship
+    INK_DNA         = "ink_dna"          
+    INTEL_DNA       = "intel_dna"        
+    HIKMAH_DNA      = "hikmah_dna"       
 
 
 _DEFAULTS: dict = {
@@ -50,7 +51,7 @@ _DEFAULTS: dict = {
     K.USER_HASH:       None,
     K.USER_PIN:        None,
     K.FAILED_ATTEMPTS: 0,
-    K.LOCKOUT_UNTIL:   None,
+    K.LOCK_OUT_UNTIL:  None,
     K.VAULT_SEARCH:    "",
     K.VAULT_STATS:     {},
     K.ACTIVE_PERSONA:  None,
@@ -59,8 +60,9 @@ _DEFAULTS: dict = {
     K.AUTO_TARGET:     None,
     K.AUTO_REASON:     None,
     K.APP_CONFIG:      None,
+    K.LAST_SAVED:      "Never",         # 🟢 SYNCED: HUD Default
 
-    # 🧪 INITIALIZING ADVANCED DNA (Forensic Pre-load)
+    # 🧪 DNA INITIALIZATION
     K.INK_DNA: (
         "ROLE: Creative Director. AESTHETIC: Chiaroscuro lighting, tech-noir minimalist vibes. "
         "COLOR: Obsidian and Gold. STYLE: High-contrast digital photography, 8k resolution. "
@@ -99,25 +101,25 @@ def init_session_state() -> None:
 
 def reset_session() -> None:
     """Nuclear reset: flushes state but preserves Identity and Advanced DNA."""
-    # 🛡️ Preserve security and Advanced DNA status during reset
+    # 🛡️ PRESERVATION PROTOCOL
     preserved = {
         K.USER_HASH:       st.session_state.get(K.USER_HASH),
         K.USER_PIN:        st.session_state.get(K.USER_PIN),
         K.UI_LANG:         st.session_state.get(K.UI_LANG, "en"),
         K.FAILED_ATTEMPTS: st.session_state.get(K.FAILED_ATTEMPTS, 0),
         K.LOCKOUT_UNTIL:   st.session_state.get(K.LOCKOUT_UNTIL),
+        K.LAST_SAVED:      st.session_state.get(K.LAST_SAVED, "Never"), # 🟢 SYNCED
         
-        # 🧪 Preserve your personal branding/logic
+        # 🧪 DNA Preservation
         K.INK_DNA:         st.session_state.get(K.INK_DNA),
         K.INTEL_DNA:       st.session_state.get(K.INTEL_DNA),
         K.HIKMAH_DNA:      st.session_state.get(K.HIKMAH_DNA),
     }
     
     st.session_state.clear()
-    
     init_session_state()
     
-    # 🛡️ Restore preserved keys
+    # 🛡️ Restoration
     for key, value in preserved.items():
         if value is not None:
             st.session_state[key] = value
@@ -130,20 +132,18 @@ def reset_session() -> None:
 
 
 def get_remaining_calls(window_seconds: int = 60, max_calls: int = 10) -> int:
-    """Calculates remaining quota and executes garbage collection on expired timestamps."""
+    """Calculates remaining quota and executes garbage collection."""
     now = datetime.now(timezone.utc)
-    
     valid_timestamps = [
         t for t in st.session_state.get(K.TIMESTAMPS, [])
         if t > now - timedelta(seconds=window_seconds)
     ]
-    
     st.session_state[K.TIMESTAMPS] = valid_timestamps
     return max(0, max_calls - len(valid_timestamps))
 
 
 def record_api_call() -> None:
-    """Standardized utility to record a rate-limited action."""
+    """Records rate-limited action."""
     if K.TIMESTAMPS not in st.session_state:
         st.session_state[K.TIMESTAMPS] = []
     st.session_state[K.TIMESTAMPS].append(datetime.now(timezone.utc))
