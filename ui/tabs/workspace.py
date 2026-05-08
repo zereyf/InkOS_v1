@@ -159,6 +159,15 @@ def render_workspace(cfg: dict) -> None:
                 st.session_state[K.AUTO_TARGET], st.session_state[K.AUTO_REASON] = auto_target, auto_reason
                 result, audit, _ = run_refinement_and_audit(final_text, auto_target, cfg["framework"], cfg["source_lang"], cfg["aesthetic_choice"], cfg["islamic_mode"], cfg.get("active_persona"))
                 st.session_state[K.LAST_RESULT], st.session_state[K.LAST_AUDIT], st.session_state[K.LAST_INPUT] = result, audit, cleaned
+
+st.session_state[K.HISTORY].append({
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "intent": cleaned,
+    "target": auto_target,
+    "score": audit.get("score", 0),
+    "asset": result
+})
+
                 st.rerun()
 
     # 5. OUTPUT LAYER
