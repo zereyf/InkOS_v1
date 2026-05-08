@@ -2,7 +2,7 @@
 ui/styles.py — InkOS Design System
 ==========================================
 The full CSS string exported as a single constant.
-Integrated Ghost Menu, Horizontal Switchers, Mobile Macro Injectors, and Tactical Toggles.
+Integrated Ghost Menu, Horizontal Switchers, Mobile Macro Injectors, Tactical Toggles, and Audio Scanners.
 """
 
 STYLES: str = """
@@ -136,9 +136,12 @@ div[data-testid="stSidebarNav"] { display: none; }
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:has(p),
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:has(span) { display: block !important; width: 100% !important; }
 
+/* 🟢 UPDATED: Dark Chassis for Sidebar Radio Buttons */
 [data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] {
     width: 100% !important; padding: 10px 14px !important; margin-bottom: 4px !important;
-    border-radius: 4px !important; background: transparent !important;
+    border-radius: 2px !important; 
+    background: rgba(255, 255, 255, 0.02) !important; 
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
     border-left: 3px solid transparent !important; transition: all 0.2s ease !important;
     cursor: pointer !important; display: block !important;
 }
@@ -229,7 +232,6 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 [data-baseweb="menu"] li { font-family: var(--font-m) !important; font-size: 0.75rem !important; color: var(--text-muted) !important; padding: 10px 14px !important; transition: background 0.15s, color 0.15s !important; }
 [data-baseweb="menu"] li:hover, [data-baseweb="menu"] li[aria-selected="true"] { background: rgba(201, 168, 76, 0.1) !important; color: var(--gold) !important; border-left: 2px solid var(--gold) !important; }
 
-
 /* ══════════════════════════════════════════
    LEVEL 4 FIX: TOAST NOTIFICATIONS
 ══════════════════════════════════════════ */
@@ -304,8 +306,6 @@ div[data-testid="stAudioInput"] section div {
     background-color: transparent !important;
     background: none !important;
 }
-
-
 
 /* ══════════════════════════════════════════
    MOBILE OVERRIDES & MISC
