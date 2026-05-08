@@ -370,14 +370,16 @@ from i18n.translations import t
 def toggle_persona_callback(persona_data: dict, is_currently_active: bool):
     if is_currently_active:
         st.session_state[K.ACTIVE_PERSONA] = None
+        # Remove persona from URL on deactivation
+        if "p" in st.query_params:
+            del st.query_params["p"]
         st.toast("🎭 Identity Matrix Reset.")
     else:
         st.session_state[K.ACTIVE_PERSONA] = persona_data
+        # 🟢 PERSISTENCE: Latch persona name into URL
+        st.query_params["p"] = persona_data.get("name", "Unknown")
         st.toast(f"🎭 LATCHED: {persona_data.get('name', 'Unknown')}")
-
-def toggle_preview_callback(pid: str):
-    key = f"show_preview_{pid}"
-    st.session_state[key] = not st.session_state.get(key, False)
+)
 
 # ── UI COMPONENTS ─────────────────────────────────────────────────────────────
 
