@@ -63,17 +63,24 @@ def render_language_switcher() -> None:
                 if not is_active:
                     set_lang(lang["code"])
                     st.rerun()
-
-
 def render_sidebar() -> SidebarConfig:
     """
-    🟢 MASTER RENDERER: Indentation-Locked
+    🟢 MASTER RENDERER: Identity-Locked Uplink
     """
     with st.sidebar:
-        # ── NEURAL LINK STATUS ────────────────────────────────────────────────
-        uplink_color = "#A93226" if SUPABASE_MISSING else "#4CAF9A"
-        uplink_label = "OFFLINE" if SUPABASE_MISSING else "ACTIVE"
-        
+        # ── 1. EVALUATE IDENTITY FIRST ─────────────────────────────────────────
+        current_sid = st.session_state.get(K.USER_HASH)
+        is_guest = not current_sid or "GUEST_" in str(current_sid).upper()
+        sess_ref = str(current_sid)[:8] if current_sid else "GHOST_ID"
+
+        # ── 2. NEURAL LINK STATUS (Tied to Identity) ───────────────────────────
+        if SUPABASE_MISSING:
+            uplink_color, uplink_label = "#E53E3E", "DB_FAULT"
+        elif is_guest:
+            uplink_color, uplink_label = "var(--text-dim)", "OFFLINE" # Steel/Dim color
+        else:
+            uplink_color, uplink_label = "#4CAF9A", "ACTIVE" # Green
+
         link_html = textwrap.dedent(f"""
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 5px;">
                 <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-dim); letter-spacing:1px;">NEURAL_UPLINK</div>
@@ -85,7 +92,7 @@ def render_sidebar() -> SidebarConfig:
         """)
         st.markdown(link_html, unsafe_allow_html=True)
 
-        # ── WORDMARK ──────────────────────────────────────────────────────────
+        # ── 3. WORDMARK ────────────────────────────────────────────────────────
         wordmark_html = textwrap.dedent(f"""
             <div style="padding:0 0 14px 0; border-bottom:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
                 <div class="vc-wordmark" style="font-size:1.4rem;">⚡ {t('app_name')}</div>
@@ -94,21 +101,14 @@ def render_sidebar() -> SidebarConfig:
         """)
         st.markdown(wordmark_html, unsafe_allow_html=True)
 
-        # ── TERMINAL IDENTITY HUD ─────────────────────────────────────────────
-        current_sid = st.session_state.get(K.USER_HASH)
-        
-        is_guest = not current_sid or "GUEST_" in str(current_sid).upper()
-        sess_ref = str(current_sid)[:8] if current_sid else "GHOST_ID"
-
+        # ── 4. TERMINAL IDENTITY HUD ───────────────────────────────────────────
         st.markdown(f'<div class="vc-header" style="font-size:0.55rem; color:var(--text-muted); margin-top:20px;">SESS_REF: {sess_ref}</div>', unsafe_allow_html=True)
 
-        # 🟢 FIXED: Indentation repaired
         if is_guest:
             new_sid = st.text_input("ID", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
             new_pin = st.text_input("PIN", placeholder="PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
             is_new_user = st.toggle("Register New?", value=False, key="is_new_user_toggle")
             
-            # 🟢 RESTORED: Real-time ID Scanner
             id_is_valid = True
             if is_new_user and new_sid.strip():
                 available, status_msg = check_id_availability(new_sid.strip())
