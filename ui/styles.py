@@ -228,58 +228,52 @@ h1, h2, h3 { font-family: var(--font-d); color: var(--gold); letter-spacing: 0.0
 [data-baseweb="popover"] > div { background: var(--bg-deep) !important; border: 1px solid var(--gold) !important; border-radius: 2px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important; }
 [data-baseweb="menu"] li { font-family: var(--font-m) !important; font-size: 0.75rem !important; color: var(--text-muted) !important; padding: 10px 14px !important; transition: background 0.15s, color 0.15s !important; }
 [data-baseweb="menu"] li:hover, [data-baseweb="menu"] li[aria-selected="true"] { background: rgba(201, 168, 76, 0.1) !important; color: var(--gold) !important; border-left: 2px solid var(--gold) !important; }
+
 /* ══════════════════════════════════════════
-   TACTICAL TOGGLE SWITCHES (OMNI-SELECTOR STRAT)
+   TACTICAL TOGGLE SWITCHES (WILDCARD NUKE)
 ══════════════════════════════════════════ */
-/* 1. Terminal Font for Label */
-div[data-testid="stToggle"] label p,
-div[data-testid="stToggle"] label span,
-div[data-testid="stToggle"] p {
+/* 1. Terminal Font & Color */
+div[data-testid="stToggle"] * {
     font-family: var(--font-m) !important;
+}
+div[data-testid="stToggle"] p, 
+div[data-testid="stToggle"] span {
     font-size: 0.65rem !important;
     letter-spacing: 1px !important;
     color: var(--text-muted) !important;
     text-transform: uppercase !important;
 }
 
-/* 2. Square Track (Targets ALL known Streamlit versions) */
-div[data-testid="stToggle"] [data-baseweb="checkbox"] > div:first-child,
-div[data-testid="stToggle"] label > div:first-of-type,
-div[data-testid="stToggle"] div[role="switch"],
-div[data-testid="stToggle"] label > div:not(:last-child) {
-    background-color: rgba(255, 255, 255, 0.05) !important;
+/* 2. BRUTE FORCE SQUARE CORNERS ON EVERYTHING */
+/* This strips the round "pill" shape from Streamlit's hidden nodes */
+div[data-testid="stToggle"] div {
     border-radius: 2px !important;
+}
+
+/* 3. COLOR OVERRIDES */
+/* Force the background of the actual toggle track */
+div[data-testid="stToggle"] div[data-baseweb="checkbox"] > div:first-child,
+div[data-testid="stToggle"] label > div:first-of-type {
+    background-color: rgba(255, 255, 255, 0.05) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-/* 3. Square Thumb */
-div[data-testid="stToggle"] [data-baseweb="checkbox"] > div:first-child > div,
-div[data-testid="stToggle"] label > div:first-of-type > div,
-div[data-testid="stToggle"] div[role="switch"] > div,
-div[data-testid="stToggle"] label > div:not(:last-child) > div {
-    background-color: var(--text-dim) !important;
-    border-radius: 1px !important;
-    box-shadow: none !important;
-}
-
-/* 4. ACTIVE Amber Track */
-div[data-testid="stToggle"] input:checked ~ div:first-of-type,
+/* 4. ACTIVE COLOR FORCING (The Amber Glow) */
+/* Uses the :has() pseudo-class to find when the hidden checkbox is clicked */
+div[data-testid="stToggle"] label:has(input:checked) > div:first-of-type,
 div[data-testid="stToggle"] input:checked + div,
-div[data-testid="stToggle"] input[type="checkbox"]:checked + div,
-div[data-testid="stToggle"] [data-baseweb="checkbox"]:has(input:checked) > div:first-child,
-div[data-testid="stToggle"] label:has(input:checked) > div:first-of-type {
+div[data-testid="stToggle"] input:checked ~ div {
     background-color: rgba(201, 168, 76, 0.15) !important;
     border-color: var(--gold) !important;
+    box-shadow: inset 0 0 8px rgba(201, 168, 76, 0.2) !important;
 }
 
-/* 5. ACTIVE Amber Thumb */
-div[data-testid="stToggle"] input:checked ~ div:first-of-type > div,
+/* 5. ACTIVE THUMB COLOR */
+div[data-testid="stToggle"] label:has(input:checked) > div:first-of-type > div,
 div[data-testid="stToggle"] input:checked + div > div,
-div[data-testid="stToggle"] input[type="checkbox"]:checked + div > div,
-div[data-testid="stToggle"] [data-baseweb="checkbox"]:has(input:checked) > div:first-child > div,
-div[data-testid="stToggle"] label:has(input:checked) > div:first-of-type > div {
+div[data-testid="stToggle"] input:checked ~ div > div {
     background-color: var(--gold) !important;
-    box-shadow: 0 0 8px rgba(201, 168, 76, 0.6) !important;
+    box-shadow: 0 0 5px var(--gold) !important;
 }
 
 
