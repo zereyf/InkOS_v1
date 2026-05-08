@@ -1,10 +1,11 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v31.0: Master Consolidation — The AmeerInk Protocol.
+v31.1: Final Master Build — The AmeerInk Protocol.
+       - Repaired Indentation (Line 190 Crash Fix).
+       - Resolved Header Collision (Badge Buffer Latch).
        - Unified Input Pipeline (Duplicate Key Fix).
-       - Live Thermal HUD (Persona & Target Sync).
-       - Hardened Voice Uplink (Loop Prevention).
+       - Hardened Voice Uplink & Live Cognitive HUD.
 """
 
 import textwrap
@@ -92,44 +93,39 @@ def render_workspace(cfg: dict) -> None:
     # ── 1. HEADER & LIVE METRICS ─────────────────────────────────────────────
     source_lang = cfg.get("source_lang", "English")
     
-    # 🟢 LIVE LOAD: Reads from widget key for real-time tracking
+    # Live Widget Sync for real-time load HUD
     raw_text = st.session_state.get("ta_input_widget") or ""
     cognitive_load = len(raw_text)
 
-    # Active Persona Logic
+    # Active Persona & Alignment Extraction
     active_persona = st.session_state.get(K.ACTIVE_PERSONA)
     p_name, p_target = "", "All"
     if isinstance(active_persona, dict):
         p_name = active_persona.get("name", "").upper()
         p_target = active_persona.get("target", "All")
 
-    # Thermal Drift Warning (Global vs Persona Target Mismatch)
+    # Thermal Drift Detection
     current_global_target = cfg.get("target_model")
     is_misaligned = p_target != "All" and p_target != current_global_target
     
     misalignment_badge = ""
     if is_misaligned:
-        misalignment_badge = textwrap.dedent(f"""
-            <span style='background:rgba(229, 62, 62, 0.15); color:#FF4B4B; border:1px solid #FF4B4B; padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; position:relative; top:-2px; animation: pulse-red 2s infinite;'>
-                ⚠️ THERMAL DRIFT: TARGET MISMATCH ({p_target.upper()} vs {current_global_target.upper()})
-            </span>
-        """)
-    # ── 1. HEADER BADGE FIX ──────────────────────────────────────────────────
-    # Added explicit &nbsp; and forced margins to prevent "WORKSPACEHIKMAH" overlap
-    expert_badge = f"&nbsp;<span style='background:rgba(229, 62, 62, 0.1); color:var(--danger); border:1px solid rgba(229, 62, 62, 0.3); padding:2px 6px; border-radius:2px; margin-left:10px; font-size:0.45rem; letter-spacing:1px; display:inline-block; vertical-align:middle;'>EXPERT</span>" if cfg.get("expert_mode") else ""
-    
-    islamic_badge = f"&nbsp;<span style='background:rgba(76, 175, 154, 0.1); color:#4CAF9A; border:1px solid rgba(76, 175, 154, 0.3); padding:2px 6px; border-radius:2px; margin-left:10px; font-size:0.45rem; letter-spacing:1px; display:inline-block; vertical-align:middle;'>HIKMAH LATCH</span>" if cfg.get("islamic_mode") else ""
-    
-    persona_badge = f"&nbsp;<span style='background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.3); padding:2px 6px; border-radius:2px; margin-left:10px; font-size:0.45rem; letter-spacing:1px; display:inline-block; vertical-align:middle;'>PERSONA: {p_name}</span>" if p_name else ""
+        misalignment_badge = f"&nbsp;<span style='background:rgba(229, 62, 62, 0.15); color:#FF4B4B; border:1px solid #FF4B4B; padding:2px 6px; border-radius:2px; margin-left:10px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>⚠️ THERMAL DRIFT: {p_target.upper()} MISMATCH</span>"
+
+    # Shielded Header with explicit buffers to prevent WORKSPACEHIKMAH overlap
+    expert_badge = f"&nbsp;<span style='background:rgba(229, 62, 62, 0.1); color:var(--danger); border:1px solid rgba(229, 62, 62, 0.3); padding:2px 6px; border-radius:2px; margin-left:10px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>EXPERT</span>" if cfg.get("expert_mode") else ""
+    islamic_badge = f"&nbsp;<span style='background:rgba(76, 175, 154, 0.1); color:#4CAF9A; border:1px solid rgba(76, 175, 154, 0.3); padding:2px 6px; border-radius:2px; margin-left:10px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>HIKMAH LATCH</span>" if cfg.get("islamic_mode") else ""
+    persona_badge = f"&nbsp;<span style='background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.3); padding:2px 6px; border-radius:2px; margin-left:10px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>PERSONA: {p_name}</span>" if p_name else ""
 
     header_html = textwrap.dedent(f"""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <div class="vc-header" style="margin:0; display:flex; align-items:center;">
-                <span class="status-dot"></span><span style="margin-right:5px;">{t("tab_workspace", fallback="WORKSPACE")}</span>{expert_badge}{islamic_badge}{persona_badge}{misalignment_badge}
+            <div class="vc-header" style="margin:0; display:flex; align-items:center; flex-wrap:nowrap;">
+                <span class="status-dot"></span>
+                <span style="padding-right:15px; flex-shrink:0;">{t("tab_workspace", fallback="WORKSPACE")}</span>
+                {expert_badge}{islamic_badge}{persona_badge}{misalignment_badge}
             </div>
-            <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; letter-spacing:1px; text-shadow: 0 0 10px rgba(201, 168, 76, 0.3);">حبر وفكرة</div>
+            <div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; flex-shrink:0;">حبر وفكرة</div>
         </div>
-
         <div style="display:flex; justify-content:space-between; font-family:var(--font-m); font-size:0.55rem; color:var(--text-dim); letter-spacing:1px; margin-bottom:15px; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
             <div>A.I.Z.E.N. // REF: {(st.session_state.get(K.USER_HASH) or "GHOST_ID")[:8]}</div>
             <div>LOAD: {cognitive_load} B</div>
@@ -157,13 +153,12 @@ def render_workspace(cfg: dict) -> None:
         """)
         st.markdown(dna_bar, unsafe_allow_html=True)
 
-     # ── 4. INPUT AREA & VOICE UPLINK (INDENTATION REPAIR) ─────────────────────
+    # ── 3. INPUT AREA & VOICE UPLINK ──────────────────────────────────────────
     if "ta_input_widget" not in st.session_state:
         st.session_state["ta_input_widget"] = ""
 
     v_col1, v_col2 = st.columns([1, 6])
     with v_col1:
-        # 🟢 FIXED: Indented block for v_col1
         audio_bytes = st.audio_input("Voice Uplink", label_visibility="collapsed")
         if audio_bytes:
             current_audio_hash = hash(audio_bytes.getvalue())
@@ -188,7 +183,7 @@ def render_workspace(cfg: dict) -> None:
                         st.error(f"Voice Uplink Failed: {e}")
 
     with v_col2:
-        # 🟢 FIXED: Indented block for v_col2 (Line 190 Repair)
+        # THE ONLY TEXT AREA (Key: ta_input_widget)
         intent_val = st.text_area(
             "intent", 
             height=145, 
@@ -198,10 +193,7 @@ def render_workspace(cfg: dict) -> None:
         )
         st.session_state["ta_input"] = intent_val
 
-
-
     # ── 4. 📡 LIVE LINGUISTIC INTERCEPT ──────────────────────────────────────
-    # Placed after text area to avoid one-frame delay in Arabic detection
     if intent_val and source_lang == "Arabic (العربية)":
         p_data = detect_arabic_pattern(intent_val)
         if p_data:
@@ -234,10 +226,8 @@ def render_workspace(cfg: dict) -> None:
                 st.session_state[K.LAST_INPUT] = cleaned
                 st.session_state[K.HISTORY].append({
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "intent": cleaned,
-                    "target": auto_target,
-                    "score": audit.get("score", 0),
-                    "asset": result
+                    "intent": cleaned, "target": auto_target,
+                    "score": audit.get("score", 0), "asset": result
                 })
                 st.rerun()
 
@@ -252,16 +242,10 @@ def render_workspace(cfg: dict) -> None:
             
             st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
             v1, v2, v3 = st.columns([2, 2, 1])
-                        # ── 🟢 FIXED: WORKSPACE TITLE LATCH ──────────────────────────────
             with v1: 
-                st.text_input(
-                    "Title", 
-                    key="v_t", 
-                    label_visibility="collapsed", 
-                    placeholder=t("asset_title_placeholder", fallback="CODENAME / DESIGNATION...")
-                )
-
-            with v2: st.text_input("Tags", key="v_g", label_visibility="collapsed", placeholder="Forensic Tags...")
+                st.text_input("Title", key="v_t", label_visibility="collapsed", placeholder=t("asset_title_placeholder", fallback="DESIGNATION..."))
+            with v2: 
+                st.text_input("Tags", key="v_g", label_visibility="collapsed", placeholder="Forensic Tags...")
             with v3: 
                 if st.button("SECURE"):
                     uid = st.session_state.get(K.USER_HASH)
