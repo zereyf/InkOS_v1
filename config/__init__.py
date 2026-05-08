@@ -22,7 +22,7 @@ from config.personas import (
 from config.prompts import (
     CIPHER_IDENTITY, CIPHER_OUTPUT_CONTRACT,
     CIPHER_EVALUATOR_PROMPT, CIPHER_RETRY_INJECTION,
-    VISUAL_DIRECTOR_PROMPT,
+    VISUAL_DIRECTOR_PROMPT, VISUAL_PROMPT_TEMPLATES,
 )
 
 def validate_config() -> list[str]:
