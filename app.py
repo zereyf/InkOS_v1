@@ -40,11 +40,16 @@ if API_KEY_MISSING:
     st.error("SYSTEM ERROR: GROQ_API_KEY not found in environment.")
     st.stop()
 
-# ── 🟢 FIXED: INTERCEPT URL LATCH BEFORE INITIALIZATION ──────────────────────
-# If the user hard-refreshes, session state is wiped, but the URL remains.
-# We must pull the SID from the URL to survive the refresh.
+# ── 🟢 FIXED: INTERCEPT URL LATCH (SID + PERSONA) ─────────────────────────────
 if "sid" in st.query_params:
     st.session_state[K.USER_HASH] = st.query_params["sid"]
+
+if "p" in st.query_params and not st.session_state.get(K.ACTIVE_PERSONA):
+    # Search starter personas for a name match to rehydrate state
+    from forge.persona_engine import STARTER_PERSONAS
+    p_name = st.query_params["p"]
+    if p_name in STARTER_PERSONAS:
+        st.session_state[K.ACTIVE_PERSONA] = STARTER_PERSONAS[p_name]
 
 # ── INITIALIZE STATE ────────────────────────────────────────────────────────
 init_session_state()
