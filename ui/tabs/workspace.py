@@ -90,23 +90,22 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
             st.json(safe_audit)
 
 # ── MAIN RENDERER ─────────────────────────────────────────────────────────────
-
 def render_workspace(cfg: dict) -> None:
-    # 1. HEADER & COGNITIVE LOAD
+    # ── 1. HEADER & COGNITIVE LOAD ───────────────────────────────────────────
     source_lang = cfg.get("source_lang", "English")
     
-    # 🟢 FIXED: Live Load Tracking (Reads directly from the widget's internal state)
+    # 🟢 LIVE SYNC: Read from the widget key for real-time load tracking
     raw_text = st.session_state.get("ta_input_widget") or ""
     cognitive_load = len(raw_text)
 
+    # Persona Data Extraction
     active_persona = st.session_state.get(K.ACTIVE_PERSONA)
-    p_name = ""
-    p_target = "All"
+    p_name, p_target = "", "All"
     if isinstance(active_persona, dict):
         p_name = active_persona.get("name", "").upper()
         p_target = active_persona.get("target", "All")
 
-    # 🟢 NEW FEATURE: Target Misalignment Detection
+    # Target Misalignment Detection (Thermal Drift)
     current_global_target = cfg.get("target_model")
     is_misaligned = p_target != "All" and p_target != current_global_target
     
@@ -136,32 +135,7 @@ def render_workspace(cfg: dict) -> None:
     """)
     st.markdown(header_html, unsafe_allow_html=True)
 
-    # ... [Sections 2 & 3 remain the same] ...
-
-    # 4. INPUT AREA & VOICE UPLINK
-    if "ta_input_widget" not in st.session_state:
-        st.session_state["ta_input_widget"] = st.session_state.get("ta_input", "")
-
-    v_col1, v_col2 = st.columns([1, 6])
-    with v_col1:
-        # [Voice Uplink logic remains unchanged, but ensure it writes to "ta_input_widget"]
-        pass 
-
-    with v_col2:
-        # 🟢 FIXED: The widget now drives the state directly
-        intent_val = st.text_area(
-            "intent", 
-            height=145, 
-            placeholder=t("workspace_placeholder"), 
-            label_visibility="collapsed", 
-            key="ta_input_widget" 
-        )
-        st.session_state["ta_input"] = intent_val
-
-
-
-
-    # 2. DNA ARMORY BAR
+    # ── 2. DNA ARMORY BAR ─────────────────────────────────────────────────────
     if "GUEST_" not in str(st.session_state.get(K.USER_HASH, "")).upper():
         dna_bar = textwrap.dedent(f"""
             <div style="display:flex; gap:10px; margin-bottom:20px;">
@@ -181,8 +155,8 @@ def render_workspace(cfg: dict) -> None:
         """)
         st.markdown(dna_bar, unsafe_allow_html=True)
 
-    # 3. 📡 LIVE LINGUISTIC INTERCEPT
-    raw_input = st.session_state.get("ta_input", "")
+    # ── 3. 📡 LIVE LINGUISTIC INTERCEPT ──────────────────────────────────────
+    raw_input = st.session_state.get("ta_input_widget", "")
     live_pattern_html = '<div style="height:22px;"></div>'
     if raw_input and source_lang == "Arabic (العربية)":
         p_data = detect_arabic_pattern(raw_input)
@@ -197,36 +171,29 @@ def render_workspace(cfg: dict) -> None:
             """)
     st.markdown(live_pattern_html, unsafe_allow_html=True)
 
-         # 4. INPUT AREA & VOICE UPLINK
-    # 🟢 FIXED: Initialize the actual widget key in session state
+    # ── 4. INPUT AREA & VOICE UPLINK ──────────────────────────────────────────
     if "ta_input_widget" not in st.session_state:
-        st.session_state["ta_input_widget"] = st.session_state.get("ta_input", "")
+        st.session_state["ta_input_widget"] = ""
 
     v_col1, v_col2 = st.columns([1, 6])
     with v_col1:
         audio_bytes = st.audio_input("Voice Uplink", label_visibility="collapsed")
-        
         if audio_bytes:
             current_audio_hash = hash(audio_bytes.getvalue())
-            
             if st.session_state.get("last_audio_hash") != current_audio_hash:
                 with st.spinner("Transcribing..."):
                     import os
                     from groq import Groq
                     try:
                         client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-                        
                         transcription = client.audio.transcriptions.create(
                             file=("audio.wav", audio_bytes.read()),
                             model="whisper-large-v3",
-                            prompt="This audio may contain English, Modern Standard Arabic (Fusha), or regional Arabic dialects. Transcribe accurately as spoken."
+                            prompt="This audio may contain English, Fusha, or regional Arabic dialects."
                         )
-                        
                         if transcription.text:
-                            # 🟢 FIXED: Write directly to the widget's internal session state key
-                            current_text = st.session_state.get("ta_input_widget", "")
-                            st.session_state["ta_input_widget"] = f"{current_text} {transcription.text}".strip()
-                            
+                            curr = st.session_state.get("ta_input_widget", "")
+                            st.session_state["ta_input_widget"] = f"{curr} {transcription.text}".strip()
                             st.session_state["last_audio_hash"] = current_audio_hash
                             st.toast("Voice Transcribed.", icon="🎙️")
                             st.rerun()
@@ -234,45 +201,32 @@ def render_workspace(cfg: dict) -> None:
                         st.error(f"Voice Uplink Failed: {e}")
 
     with v_col2:
-        # 🟢 FIXED: Removed the 'value=' parameter. Streamlit will now auto-populate 
-        # from st.session_state["ta_input_widget"] which we just updated.
+        # THE ONLY INSTANCE OF ta_input_widget
         intent_val = st.text_area(
             "intent", 
             height=145, 
-            placeholder=t("workspace_placeholder", fallback="Input your raw idea or use Voice Uplink..."), 
+            placeholder=t("workspace_placeholder"), 
             label_visibility="collapsed", 
             key="ta_input_widget" 
         )
-        
-        # Sync the widget's value back to our global 'ta_input' variable for the execute button
         st.session_state["ta_input"] = intent_val
 
     if st.button(t("execute_btn", fallback="EXECUTE REFINEMENT"), use_container_width=True):
         st.session_state["athar_trace"] = False
         cleaned, _ = sanitize_input(st.session_state.get("ta_input", ""))
-
         if cleaned:
             with st.status("Neural Handshake...", expanded=True):
                 final_text, _ = _apply_dna_triggers(cleaned)
                 auto_target, auto_reason = detect_best_target(final_text)
                 st.session_state[K.AUTO_TARGET], st.session_state[K.AUTO_REASON] = auto_target, auto_reason
-                
                 result, audit, _ = run_refinement_and_audit(final_text, auto_target, cfg["framework"], cfg["source_lang"], cfg["aesthetic_choice"], cfg["islamic_mode"], cfg.get("active_persona"))
-                
                 st.session_state[K.LAST_RESULT] = result
                 st.session_state[K.LAST_AUDIT] = audit
                 st.session_state[K.LAST_INPUT] = cleaned
-
-                st.session_state[K.HISTORY].append({
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "intent": cleaned,
-                    "target": auto_target,
-                    "score": audit.get("score", 0),
-                    "asset": result
-                })
-
+                st.session_state[K.HISTORY].append({"timestamp": datetime.now(timezone.utc).isoformat(), "intent": cleaned, "target": auto_target, "score": audit.get("score", 0), "asset": result})
                 st.rerun()
-    # 5. OUTPUT LAYER
+
+    # ── 5. OUTPUT LAYER ───────────────────────────────────────────────────────
     if st.session_state.get(K.LAST_RESULT):
         left, right = st.columns([1, 2], gap="large")
         with left:
@@ -280,7 +234,6 @@ def render_workspace(cfg: dict) -> None:
         with right:
             st.markdown(f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:2px; margin-bottom:8px;">[ REFINED_ASSET ]</div>', unsafe_allow_html=True)
             st.text_area("Asset", value=st.session_state.get(K.LAST_RESULT), height=320, label_visibility="collapsed")
-            
             st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
             v1, v2, v3 = st.columns([2, 2, 1])
             with v1: st.text_input("Title", key="v_t", label_visibility="collapsed", placeholder="Asset Title...")
@@ -288,25 +241,17 @@ def render_workspace(cfg: dict) -> None:
             with v3: 
                 if st.button("SECURE"):
                     current_user = st.session_state.get(K.USER_HASH)
-                    
                     if not current_user or "GUEST_" in str(current_user).upper():
-                        st.error("Vault Lock Failed: Identity Unlatched. Please Latch Identity in Sidebar.")
+                        st.error("Vault Lock Failed: Identity Unlatched.")
                     else:
                         from vault.vault_engine import save_prompt
-                        res, err = save_prompt(
-                            current_user, 
-                            title=st.session_state.get("v_t"), 
-                            tags=st.session_state.get("v_g"), 
-                            content=st.session_state.get(K.LAST_RESULT), 
-                            target=st.session_state.get(K.AUTO_TARGET), 
-                            framework=cfg["framework"], 
-                            score=(st.session_state.get(K.LAST_AUDIT) or {}).get("score", 0)
-                        )
+                        res, err = save_prompt(current_user, title=st.session_state.get("v_t"), tags=st.session_state.get("v_g"), content=st.session_state.get(K.LAST_RESULT), target=st.session_state.get(K.AUTO_TARGET), framework=cfg["framework"], score=(st.session_state.get(K.LAST_AUDIT) or {}).get("score", 0))
                         if not err:
                             st.session_state[K.LAST_SAVED] = datetime.now().strftime("%H:%M")
                             st.toast("Neural Vault Updated.")
                             st.rerun()
                         else:
                             st.error(f"Vault Lock Failed: {err}")
+
 
 
