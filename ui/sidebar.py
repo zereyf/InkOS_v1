@@ -158,22 +158,60 @@ def render_sidebar() -> SidebarConfig:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── 🟢 FIXED: PERSONA SELECTOR (SYNC & REHYDRATION) ────────────────────
+        # ── 🟢 FIXED: PERSONA SELECTOR         # ── 🟢 FIXED: UNIQUE IDENTITY MAPPING (SHADOW STATE COLLISION FIX) ─────
         st.subheader(t("active_persona", fallback="Active Persona"))
         user_personas = _load_user_personas(st.session_state.get(K.USER_HASH, ""))
         
-        # Build comprehensive list: None + Starters + Custom Constructs
-        options_list = ["None"] + list(STARTER_PERSONAS.keys()) + [p["name"] for p in user_personas]
+        # Build unique display names to prevent selectbox collisions
+        # format: "Name [S]" for Starters, "Name [C]" for Custom
+        s_options = {f"{name} [S]": p for name, p in STARTER_PERSONAS.items() if name != "None"}
+        c_options = {f"{p['name']} [C]": p for p in user_personas}
+        
+        # Final options map: Display Name -> Persona Object
+        options_map = {"None": None, **s_options, **c_options}
+        options_list = list(options_map.keys())
 
-        # 1. URL REHYDRATION: Ensure custom personas survive refresh
+        # 1. URL REHYDRATION (Enhanced for Unique IDs)
         url_p_name = st.query_params.get("p")
         if url_p_name and not st.session_state.get(K.ACTIVE_PERSONA):
+            # Try to match name in either dictionary
             if url_p_name in STARTER_PERSONAS:
                 st.session_state[K.ACTIVE_PERSONA] = STARTER_PERSONAS[url_p_name]
             else:
-                custom_p = next((p for p in user_personas if p["name"] == url_p_name), None)
-                if custom_p:
-                    st.session_state[K.ACTIVE_PERSONA] = custom_p
+                st.session_state[K.ACTIVE_PERSONA] = next((p for p in user_personas if p["name"] == url_p_name), None)
+
+        # 2. DYNAMIC INDEX: Calculate index based on persona name + type suffix
+        current_active = st.session_state.get(K.ACTIVE_PERSONA)
+        p_name = get_persona_display_name(current_active)
+        
+        # Determine the correct key suffix for the index search
+        # If the active persona is in STARTER_PERSONAS, it's [S], else [C]
+        if not current_active:
+            current_key = "None"
+        else:
+            current_key = f"{p_name} [S]" if p_name in STARTER_PERSONAS else f"{p_name} [C]"
+        
+        p_index = options_list.index(current_key) if current_key in options_list else 0
+
+        # 3. SELECTBOX WIDGET
+        sel_key = st.selectbox(
+            "Persona Select", 
+            options=options_list, 
+            index=p_index,
+            key="sb_persona_unique", # Rotated key to clear old state
+            label_visibility="collapsed"
+        )
+        
+        # 4. SYNC STATE & URL
+        active_p = options_map[sel_key]
+        st.session_state[K.ACTIVE_PERSONA] = active_p
+        
+        if sel_key == "None":
+            if "p" in st.query_params: del st.query_params["p"]
+        else:
+            # Latch pure name into URL for rehydration logic
+            st.query_params["p"] = active_p.get("name", "Unknown")
+
 
         # 2. DYNAMIC INDEX: Sync Sidebar with Forge "Engage" clicks
         current_active = st.session_state.get(K.ACTIVE_PERSONA)
