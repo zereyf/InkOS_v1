@@ -40,8 +40,15 @@ if API_KEY_MISSING:
     st.error("SYSTEM ERROR: GROQ_API_KEY not found in environment.")
     st.stop()
 
+# ── 🟢 FIXED: INTERCEPT URL LATCH BEFORE INITIALIZATION ──────────────────────
+# If the user hard-refreshes, session state is wiped, but the URL remains.
+# We must pull the SID from the URL to survive the refresh.
+if "sid" in st.query_params:
+    st.session_state[K.USER_HASH] = st.query_params["sid"]
+
 # ── INITIALIZE STATE ────────────────────────────────────────────────────────
 init_session_state()
+
 
 # ── 🟢 CSS ROOT INJECTION: The "AmeerInk" Grit Variables ────────────────────
 st.markdown("""
