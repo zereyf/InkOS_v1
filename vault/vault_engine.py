@@ -1,8 +1,8 @@
 """
 vault/vault_engine.py — Prompt Memory Vault Engine
 ====================================================
-v18.0: Master Sync — Cryptographic Integrity Edition.
-       Fixed MD5 collisions and updated Temporal Logic for 2026 standards.
+v18.1: Master Sync — Full Functional Parity.
+       Integrated delete_prompt and get_all_tags to resolve UI ImportErrors.
 """
 
 import hashlib
@@ -64,10 +64,9 @@ def authenticate_terminal(user_hash: str, pin: str, is_new: bool) -> Tuple[bool,
 # ── VAULT OPERATIONS ────────────────────────────────────────────────────────
 
 def save_prompt(user_hash: str, **data) -> Tuple[Optional[dict], Optional[str]]:
-    """Saves or updates a prompt asset with collision-resistant hashing."""
     if err := _require_sb(): return None, err
 
-    # 🛡️ FIXED: Multi-factor hash to prevent content-only collisions
+    # 🛡️ Multi-factor hash to prevent content-only collisions
     seed = f"{user_hash}{data.get('content')}{data.get('title')}{data.get('target')}"
     record_id = hashlib.md5(seed.encode()).hexdigest()[:16]
 
@@ -96,7 +95,6 @@ def search_vault(user_hash: str, **filters) -> Tuple[List[dict], Optional[str]]:
     if err := _require_sb(): return [], err
     try:
         q = sb.table(TABLE_VAULT).select("*").eq("user_hash", user_hash).order("created_at", desc=True)
-        
         if filters.get("tag_filter"): q = q.ilike("tags", f"%{filters['tag_filter'].lower()}%")
         if filters.get("target_filter") and filters["target_filter"] != "All":
             q = q.eq("target", filters["target_filter"])
@@ -106,10 +104,18 @@ def search_vault(user_hash: str, **filters) -> Tuple[List[dict], Optional[str]]:
 
         if query := filters.get("query", "").strip().lower():
             results = [r for r in results if query in r["title"].lower() or query in r["content"].lower()]
-        
         return results, None
     except Exception as e:
         return [], str(e)
+
+def delete_prompt(user_hash: str, record_id: str) -> Tuple[bool, Optional[str]]:
+    """🟢 RESTORED: Required by Vault Tab UI"""
+    if err := _require_sb(): return False, err
+    try:
+        sb.table(TABLE_VAULT).delete().eq("id", record_id).eq("user_hash", user_hash).execute()
+        return True, None
+    except Exception as e:
+        return False, str(e)
 
 def get_vault_stats(user_hash: str) -> Tuple[dict, Optional[str]]:
     if err := _require_sb(): return {}, err
@@ -128,3 +134,13 @@ def get_vault_stats(user_hash: str) -> Tuple[dict, Optional[str]]:
         }, None
     except Exception as e:
         return {}, str(e)
+
+def get_all_tags(user_hash: str) -> List[str]:
+    """🟢 RESTORED: Required by Vault Tab UI"""
+    if SUPABASE_MISSING or sb is None: return []
+    try:
+        res = sb.table(TABLE_VAULT).select("tags").eq("user_hash", user_hash).execute()
+        tags = [t.strip() for r in (res.data or []) for t in r["tags"].split(",") if t.strip()]
+        return sorted(set(tags))
+    except Exception:
+        return []
