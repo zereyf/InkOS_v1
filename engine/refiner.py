@@ -9,6 +9,7 @@ v8.3: Master Sync — Routing & Persona Injection.
 import json
 import re
 import textwrap
+from engine.router import route_to_target
 from typing import Optional, Tuple
 from config import (
     client, TARGET_GUIDES, MODEL_ID, TEMPERATURE,
