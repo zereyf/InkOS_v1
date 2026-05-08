@@ -15,7 +15,8 @@ from typing import Tuple
 
 from state import K
 from security.sanitizer import sanitize_input
-from engine.refiner import run_refinement_and_audit, detect_best_target
+from engine.refiner import run_refinement_and_audit
+from engine.router import route_to_target
 from engine.cognitive_map import detect_arabic_pattern
 from i18n.translations import t
 
@@ -199,7 +200,7 @@ def render_workspace(cfg: dict) -> None:
             
             # Phase 2: Routing & DNA
             final_text, detected = _apply_dna_triggers(cleaned)
-            auto_target, auto_reason = detect_best_target(final_text)
+            auto_target, auto_reason = route_to_target(final_text)
             st.session_state[K.AUTO_TARGET], st.session_state[K.AUTO_REASON] = auto_target, auto_reason
             
             dna_log = f" | DNA: {', '.join(detected)}" if detected else ""
