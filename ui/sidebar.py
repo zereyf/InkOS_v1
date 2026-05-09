@@ -1,9 +1,10 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v13.7: Command Deck Purge — Ghost Bar Removed.
+v13.8: Command Deck Purge — Ghost Bar Removed.
        - SECURED: Stealth Master Intercept for IS_ADMIN status.
        - CLEANED: Standard UI only.
+       - BRANDING: Custom Cyber-Noir Terminal Logo Injected.
 """
 
 import streamlit as st
@@ -97,10 +98,17 @@ def render_sidebar() -> SidebarConfig:
         """)
         st.markdown(link_html, unsafe_allow_html=True)
 
-        # ── 3. WORDMARK ────────────────────────────────────────────────────────
+        # ── 3. WORDMARK & LOGO ─────────────────────────────────────────────────
         wordmark_html = textwrap.dedent(f"""
-            <div style="padding:0 0 14px 0; border-bottom:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
-                <div class="vc-wordmark" style="font-size:1.4rem;">❖ {t('app_name')}</div>
+            <div style="padding:0 0 14px 0; border-bottom:1px solid rgba(255,255,255,0.05); margin-bottom:15px; text-align:center;">
+                <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style="width: 38px; height: 38px; fill: var(--gold); filter: drop-shadow(0px 0px 5px rgba(201, 168, 76, 0.3));">
+                        <path d="M73.4 182.6C60.9 170.1 60.9 149.8 73.4 137.3C85.9 124.8 106.2 124.8 118.7 137.3L278.7 297.3C291.2 309.8 291.2 330.1 278.7 342.6L118.7 502.6C106.2 515.1 85.9 515.1 73.4 502.6C60.9 490.1 60.9 469.8 73.4 457.3L210.7 320L73.4 182.6zM288 448L544 448C561.7 448 576 462.3 576 480C576 497.7 561.7 512 544 512L288 512C270.3 512 256 497.7 256 480C256 462.3 270.3 448 288 448z"/>
+                    </svg>
+                    <span style="font-family: var(--font-m); font-size: 1.6rem; color: var(--text); letter-spacing: 4px; margin-left: 12px; font-weight: bold;">
+                        INK<span style="color: var(--gold);">OS</span>
+                    </span>
+                </div>
                 <div class="vc-wordmark-sub" style="letter-spacing:2px; font-size:0.5rem; color:var(--gold);">حبر وفكرة // INKOS v2026.4</div>
             </div>
         """)
