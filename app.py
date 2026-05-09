@@ -1,10 +1,12 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2026.4.4: Master Sync — Bootloader Hardened.
+v2026.4.5: Master Sync — Gateway Lock Hardened.
            - Destroyed duplicate Persona Rehydration trap.
            - Injected Task 10 Startup Validation matrix.
            - V3 Brute-Force Tactical Toggle Override Active.
+           - ENFORCED: Splash Screen Terminal Gateway (Ghost Lock).
+           - PURGED: Standard OS Emojis.
 """
 
 import sys
@@ -17,10 +19,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 
-# 1. Page Config must be first
+# 1. Page Config must be first - Emoji purged, using Unicode geometry
 st.set_page_config(
     page_title="InkOS", 
-    page_icon="⚡", 
+    page_icon="❖", 
     layout="wide", 
     initial_sidebar_state="expanded"
 )
@@ -29,6 +31,7 @@ from config import API_KEY_MISSING
 from state import init_session_state, K
 from ui.styles import STYLES
 from ui.sidebar import render_sidebar
+from ui.splash import render_splash_screen  # 🟢 INJECTED SPLASH SCREEN
 from ui.tabs.workspace import render_workspace
 from ui.tabs.archive import render_archive
 from ui.tabs.security_log import render_security_log
@@ -39,7 +42,7 @@ from ui.tabs.guide import render_guide
 from i18n.translations import t, is_rtl
 
 if API_KEY_MISSING:
-    st.error("SYSTEM ERROR: GROQ_API_KEY not found in environment.")
+    st.error("[!] SYSTEM ERROR: GROQ_API_KEY not found in environment.")
     st.stop()
 
 # ── URL REHYDRATION (SID ONLY) ──────────────────────────────────────────────
@@ -54,7 +57,7 @@ from config import validate_config
 config_errors = validate_config()
 if config_errors:
     for err in config_errors:
-        st.error(f'CONFIG ERROR: {err}')
+        st.error(f'[!] CONFIG ERROR: {err}')
     st.stop()
 
 # ── CSS ROOT INJECTION: The "AmeerInk" Grit Variables ──────────────────────
@@ -126,8 +129,9 @@ st.markdown(STYLES, unsafe_allow_html=True)
 
 # ── REHYDRATION PROTOCOL (Zero-Cost Persistence) ─────────────────────────────
 current_sid = st.session_state.get(K.USER_HASH)
+is_guest = not current_sid or "GUEST_" in str(current_sid).upper()
 
-if current_sid and not str(current_sid).upper().startswith("GUEST_"):
+if not is_guest:
     if not st.session_state.get("boot_rehydrated"):
         with st.spinner("Re-establishing Neural Uplink..."):
             from vault.vault_engine import rehydrate_session
@@ -142,7 +146,7 @@ if current_sid and not str(current_sid).upper().startswith("GUEST_"):
                 if dna.get("intel"): st.session_state[K.INTEL_DNA] = dna["intel"]
                 if dna.get("hikmah"): st.session_state[K.HIKMAH_DNA] = dna["hikmah"]
                 
-                st.toast(f"Terminal Identity Rehydrated: {current_sid[:8]}", icon="⚡")
+                st.toast(f"> IDENTITY REHYDRATED: {current_sid[:8]}")
         st.session_state["boot_rehydrated"] = True
 
 # ── SECURITY GATE: LOCKOUT CHECK ────────────────────────────────────────────
@@ -154,7 +158,7 @@ if lockout_ts:
         lockout_html = textwrap.dedent(f"""
             <div style="height:80vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
                 <div style="font-family:var(--font-m); color:var(--danger); font-size:2rem; letter-spacing:4px; margin-bottom:10px;">
-                    TERMINAL LOCKED
+                    [ ⨂ ] TERMINAL LOCKED
                 </div>
                 <div style="font-family:var(--font-m); color:var(--text-muted); font-size:0.8rem; max-width:400px; line-height:1.6;">
                     Multiple failed authentication attempts detected.<br>
@@ -175,11 +179,11 @@ if current_sid:
 
 # ── BOOT SEQUENCE ───────────────────────────────────────────────────────────
 if "boot_complete" not in st.session_state:
-    if not current_sid or "GUEST_" in str(current_sid).upper():
-        st.toast("InkOS System Initialized. Running in Ghost Mode.", icon="📡")
+    if is_guest:
+        st.toast("> SYSTEM INITIALIZED [ GHOST MODE ]")
     else:
         if "boot_rehydrated" not in st.session_state:
-            st.toast(f"Terminal Identity Latch: {current_sid[:8]}", icon="🔐")
+            st.toast(f"[◈] IDENTITY LATCH: {current_sid[:8]}")
     st.session_state["boot_complete"] = True
 
 # ── RTL CLASS INJECTION ─────────────────────────────────────────────────────
@@ -199,15 +203,26 @@ nav_options = {
 }
 
 with st.sidebar:
-    selected_nav = st.radio("Nav", list(nav_options.keys()), label_visibility="collapsed")
+    # 🟢 If guest, hide the navigation radio but keep the sidebar open for the login input
+    if is_guest:
+        st.markdown("<div style='text-align:center; color:var(--danger); font-family:var(--font-m); font-size:0.7rem; letter-spacing:2px; margin-bottom:15px;'>[ ⨂ ] ACCESS DENIED</div>", unsafe_allow_html=True)
+        selected_nav = None
+    else:
+        selected_nav = st.radio("Nav", list(nav_options.keys()), label_visibility="collapsed")
+    
     st.markdown("---")
     cfg = render_sidebar()
 
 # Store config globally for the execution loop
 st.session_state["app_config"] = cfg
 
-# ── EXECUTE SELECTED TAB ────────────────────────────────────────────────────
-if selected_nav == t("tab_workspace"):
-    nav_options[selected_nav](cfg)
+# ── GATEWAY LOCK & EXECUTION ────────────────────────────────────────────────
+if is_guest:
+    # 🚫 RENDER THE SPLASH SCREEN (Hides the entire main workspace)
+    render_splash_screen()
 else:
-    nav_options[selected_nav]()
+    # 🟢 RENDER THE UNLOCKED TABS
+    if selected_nav == t("tab_workspace"):
+        nav_options[selected_nav](cfg)
+    elif selected_nav:
+        nav_options[selected_nav]()
