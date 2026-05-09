@@ -13,24 +13,6 @@ from datetime import datetime, timezone
 from typing import TypedDict, Optional
 
 
-import streamlit as st
-
-def render_brand_logo():
-    # The stylized Terminal SVG injected with AmeerInk Gold
-    logo_html = """
-    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style="width: 45px; height: 45px; fill: var(--gold); drop-shadow(0px 0px 5px rgba(201, 168, 76, 0.3));">
-            <path d="M73.4 182.6C60.9 170.1 60.9 149.8 73.4 137.3C85.9 124.8 106.2 124.8 118.7 137.3L278.7 297.3C291.2 309.8 291.2 330.1 278.7 342.6L118.7 502.6C106.2 515.1 85.9 515.1 73.4 502.6C60.9 490.1 60.9 469.8 73.4 457.3L210.7 320L73.4 182.6zM288 448L544 448C561.7 448 576 462.3 576 480C576 497.7 561.7 512 544 512L288 512C270.3 512 256 497.7 256 480C256 462.3 270.3 448 288 448z"/>
-        </svg>
-        <span style="font-family: var(--font-m); font-size: 1.5rem; color: var(--text); letter-spacing: 4px; margin-left: 15px; font-weight: bold;">
-            INK<span style="color: var(--gold);">OS</span>
-        </span>
-    </div>
-    <hr style="border-color: rgba(255,255,255,0.05); margin-top: 0;">
-    """
-    st.markdown(logo_html, unsafe_allow_html=True)
-
-
 from state import K, get_remaining_calls
 from config import TARGET_GUIDES, AESTHETIC_PRESETS, AUTO_SELECT_LABEL, LOGIC_FRAMEWORKS
 from config.personas import STARTER_PERSONAS
