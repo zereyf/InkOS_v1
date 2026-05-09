@@ -9,7 +9,7 @@ v18.2: Master Sync — Identity Rehydration Edition.
 import hashlib
 from datetime import datetime, timezone
 from typing import Optional, Tuple, List
-from vault.supabase_client import sb, SUPABASE_MISSING
+from vault.supabase_client import supabase, SUPABASE_MISSING
 
 TABLE_VAULT = "vault"
 TABLE_USERS = "users"
