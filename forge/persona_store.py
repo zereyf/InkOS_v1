@@ -1,15 +1,15 @@
 """
 forge/persona_store.py — Persona Persistence Layer
 ====================================================
-v5.0: Master Sync — SQL Slot Alignment.
-      Synchronized with v18.2 Rehydration and v30.3 Workspace.
+v5.1: Master Sync — Telemetry Alignment.
+      FIXED: Replaced 'sb' with 'supabase' to match vault/supabase_client.py.
       Armored with User Hash isolation for multi-tenant security.
 """
 
 import hashlib
 from datetime import datetime, timezone
 from typing import Optional, Tuple, List
-from vault.supabase_client import sb, SUPABASE_MISSING
+from vault.supabase_client import supabase, SUPABASE_MISSING
 
 TABLE = "personas"
 
@@ -17,7 +17,7 @@ TABLE = "personas"
 
 def _require_sb() -> Optional[str]:
     """Check if the neural uplink to Supabase is active."""
-    if SUPABASE_MISSING or sb is None:
+    if SUPABASE_MISSING or supabase is None:
         return "Persona store offline: Neural uplink failed."
     return None
 
@@ -53,7 +53,8 @@ def save_persona(
     }
 
     try:
-        res = sb.table(TABLE).upsert(record).execute()
+        # 🟢 UPDATED: sb -> supabase
+        res = supabase.table(TABLE).upsert(record).execute()
         return res.data[0] if res.data else record, None
     except Exception as e:
         return None, f"Forge Persistence Fault: {str(e)}"
@@ -68,14 +69,14 @@ def list_personas(
         return [], err
 
     try:
-        # 🛰️ BASE QUERY: Isolate by identity first
-        q = sb.table(TABLE).select("*").eq("user_hash", user_hash).order("created_at", desc=True)
+        # 🛰️ BASE QUERY: Isolate by identity first (sb -> supabase)
+        q = supabase.table(TABLE).select("*").eq("user_hash", user_hash).order("created_at", desc=True)
         
         # 🔗 LOGICAL UNION: Fetch specific target + universal "All" constructs
         if target_filter and target_filter != "All":
             res_specific = q.eq("target", target_filter).execute()
             res_universal = (
-                sb.table(TABLE)
+                supabase.table(TABLE)
                 .select("*")
                 .eq("user_hash", user_hash)
                 .eq("target", "All")
@@ -108,8 +109,9 @@ def get_persona(
     if err := _require_sb():
         return None, err
     try:
+        # 🟢 UPDATED: sb -> supabase
         res = (
-            sb.table(TABLE)
+            supabase.table(TABLE)
             .select("*")
             .eq("id", persona_id)
             .eq("user_hash", user_hash)
@@ -129,7 +131,8 @@ def delete_persona(
     if err := _require_sb():
         return False, err
     try:
-        sb.table(TABLE)\
+        # 🟢 UPDATED: sb -> supabase
+        supabase.table(TABLE)\
             .delete()\
             .eq("id", persona_id)\
             .eq("user_hash", user_hash)\
