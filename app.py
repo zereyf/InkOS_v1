@@ -1,9 +1,9 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2026.4.12: Master Sync — The Premium UI Upgrade (Stretch Patch).
+v2026.4.13: Master Sync — The Premium UI Upgrade (Block Stretch Patch).
            - UPGRADED: Ambient OLED Logo Glow.
-           - UPGRADED: Tactical Neon-Edge Navigation Tabs (Full Width).
+           - UPGRADED: Tactical Neon-Edge Navigation Tabs (100% Block Width).
            - UPGRADED: Ghost Inputs for all sidebar controls.
            - INTEGRATED: Global Broadcast Receiver.
 """
@@ -107,37 +107,37 @@ st.markdown("""
     [data-testid="stSidebar"] {
         background: radial-gradient(circle at 50% 5%, rgba(201, 168, 76, 0.04) 0%, rgba(14, 17, 23, 1) 30%) !important;
     }
-    /* ── 2. NEON-EDGE NAVIGATION TABS ── */
-    /* 🟢 Force the invisible Streamlit wrapper to 100% width */
-    [data-testid="stSidebar"] div[data-testid="stRadio"]:has(div[aria-label="Navigation"]) {
+
+    /* ── 2. NEON-EDGE NAVIGATION TABS (BLOCK STRETCH FIX) ── */
+    div[data-testid="stRadio"]:has(div[aria-label="Navigation"]) {
         width: 100% !important;
     }
     
     div[role="radiogroup"][aria-label="Navigation"] { 
-        gap: 0 !important; 
+        display: block !important; /* 🟢 Kills Streamlit flexbox */
         width: 100% !important;
-        min-width: 100% !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: stretch !important; 
     }
     
-    div[role="radiogroup"][aria-label="Navigation"] label > div:first-child { display: none !important; }
+    div[role="radiogroup"][aria-label="Navigation"] label > div:first-child { 
+        display: none !important; 
+    }
     
     div[role="radiogroup"][aria-label="Navigation"] label {
+        display: block !important; /* 🟢 Forces labels to act as full-width rows */
+        width: 100% !important;
         background-color: transparent !important;
         border-bottom: 1px solid rgba(255,255,255,0.02) !important;
         border-left: 4px solid transparent !important;
-        padding: 12px 20px !important; margin: 0 !important; 
-        width: 100% !important; 
-        min-width: 100% !important; /* 🟢 Forces the tab block to expand fully */
-        box-sizing: border-box !important; /* 🟢 Prevents padding from breaking the width */
+        padding: 14px 20px !important; margin: 0 !important; 
+        box-sizing: border-box !important;
         cursor: pointer !important;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
+    
     div[role="radiogroup"][aria-label="Navigation"] label:hover {
         background-color: rgba(201, 168, 76, 0.03) !important;
     }
+    
     div[role="radiogroup"][aria-label="Navigation"] label p {
         color: var(--text-dim) !important; font-family: var(--font-m) !important; font-size: 0.85rem !important;
         letter-spacing: 2px !important; text-transform: uppercase !important; margin: 0 !important; visibility: visible !important; display: block !important;
@@ -150,13 +150,12 @@ st.markdown("""
         border-left: 4px solid var(--gold) !important;
         box-shadow: inset 4px 0 12px -4px var(--gold-glow); /* Tactical Inner Glow */
     }
+    
     div[role="radiogroup"][aria-label="Navigation"] label:has(input:checked) p {
         color: var(--gold) !important; font-weight: 600 !important; letter-spacing: 3px !important;
     }
 
-
     /* ── 3. GHOST INPUTS (Selectboxes & Text Inputs) ── */
-    /* Strips out the bulky white/grey backgrounds from Streamlit's default inputs */
     [data-testid="stSidebar"] div[data-baseweb="select"] > div, 
     [data-testid="stSidebar"] div[data-baseweb="input"] > div {
         background-color: rgba(0,0,0,0.2) !important;
@@ -169,7 +168,6 @@ st.markdown("""
         border-color: rgba(201, 168, 76, 0.35) !important;
         background-color: rgba(0,0,0,0.4) !important;
     }
-    /* Typography inside the dropdowns */
     [data-testid="stSidebar"] div[data-baseweb="select"] span {
         color: var(--text-muted) !important;
         font-family: var(--font-m) !important;
