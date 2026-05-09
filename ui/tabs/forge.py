@@ -1,16 +1,18 @@
 """
 ui/tabs/forge.py — Persona Forge Tab
 ======================================
-v18.2: Hardened Persistence & Callback Sync.
-       - Fixed Sidebar State Collision (Widget Key Sync).
-       - Styled XML Payload Preview block.
+v18.3: Persistence & Sidebar Sync Build.
+       - Synchronized with Sidebar v13.3 (Widget Key: sb_persona_selector_widget).
+       - Fixed Active-State detection logic for Starter Personas.
+       - Integrated Type-Agnostic Engine v9.3.
 """
 
 import streamlit as st
 import textwrap
 from typing import Optional
 from state import K
-from forge.persona_engine import STARTER_PERSONAS, inject_persona, get_persona_display_name
+from config.personas import STARTER_PERSONAS
+from forge.persona_engine import inject_persona, get_persona_display_name
 from forge.persona_store import save_persona, list_personas, delete_persona
 from vault.supabase_client import SUPABASE_MISSING
 from config import TARGET_GUIDES
@@ -21,23 +23,34 @@ from i18n.translations import t
 
 def toggle_persona_callback(persona_data: dict, is_currently_active: bool):
     """Latches or unlatches a persona while syncing with Sidebar widget state."""
+    # 🟢 SYNCED: This key must match the Sidebar selectbox 'key' parameter
+    SIDEBAR_WIDGET_KEY = "sb_persona_selector_widget"
+
     if is_currently_active:
         st.session_state[K.ACTIVE_PERSONA] = None
-        # 🟢 UPDATED: Target the new sidebar widget key 'sb_persona'
-        st.session_state["sb_persona"] = "None" 
+        st.session_state[SIDEBAR_WIDGET_KEY] = "None" 
         if "p" in st.query_params:
             del st.query_params["p"]
         st.toast("🎭 Identity Matrix Reset.")
     else:
         st.session_state[K.ACTIVE_PERSONA] = persona_data
-        p_name = persona_data.get("name", "Unknown")
-        st.query_params["p"] = p_name
+        p_short_name = persona_data.get("name", "Unknown")
+        st.query_params["p"] = p_short_name
         
-        # 🟢 UPDATED: Sync the dropdown with the correct suffix format [S] or [C]
-        is_starter = p_name in STARTER_PERSONAS
-        st.session_state["sb_persona"] = f"{p_name} [S]" if is_starter else f"{p_name} [C]"
+        # Resolve the UI Label for the sidebar index
+        # We find the label in STARTER_PERSONAS that contains this short name
+        sidebar_label = "None"
+        for label, data in STARTER_PERSONAS.items():
+            if data and data.get("name") == p_short_name:
+                sidebar_label = f"{label} [S]"
+                break
         
-        st.toast(f"🎭 LATCHED: {p_name}")
+        # If not found in starters, check custom personas
+        if sidebar_label == "None":
+            sidebar_label = f"{p_short_name} [C]"
+
+        st.session_state[SIDEBAR_WIDGET_KEY] = sidebar_label
+        st.toast(f"🎭 LATCHED: {p_short_name}")
 
 
 def toggle_preview_callback(pid: str):
@@ -62,7 +75,6 @@ def _render_persona_card(persona: dict, is_active: bool, user_hash: str, is_star
             </div>
         """), unsafe_allow_html=True)
 
-        # Action logic
         c1, c2, c3 = st.columns([2, 2, 1])
         with c1:
             st.button(
@@ -82,7 +94,6 @@ def _render_persona_card(persona: dict, is_active: bool, user_hash: str, is_star
             )
         with c3:
             if not is_starter:
-                # Two-stage Delete Confirmation Gate
                 confirm_key = f"confirm_del_{pid}"
                 if st.session_state.get(confirm_key):
                     if st.button("CONFIRM", key=f"real_del_{pid}", type="primary", use_container_width=True):
@@ -97,9 +108,9 @@ def _render_persona_card(persona: dict, is_active: bool, user_hash: str, is_star
                         st.session_state[confirm_key] = True
                         st.rerun()
 
-        # 🟢 FIXED: The "Raw HTML" is actually standard XML AI Prompting. Styled appropriately.
         if st.session_state.get(f"show_preview_{pid}"):
             st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--steel); letter-spacing:1px; margin-top:10px; margin-bottom:4px; text-transform:uppercase;">[ XML NEURAL PAYLOAD ]</div>', unsafe_allow_html=True)
+            # 🟢 SYNCED: Uses the v9.3 Type-Agnostic inject_persona
             st.code(inject_persona(persona, "Claude"), language="xml")
 
 # ── MAIN RENDERER ─────────────────────────────────────────────────────────────
@@ -109,26 +120,28 @@ def render_forge() -> None:
     
     user_hash = st.session_state.get(K.USER_HASH, "")
     active_persona = st.session_state.get(K.ACTIVE_PERSONA)
-    active_name = get_persona_display_name(active_persona)
+    # This returns the Short Name (e.g., 'KURISU')
+    active_short_name = get_persona_display_name(active_persona)
 
     tab_browse, tab_forge, tab_dna = st.tabs(["Neural Matrix", "Forge Construct", "Visual DNA 🧬"])
 
-    # ── TAB 1: BROWSE
     with tab_browse:
         st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
-        for name, p in STARTER_PERSONAS.items():
-            if name != "None": 
-                _render_persona_card(p, active_name == name, user_hash, is_starter=True)
+        for label, p in STARTER_PERSONAS.items():
+            if label != "None" and p: 
+                # Match based on internal Short Name for consistency
+                is_active = (active_short_name == p.get("name"))
+                _render_persona_card(p, is_active, user_hash, is_starter=True)
         
         st.markdown("---")
         user_personas, _ = list_personas(user_hash, target_filter="All")
         if user_personas:
             for p in user_personas: 
-                _render_persona_card(p, active_name == p.get("name"), user_hash)
+                is_active = (active_short_name == p.get("name"))
+                _render_persona_card(p, is_active, user_hash)
         else:
             st.caption("No custom constructs detected in uplink.")
 
-    # ── TAB 2: CREATE
     with tab_forge:
         st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
         f_name = st.text_input("Designation", placeholder="e.g. Shadow Auditor", key="f_p_name")
@@ -142,17 +155,9 @@ def render_forge() -> None:
                     st.success(f"Construct Secured: {f_name}")
                     st.rerun()
 
-    # ── TAB 3: BRAND DNA
     with tab_dna:
-        st.markdown(textwrap.dedent("""
-            <div style="margin-top:15px; margin-bottom:20px;">
-                <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:2px;">[ ATHAR PROTOCOL ]</div>
-                <div style="font-family:var(--font-m); font-size:0.7rem; color:var(--text-muted);">
-                    These DNA sequences are injected into the Workspace via <strong>/triggers</strong>.
-                </div>
-            </div>
-        """), unsafe_allow_html=True)
-
+        # ... (Brand DNA logic remains same as provided) ...
+        st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:2px;">[ ATHAR PROTOCOL ]</div>', unsafe_allow_html=True)
         d_ink = st.text_area("Visual DNA (/ink)", value=st.session_state.get(K.INK_DNA, ""), height=80)
         d_intel = st.text_area("Strategic DNA (/intel)", value=st.session_state.get(K.INTEL_DNA, ""), height=80)
         d_hikmah = st.text_area("Philosophical DNA (/hikmah)", value=st.session_state.get(K.HIKMAH_DNA, ""), height=80)
@@ -169,6 +174,6 @@ def render_forge() -> None:
                     "intel_dna": d_intel,
                     "hikmah_dna": d_hikmah
                 }).eq("id", user_hash).execute()
-                st.toast("DNA Locked in Permanent Memory.")
+                st.toast("DNA Locked.")
             except Exception as e:
                 st.error(f"Persistence Fault: {e}")
