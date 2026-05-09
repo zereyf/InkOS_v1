@@ -107,12 +107,16 @@ st.markdown("""
     [data-testid="stSidebar"] {
         background: radial-gradient(circle at 50% 5%, rgba(201, 168, 76, 0.04) 0%, rgba(14, 17, 23, 1) 30%) !important;
     }
-
     /* ── 2. NEON-EDGE NAVIGATION TABS ── */
-    /* 🟢 PATCHED: Forces the radio group to stretch to 100% width */
+    /* 🟢 Force the invisible Streamlit wrapper to 100% width */
+    [data-testid="stSidebar"] div[data-testid="stRadio"]:has(div[aria-label="Navigation"]) {
+        width: 100% !important;
+    }
+    
     div[role="radiogroup"][aria-label="Navigation"] { 
         gap: 0 !important; 
         width: 100% !important;
+        min-width: 100% !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: stretch !important; 
@@ -124,7 +128,11 @@ st.markdown("""
         background-color: transparent !important;
         border-bottom: 1px solid rgba(255,255,255,0.02) !important;
         border-left: 4px solid transparent !important;
-        padding: 12px 20px !important; margin: 0 !important; width: 100% !important; cursor: pointer !important;
+        padding: 12px 20px !important; margin: 0 !important; 
+        width: 100% !important; 
+        min-width: 100% !important; /* 🟢 Forces the tab block to expand fully */
+        box-sizing: border-box !important; /* 🟢 Prevents padding from breaking the width */
+        cursor: pointer !important;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
     div[role="radiogroup"][aria-label="Navigation"] label:hover {
@@ -145,6 +153,7 @@ st.markdown("""
     div[role="radiogroup"][aria-label="Navigation"] label:has(input:checked) p {
         color: var(--gold) !important; font-weight: 600 !important; letter-spacing: 3px !important;
     }
+
 
     /* ── 3. GHOST INPUTS (Selectboxes & Text Inputs) ── */
     /* Strips out the bulky white/grey backgrounds from Streamlit's default inputs */
