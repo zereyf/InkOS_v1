@@ -1,10 +1,11 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v31.4: Hardened Router Build — Cipher Lock Override.
+v31.5: Final Launch Protocol — Cosmetic Polish.
        - FIXED: Manual Target selection now overrides the Auto-Router.
        - Eliminated HTML Leaks (Atomic String Concatenation).
        - Stabilized Thermal HUD (Zero-Lag Cognitive Metrics).
+       - INJECTED: InkOS Standard (8B) Launch Telemetry.
 """
 
 import textwrap
@@ -19,7 +20,6 @@ from engine.refiner import run_refinement_and_audit
 from engine.router import route_to_target
 from engine.cognitive_map import detect_arabic_pattern
 from i18n.translations import t
-# 🟢 FIXED: Import AUTO_SELECT_LABEL to check for manual overrides
 from config import AUTO_SELECT_LABEL
 
 # ── DNA INJECTION ENGINE ─────────────────────────────────────────────────────
@@ -69,7 +69,9 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
         f'<div style="background:rgba(201,168,76,0.03); border-left:2px solid var(--gold-border); padding:12px 16px;">'
         f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); text-transform:uppercase; margin-bottom:6px;">> Forensic Log</div>'
         f'<div style="font-family:var(--font-m); font-size:0.75rem; color:var(--text); line-height:1.6;">'
-        f'<span style="color:var(--gold); font-weight:bold;">[ CIPHER ]: {target.upper()}</span> — {reason}<br>{safe_audit.get("critique", "")}</div></div></div>'
+        f'<span style="color:var(--gold); font-weight:bold;">[ UPLINK ]: INKOS STANDARD (8B)</span> — Optimized for speed.<br>'
+        f'<span style="color:var(--text-dim); font-size:0.5rem; letter-spacing:1px;">ZENITH PROTOCOL: [RESTRICTED]</span><br><br>'
+        f'<span style="color:var(--gold); font-weight:bold;">[ CIPHER TARGET ]: {target.upper()}</span> — {reason}<br>{safe_audit.get("critique", "")}</div></div></div>'
     ).replace("\n", "")
     
     st.markdown(score_html, unsafe_allow_html=True)
