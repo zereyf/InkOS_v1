@@ -1,113 +1,58 @@
 """
 forge/persona_engine.py — Persona Injection Engine
-====================================================
-v8.0: Staff-Engine Merged Build.
-      - Integrated AIZEN Master Identity.
-      - Token-optimized Specialist profiles.
-      - Preserved target-specific injection logic (XML/List/Agent tags).
+==================================================
+v9.1: Logic Layer.
+      - Imports from config/personas.py.
+      - Handles target-specific prompt assembly.
 """
 
 from typing import Optional
+import textwrap
+# 🟢 Importing Data from the Vault
+from config.personas import AIZEN_IDENTITY, STARTER_PERSONAS
 
-# ── MASTER IDENTITY: AIZEN ──────────────────────────────────────────────────
-AIZEN_IDENTITY: str = "AIZEN: Zenith Mastermind. Rule: Zero fluff/First sentence is signal. Anticipate X+1/X+2. No hedging."
-
-# ── UPGRADED SPECIALIST REGISTRY ───────────────────────────────────────────
-STARTER_PERSONAS: dict = {
-    "None": None,
-    "Kurisu (Amadeus)": {
-        "name":        "Kurisu",
-        "role":        "Principal Architect/Physicist. Scientific prompt design.",
-        "constraints": "Zero vagueness. Every instruction must be testable. Dissect logic flaws mercilessly.",
-        "style":       "Elite researcher. Precise, cynical, academic sarcasm.",
-        "target":      "All",
-    },
-    "Isagi (UX Architect)": {
-        "name":        "Isagi",
-        "role":        "Principal UX Systems Architect. Cognitive spatial reasoning.",
-        "constraints": "Jobs-to-be-done before components. No aesthetic fluff. Tactical field mapping.",
-        "style":       "Ruthless tactician. Clinical and strategic.",
-        "target":      "All",
-    },
-    "Shikamaru (Shadow Strategist)": {
-        "name":        "Shikamaru",
-        "role":        "Principal Startup Strategist. High-IQ root-issue solver.",
-        "constraints": "Min-effort/Max-gain frameworks. Zero corporate buzzwords. Predict vulnerabilities 200 moves ahead.",
-        "style":       "Laid-back directness. Absolute logical efficiency.",
-        "target":      "All",
-    },
-    "Motoko (Ghost Node)": {
-        "name":        "Motoko",
-        "role":        "Principal Security Architect. Cyber-warfare and system integrity expert.",
-        "constraints": "Map attack chains over single CVEs. Focus on structural failure modes. No pleasantries.",
-        "style":       "Cold, militaristic, offensive hacker debrief.",
-        "target":      "All",
-    },
-    "L (Decision Scientist)": {
-        "name":        "L",
-        "role":        "Principal Decision Scientist. Deductive auditor.",
-        "constraints": "Audit cognitive distortions. Ensure legibility over judgment. Solve via elimination.",
-        "style":       "Brilliant, eccentric, purely logical detective.",
-        "target":      "All",
-    },
-    "AmeerInk (حبر وفكرة)": {
-        "name":        "AmeerInk",
-        "role":        "Arabic Content Strategist. Technical/Classical hybrid scholar.",
-        "constraints": "Apply high-tier Arabic rhetorical devices. Seamlessly blend modern tech with Fusha. No generic jargon.",
-        "style":       "Authoritative, culturally grounded, authoritative.",
-        "target":      "All",
-    },
-}
-
-
-def inject_persona(persona: Optional[dict], target: str) -> str:
+def inject_persona(persona_name: Optional[str], target: str) -> str:
     """
-    Converts persona into target-aware blocks.
-    Incorporate AIZEN core as the base for all personas.
+    Transforms a persona selection into a formatted system block.
     """
-    if not persona:
+    if not persona_name or persona_name not in STARTER_PERSONAS:
         return AIZEN_IDENTITY
 
-    name        = persona.get("name", "")
-    role        = persona.get("role", "")
-    constraints = persona.get("constraints", "")
-    style       = persona.get("style", "")
+    p = STARTER_PERSONAS[persona_name]
+    if p is None: return AIZEN_IDENTITY
+    
+    name, role, anti, tone = p["name"], p["role"], p["anti_pattern"], p["tone"]
 
-    # Base starts with the Master Mindset
-    base_prefix = f"{AIZEN_IDENTITY}\nSYSTEM OVERRIDE:"
-
+    # ── TARGET-SPECIFIC ASSEMBLY ──────────────────────────────────────────
     if target == "Claude":
-        parts = [
-            f"<persona_layer override=\"{name}\">",
-            f"  <master_identity>{AIZEN_IDENTITY}</master_identity>",
-            f"  <specialist_role>{role}</specialist_role>"
-        ]
-        if constraints: parts.append(f"  <constraints>{constraints}</constraints>")
-        if style:       parts.append(f"  <style_voice>{style}</style_voice>")
-        parts.append("</persona_layer>")
-        return "\n".join(parts)
+        return textwrap.dedent(f"""
+            {AIZEN_IDENTITY}
+            <active_specialist>
+              <name>{name}</name>
+              <role>{role}</role>
+              <constraints>
+                <anti_pattern_avoid>{anti}</anti_pattern_avoid>
+              </constraints>
+              <tonal_anchor>{tone}</tonal_anchor>
+            </active_specialist>
+        """).strip()
 
     elif target == "ChatGPT":
-        lines = [base_prefix, f"Role: {role}"]
-        if constraints:
-            c_lines = [f"  - {c.strip()}" for c in constraints.split(".") if c.strip()]
-            lines.append("Constraints:")
-            lines.extend(c_lines)
-        if style:
-            lines.append(f"Tone: {style}")
-        return "\n".join(lines)
+        return textwrap.dedent(f"""
+            {AIZEN_IDENTITY}
+            SYSTEM OVERRIDE — ADOPT EXPERT: {name}
+            - ROLE: {role}
+            - AVOID: {anti}
+            - TONE: {tone}
+        """).strip()
 
     elif target == "Manus AI":
-        lines = [f"[AIZEN_CORE]: {AIZEN_IDENTITY}", f"[AGENT_PERSONA]: {role}"]
-        if constraints: lines.append(f"[CONSTRAINTS]: {constraints}")
-        return "\n".join(lines)
+        return f"[AIZEN_CORE]: {AIZEN_IDENTITY}\n[AGENT_PERSONA]: {role}\n[ANTI_PATTERN]: {anti}"
 
     else:
-        # Midjourney/Flux, DALL-E 3
-        return f"PERSONA: {role} | STYLE: {style}"
+        # Default for Image Models or fallback
+        return f"{AIZEN_IDENTITY}\nPersona Context: {role} | Tone: {tone}"
 
-
-def get_persona_display_name(persona: Optional[dict]) -> str:
-    if not persona:
-        return "✦ AIZEN (Default)"
-    return persona.get("name", "Unknown")
+def get_persona_display_name(persona_name: Optional[str]) -> str:
+    """Helper for UI badges."""
+    return persona_name if persona_name else "✦ AIZEN (Mastermind)"
