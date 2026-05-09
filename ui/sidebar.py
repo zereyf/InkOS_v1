@@ -1,10 +1,10 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v13.6: Command Deck Purge + Ghost Terminal Integrated.
+v13.5: Command Deck Purge — Terminal Iconography Enforced.
        - PURGED: Standard emojis removed from Wordmark and Buttons.
        - UPDATED: Language switcher now uses ISO-text instead of Flags.
-       - INTEGRATED: render_ghost_bar() at the base of the sidebar.
+       - Unified Widget Key: 'sb_persona_global_widget'.
 """
 
 import streamlit as st
@@ -23,9 +23,6 @@ from vault.vault_engine import (
     check_id_availability
 )
 from i18n.translations import t, set_lang, get_lang, LANGUAGES
-
-# ── INJECTED IMPORT ──
-from ui.components.ghost_bar import render_ghost_bar
 
 
 class SidebarConfig(TypedDict):
@@ -224,10 +221,6 @@ def render_sidebar() -> SidebarConfig:
             from state import reset_session
             reset_session()
             st.rerun()
-
-        # 🟢 INJECT: THE GHOST BAR TERMINAL 🟢
-        st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
-        render_ghost_bar()
 
     return SidebarConfig(
         target_model     = target_model,
