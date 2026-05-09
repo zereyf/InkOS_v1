@@ -1,10 +1,10 @@
 """
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
-v9.2: Hardened Patch Build.
-      - Surgical Markdown Strip (Global Anchor-less)
+v9.3: Hardened Production Build.
       - Mathematical Brace-Balancing JSON Recovery
-      - Evaluator Rate-Limit Fallback (Best-Effort)
+      - Evaluator Rate-Limit Best-Effort Fallback
+      - Global Label-Aware Fence Strip
       - Deterministic Assembly Order
 """
 
@@ -32,29 +32,33 @@ from forge.persona_engine import inject_persona
 
 _TAG_CLEANUP = re.compile(r"^(?:REFINED_PROMPT|PROMPT|OUTPUT|thinking):?\s*", flags=re.IGNORECASE | re.MULTILINE)
 
-# 🟢 FIXED: Aggressively target markdown code fences with or without language labels
+# 🟢 FIXED: Anchor-less global strip for code fences
 _FENCE_CLEANUP = re.compile(r"```(?:markdown|json|text|xml)?|
 ```", flags=re.IGNORECASE)
 
 def _extract_json(text: str) -> Optional[str]:
     """
     Surgical JSON Recovery: Mathematical brace-balancing.
-    Extracts the most likely audit object even if nested deep in conversational text.
+    Handles irregular whitespace and nested objects where regex fails.
     """
-    start = text.rfind('{"score"')
-    if start == -1:
-        # Fallback to general object if key isn't found
+    # Flexible search for the audit object entry point
+    match = re.search(r'\{\s*"?score"?\s*:', text)
+    if not match:
         start = text.rfind('{')
         if start == -1: return None
+    else:
+        start = match.start()
         
-    count = 0
+    count, end_pos = 0, -1
     for i in range(start, len(text)):
         if text[i] == '{': count += 1
         elif text[i] == '}': count -= 1
         
         if count == 0:
-            return text[start:i+1]
-    return None
+            end_pos = i + 1
+            break
+            
+    return text[start:end_pos] if end_pos != -1 else None
 
 def _clamp_audit(raw: dict) -> dict:
     def safe_int(val, ceiling):
@@ -69,15 +73,15 @@ def _clamp_audit(raw: dict) -> dict:
     }
 
 def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
-    # 1. Strip markdown fences globally
+    # 1. Strip markdown fences
     cleaned = _FENCE_CLEANUP.sub("", raw).strip()
     
-    # 2. Extract JSON using mathematical balancing
+    # 2. Extract JSON using balancing logic
     json_str = _extract_json(cleaned)
     if not json_str: 
         return None, None
         
-    # 3. Separate the Refined Prompt from the Audit JSON
+    # 3. Separate Refined Prompt from Audit JSON
     json_start_pos = cleaned.rfind(json_str)
     refined = _TAG_CLEANUP.sub("", cleaned[:json_start_pos].strip()).strip()
     
@@ -159,8 +163,8 @@ def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Opt
 def _build_system_prompt(target, framework, lang, cognitive_directive, persona, islamic_mode, retry_critique) -> str:
     """Deterministic Assembly Matrix."""
     parts = []
-    parts.append(CIPHER_IDENTITY)                           # 1. Identity
-    parts.append(f'ACTIVE SESSION:\n'                       # 2. Context
+    parts.append(CIPHER_IDENTITY)
+    parts.append(f'ACTIVE SESSION:\n'
                  f'  Target AI: {target}\n'
                  f'  Target Syntax: {TARGET_GUIDES.get(target, "")}\n'
                  f'  Input Language: {lang}')
@@ -180,7 +184,7 @@ def _build_system_prompt(target, framework, lang, cognitive_directive, persona, 
     if retry_critique:
         parts.append(CIPHER_RETRY_INJECTION.format(critique=retry_critique))
         
-    parts.append(CIPHER_OUTPUT_CONTRACT)                    # 7. Final Order
+    parts.append(CIPHER_OUTPUT_CONTRACT)
     return '\n\n'.join(parts)
 
 def run_refinement_and_audit(
@@ -202,9 +206,9 @@ def run_refinement_and_audit(
         cognitive = textwrap.dedent(f"""
             [LINGUISTIC OVERRIDE: ARABIC]
             1. Pattern Detected: {p_name}.
-            2. Output the final instructions in Arabic.
+            2. Output final instructions in Arabic.
             3. PURITY LATCH: Strictly enforce Modern Standard Arabic (Fusha).
-            4. Apply the {framework} framework directly to the Arabic rhetorical structure.
+            4. Apply {framework} framework to the Arabic rhetorical structure.
         """)
 
     retry_critique = None
@@ -234,7 +238,7 @@ def run_refinement_and_audit(
 
         audit = _call_evaluator(user_text, target, refined)
         
-        # 🟢 PATCH: Best-effort fallback if throttled
+        # 🟢 BEST-EFFORT FALLBACK: Return highest scored historical candidate if throttled
         if "rate-limited" in audit['critique'] and best_refined:
             return best_refined, best_audit, pattern
             
