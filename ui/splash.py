@@ -1,15 +1,16 @@
 """
 ui/splash.py — The Terminal Gateway
 =====================================
-The unauthorized entry screen. Explains the system architecture
-and prompts the user to latch their identity using strict typographic iconography.
+v1.1: Fixed HTML Leaking.
+      - Injected textwrap.dedent to prevent Markdown code-block interpretation.
 """
 
 import streamlit as st
+import textwrap # 🟢 Essential for stripping leading spaces
 
 def render_splash_screen():
-    # The Cyberpunk / Tech-Noir CSS formatting
-    splash_html = """
+    # We wrap the string in textwrap.dedent() to fix the "Raw HTML" glitch
+    splash_html = textwrap.dedent("""
     <div style="max-width: 700px; margin: 40px auto; padding: 30px; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
         
         <!-- HEADER -->
@@ -67,15 +68,16 @@ def render_splash_screen():
             100% { opacity: 0.6; }
         }
     </style>
-    """
+    """)
     
     st.markdown(splash_html, unsafe_allow_html=True)
     
-    # Actionable hint for the user - Strict Terminal Typography
-    st.markdown("""
+    # Also dedent the hint
+    hint_html = textwrap.dedent("""
     <div style="text-align: center; margin-top: 20px;">
         <span style="background: rgba(229,62,62,0.05); border: 1px solid rgba(229,62,62,0.2); color: var(--danger); padding: 8px 15px; font-family: var(--font-m); font-size: 0.65rem; letter-spacing: 2px;">
             [<<] ALIGN IDENTITY IN SIDEBAR TO UNLOCK
         </span>
     </div>
-    """, unsafe_allow_html=True)
+    """)
+    st.markdown(hint_html, unsafe_allow_html=True)
