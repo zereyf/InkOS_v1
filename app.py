@@ -1,9 +1,10 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2026.4.10: Master Sync — Tactical Sidebar Evolution.
-           - RESTORED: Vertical Sidebar Navigation Matrix.
-           - UI: Custom Cyber-Noir CSS injected for radio-menu.
+v2026.4.11: Master Sync — The Premium UI Upgrade.
+           - UPGRADED: Ambient OLED Logo Glow.
+           - UPGRADED: Tactical Neon-Edge Navigation Tabs.
+           - UPGRADED: Ghost Inputs for all sidebar controls.
            - INTEGRATED: Global Broadcast Receiver.
 """
 
@@ -28,7 +29,6 @@ st.set_page_config(
 from config import API_KEY_MISSING
 from state import init_session_state, K, get_global_memory
 from ui.styles import STYLES
-from ui.sidebar import render_sidebar
 from ui.splash import render_splash_screen
 from ui.tabs.about import render_about
 from ui.tabs.forge import render_forge
@@ -73,12 +73,13 @@ if config_errors:
         st.error(f'[!] CONFIG ERROR: {err}')
     st.stop()
 
-# ── CSS ROOT INJECTION ──────────────────────────────────────────────────────
+# ── 🟢 THE PREMIUM CSS ROOT INJECTION ───────────────────────────────────────
 st.markdown("""
 <style>
+    /* ── BASE INK_OS VARIABLES ── */
     :root {
         --gold: #C9A84C;
-        --gold-border: rgba(201, 168, 76, 0.3);
+        --gold-glow: rgba(201, 168, 76, 0.4);
         --bg-card: rgba(18, 18, 18, 0.95);
         --text: #E2E8F0;
         --text-muted: #A0AEC0;
@@ -87,6 +88,64 @@ st.markdown("""
         --danger: #E53E3E;
         --font-m: 'Courier New', Courier, monospace;
         --font-d: 'Impact', sans-serif;
+    }
+
+    /* ── 1. AMBIENT LOGO GLOW ── */
+    /* Casts a subtle gold light from the top of the sidebar downwards */
+    [data-testid="stSidebar"] {
+        background: radial-gradient(circle at 50% 5%, rgba(201, 168, 76, 0.04) 0%, rgba(14, 17, 23, 1) 30%) !important;
+    }
+
+    /* ── 2. NEON-EDGE NAVIGATION TABS ── */
+    div[role="radiogroup"][aria-label="Navigation"] { gap: 0 !important; }
+    div[role="radiogroup"][aria-label="Navigation"] label > div:first-child { display: none !important; }
+    
+    div[role="radiogroup"][aria-label="Navigation"] label {
+        background-color: transparent !important;
+        border-bottom: 1px solid rgba(255,255,255,0.02) !important;
+        border-left: 4px solid transparent !important;
+        padding: 12px 20px !important; margin: 0 !important; width: 100% !important; cursor: pointer !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    div[role="radiogroup"][aria-label="Navigation"] label:hover {
+        background-color: rgba(201, 168, 76, 0.03) !important;
+    }
+    div[role="radiogroup"][aria-label="Navigation"] label p {
+        color: var(--text-dim) !important; font-family: var(--font-m) !important; font-size: 0.85rem !important;
+        letter-spacing: 2px !important; text-transform: uppercase !important; margin: 0 !important; visibility: visible !important; display: block !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    /* The Glow Effect (Active State) */
+    div[role="radiogroup"][aria-label="Navigation"] label:has(input:checked) {
+        background: linear-gradient(90deg, rgba(201, 168, 76, 0.1) 0%, transparent 100%) !important;
+        border-left: 4px solid var(--gold) !important;
+        box-shadow: inset 4px 0 12px -4px var(--gold-glow); /* Tactical Inner Glow */
+    }
+    div[role="radiogroup"][aria-label="Navigation"] label:has(input:checked) p {
+        color: var(--gold) !important; font-weight: 600 !important; letter-spacing: 3px !important;
+    }
+
+    /* ── 3. GHOST INPUTS (Selectboxes & Text Inputs) ── */
+    /* Strips out the bulky white/grey backgrounds from Streamlit's default inputs */
+    [data-testid="stSidebar"] div[data-baseweb="select"] > div, 
+    [data-testid="stSidebar"] div[data-baseweb="input"] > div {
+        background-color: rgba(0,0,0,0.2) !important;
+        border: 1px solid rgba(255,255,255,0.06) !important;
+        border-radius: 3px !important;
+        transition: all 0.3s ease;
+    }
+    [data-testid="stSidebar"] div[data-baseweb="select"]:hover > div, 
+    [data-testid="stSidebar"] div[data-baseweb="input"]:hover > div {
+        border-color: rgba(201, 168, 76, 0.35) !important;
+        background-color: rgba(0,0,0,0.4) !important;
+    }
+    /* Typography inside the dropdowns */
+    [data-testid="stSidebar"] div[data-baseweb="select"] span {
+        color: var(--text-muted) !important;
+        font-family: var(--font-m) !important;
+        font-size: 0.8rem !important;
+        letter-spacing: 0.5px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -124,83 +183,28 @@ if active_broadcast:
     </div>
     """, unsafe_allow_html=True)
 
-# ── 🟢 TACTICAL MENU CSS HACK ───────────────────────────────────────────────
-st.markdown("""
-<style>
-    /* 1. Target ONLY the Navigation Radio Group (Protects Input Language) */
-    div[role="radiogroup"][aria-label="Navigation"] {
-        gap: 0 !important;
-    }
-    
-    /* 2. Hide specifically the radio circle, not the text */
-    div[role="radiogroup"][aria-label="Navigation"] label > div:first-child {
-        display: none !important;
-    }
-    
-    /* 3. Style the Navigation blocks */
-    div[role="radiogroup"][aria-label="Navigation"] label {
-        background-color: transparent !important;
-        border: 1px solid rgba(255,255,255,0.01) !important;
-        border-bottom: 1px solid rgba(255,255,255,0.05) !important;
-        border-left: 4px solid transparent !important;
-        padding: 12px 20px !important;
-        margin: 0 !important;
-        width: 100% !important;
-        cursor: pointer !important;
-        transition: all 0.2s ease !important;
-    }
-    
-    /* 4. Hover effect */
-    div[role="radiogroup"][aria-label="Navigation"] label:hover {
-        background-color: rgba(255,255,255,0.02) !important;
-    }
-    
-    /* 5. Base Text Styling */
-    div[role="radiogroup"][aria-label="Navigation"] label p {
-        color: var(--text-dim) !important;
-        font-family: var(--font-m) !important;
-        font-size: 0.85rem !important;
-        letter-spacing: 2px !important;
-        text-transform: uppercase !important;
-        margin: 0 !important;
-        visibility: visible !important;
-        display: block !important;
-    }
-    
-    /* 6. 🟢 ACTIVE STATE STYLING */
-    div[role="radiogroup"][aria-label="Navigation"] label:has(input:checked) {
-        background: linear-gradient(90deg, rgba(201, 168, 76, 0.08) 0%, transparent 100%) !important;
-        border-left: 4px solid var(--gold) !important;
-        border-top: 1px solid rgba(201, 168, 76, 0.05) !important;
-        border-bottom: 1px solid rgba(201, 168, 76, 0.05) !important;
-    }
-    
-    /* Active Text Color */
-    div[role="radiogroup"][aria-label="Navigation"] label:has(input:checked) p {
-        color: var(--gold) !important;
-        font-weight: 600 !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-
-
 # ── COMMAND DECK (Sidebar) ──────────────────────────────────────────────────
 is_admin = st.session_state.get(K.IS_ADMIN, False)
+from ui.sidebar import render_sidebar, render_sidebar_brand 
 
 with st.sidebar:
     if is_guest:
         st.markdown("<div style='text-align:center; color:var(--danger); font-family:var(--font-m); font-size:0.7rem; letter-spacing:2px; margin-bottom:15px;'>[ ⨂ ] ACCESS RESTRICTED</div>", unsafe_allow_html=True)
     
-    # NAVIGATION MATRIX
+    # 1. TOP MATRIX: Render Logo and Uplink Status
+    render_sidebar_brand()
+
+    # 2. MIDDLE MATRIX: Navigation Menu
     nav_options = ["WORKSPACE", "🔒 VAULT", "🎭 FORGE", "GUIDE", "ABOUT"]
     if is_admin:
         nav_options.append("◈ OVERWATCH")
         
     active_tab = st.radio("Navigation", nav_options, label_visibility="collapsed")
-    st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
     
-    # The rest of the sidebar logic loads underneath
+    # Space between Tabs and Identity Block
+    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+    
+    # 3. BOTTOM MATRIX: Render Identity, Logic, and Toggles
     cfg = render_sidebar()
 
 st.session_state["app_config"] = cfg
