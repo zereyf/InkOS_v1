@@ -30,6 +30,7 @@ from config import API_KEY_MISSING
 from state import init_session_state, K
 from ui.styles import STYLES
 from ui.sidebar import render_sidebar
+from ui.splash import render_splash_screen
 from ui.tabs.about import render_about      # 🟢 New Import
 from ui.tabs.workspace import render_workspace
 from ui.tabs.archive import render_archive
