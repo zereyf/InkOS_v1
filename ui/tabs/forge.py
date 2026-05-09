@@ -169,9 +169,10 @@ def render_forge() -> None:
             st.session_state[K.INTEL_DNA] = d_intel
             st.session_state[K.HIKMAH_DNA] = d_hikmah
             
-            from vault.supabase_client import sb
+            # 🟢 UPDATED: Changed sb to supabase
+            from vault.supabase_client import supabase
             try:
-                sb.table("users").update({
+                supabase.table("users").update({
                     "ink_dna": d_ink,
                     "intel_dna": d_intel,
                     "hikmah_dna": d_hikmah
