@@ -13,6 +13,9 @@ import pandas as pd
 from state import K
 from logic.admin_telemetry import get_global_metrics, get_recent_activity
 
+from state import K, get_global_memory # 🟢 Added get_global_memory
+
+
 def render_admin_board():
     if not st.session_state.get(K.IS_ADMIN):
         st.error("[ ⨂ ] CLEARANCE REJECTED.")
@@ -125,17 +128,26 @@ def render_admin_board():
             st.cache_data.clear()
             st.toast("CACHE OBLITERATED.")
 
-        # BROADCAST FIELD
+          # BROADCAST FIELD
         st.markdown("<hr style='border-color: rgba(255,255,255,0.1); margin: 15px 0;'>", unsafe_allow_html=True)
         broadcast_msg = st.text_input("Terminal Broadcast", placeholder="Enter directive for all operators...")
-        if st.button("📡 TRANSMIT", use_container_width=True):
-            if broadcast_msg:
-                st.session_state[K.GLOBAL_BROADCAST] = broadcast_msg
-                st.toast("TRANSMISSION SENT.")
-            else:
-                st.warning("Enter a message to transmit.")
-            
-        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # 🟢 Grab the shared memory
+        global_mem = get_global_memory()
+        
+        b1, b2 = st.columns([3, 1])
+        with b1:
+            if st.button("📡 TRANSMIT", use_container_width=True):
+                if broadcast_msg:
+                    global_mem["broadcast"] = broadcast_msg # 🟢 Writes to the whole server
+                    st.toast("GLOBAL TRANSMISSION SENT.")
+                else:
+                    st.warning("Enter a message to transmit.")
+        with b2:
+            if st.button("🛑 CUT", use_container_width=True, help="Revoke broadcast"):
+                global_mem["broadcast"] = None
+                st.toast("TRANSMISSION REVOKED.")
+
         
         # ARABIC BRANDING METRICS
         st.markdown('<div class="ow-panel" style="border-color: var(--gold);">', unsafe_allow_html=True)
