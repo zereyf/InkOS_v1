@@ -1,17 +1,14 @@
-
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v31.3: Hardened Header Build — The AmeerInk Protocol.
+v31.4: Hardened Router Build — Cipher Lock Override.
+       - FIXED: Manual Target selection now overrides the Auto-Router.
        - Eliminated HTML Leaks (Atomic String Concatenation).
-       - Fixed Tag Fractures (Removed textwrap.dedent).
        - Stabilized Thermal HUD (Zero-Lag Cognitive Metrics).
-       - Fully Consolidated Section Flow (No duplicate keys).
-       - Injected Dynamic SYNCED/IDLE Telemetry Monitors.
-       - Injected Tech-Noir Ghost Mode Warning & Latch CTA.
 """
 
 import textwrap
+import time
 import streamlit as st
 from datetime import datetime, timezone
 from typing import Tuple
@@ -22,6 +19,8 @@ from engine.refiner import run_refinement_and_audit
 from engine.router import route_to_target
 from engine.cognitive_map import detect_arabic_pattern
 from i18n.translations import t
+# 🟢 FIXED: Import AUTO_SELECT_LABEL to check for manual overrides
+from config import AUTO_SELECT_LABEL
 
 # ── DNA INJECTION ENGINE ─────────────────────────────────────────────────────
 
@@ -51,7 +50,6 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
     
     p_pct, a_pct = min(100, (precision/40)*100), min(100, (alignment/40)*100)
 
-    # 🟢 ATOMIC UI: Collapsed score block to prevent rendering fractures
     score_html = (
         f'<div style="background:var(--bg-card); border:1px solid rgba(255,255,255,0.05); padding:22px; position:relative; overflow:hidden; margin-bottom:15px;">'
         f'<div style="position:absolute; top:0; left:0; width:40px; height:2px; background:{status_color};"></div>'
@@ -87,29 +85,21 @@ def render_workspace(cfg: dict) -> None:
     raw_text = st.session_state.get("ta_input_widget") or ""
     cognitive_load = len(raw_text)
 
-       # Active Persona Logic
     active_persona = st.session_state.get(K.ACTIVE_PERSONA)
     p_name, p_target = "", "All"
     if isinstance(active_persona, dict):
         raw_name = active_persona.get("name", "").upper()
-        # 🟢 ANTI-COLLISION: Truncate name if it's too long for mobile
         p_name = raw_name if len(raw_name) <= 10 else raw_name[:10] + "..."
         p_target = active_persona.get("target", "All")
 
-    # Thermal Drift Warning (Shortened)
     current_global_target = cfg.get("target_model")
-    is_misaligned = p_target != "All" and p_target != current_global_target
+    is_misaligned = p_target != "All" and p_target != current_global_target and current_global_target != AUTO_SELECT_LABEL
     misalignment_badge = f"&nbsp;<span style='background:rgba(229,62,62,0.15); color:#FF4B4B; border:1px solid #FF4B4B; padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>⚠️ MISMATCH</span>" if is_misaligned else ""
 
-    # Badge Logic (Shortened for mobile spacing)
     expert_badge = f"&nbsp;<span style='background:rgba(229,62,62,0.1); color:var(--danger); border:1px solid rgba(229,62,62,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>EXPERT</span>" if cfg.get("expert_mode") else ""
     islamic_badge = f"&nbsp;<span style='background:rgba(76,175,154,0.1); color:#4CAF9A; border:1px solid rgba(76,175,154,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>HIKMAH</span>" if cfg.get("islamic_mode") else ""
-    
-    # Persona Badge (Added CSS constraints)
     persona_badge = f"&nbsp;<span style='background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:1; display:inline-block; vertical-align:middle; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:90px;'>{p_name}</span>" if p_name else ""
 
-
-    # 🟢 ATOMIC HEADER: No newlines or indentation to prevent raw HTML leaks
     header_html = (
         f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">'
         f'<div class="vc-header" style="margin:0; display:flex; align-items:center; flex-wrap:nowrap;">'
@@ -120,7 +110,6 @@ def render_workspace(cfg: dict) -> None:
         f'<div>A.I.Z.E.N. // REF: {(st.session_state.get(K.USER_HASH) or "GHOST_ID")[:8]}</div>'
         f'<div>LOAD: {cognitive_load} B</div></div>'
     ).replace("\n", "")
-    
     st.markdown(header_html, unsafe_allow_html=True)
 
 
@@ -129,7 +118,6 @@ def render_workspace(cfg: dict) -> None:
     is_guest = not current_uid or "GUEST_" in str(current_uid).upper()
 
     if not is_guest:
-        # User is logged in: Show the Live Telemetry Monitors
         ink_live = bool(st.session_state.get(K.INK_DNA))
         intel_live = bool(st.session_state.get(K.INTEL_DNA))
         hikmah_live = bool(cfg.get("islamic_mode") or st.session_state.get(K.HIKMAH_DNA))
@@ -157,7 +145,6 @@ def render_workspace(cfg: dict) -> None:
         st.markdown(dna_html, unsafe_allow_html=True)
     
     else:
-        # User is a Ghost: Show the Custom Warning
         ghost_html = (
             f'<div style="background:linear-gradient(90deg, rgba(229,62,62,0.08) 0%, transparent 100%); border-left:2px solid var(--danger); padding:12px 15px; margin-bottom:10px; border-radius:2px;">'
             f'<div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">'
@@ -169,7 +156,6 @@ def render_workspace(cfg: dict) -> None:
         ).replace("\n", "")
         st.markdown(ghost_html, unsafe_allow_html=True)
         
-        # The CTA Button
         col_cta, _ = st.columns([1, 2])
         with col_cta:
             if st.button("[ INITIATE LATCH ]", key="btn_latch_ghost", use_container_width=True):
@@ -207,7 +193,6 @@ def render_workspace(cfg: dict) -> None:
                         st.error(f"Voice Uplink Failed: {e}")
 
     with v_col2:
-        # THE ONLY TEXT AREA (Key: ta_input_widget)
         intent_val = st.text_area(
             "intent", 
             height=145, 
@@ -233,8 +218,6 @@ def render_workspace(cfg: dict) -> None:
         st.session_state["athar_trace"] = False
         cleaned, _ = sanitize_input(st.session_state.get("ta_input", ""))
         if cleaned:
-            import time
-            
             # ── HUD INITIALIZATION ──
             st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
             ui_text = st.empty()
@@ -247,11 +230,20 @@ def render_workspace(cfg: dict) -> None:
             
             # Phase 2: Routing & DNA
             final_text, detected = _apply_dna_triggers(cleaned)
-            auto_target, auto_reason = route_to_target(final_text)
-            st.session_state[K.AUTO_TARGET], st.session_state[K.AUTO_REASON] = auto_target, auto_reason
+            
+            # 🟢 THE FIX: Cipher Lock Override
+            target_model = cfg.get("target_model", AUTO_SELECT_LABEL)
+            if target_model == AUTO_SELECT_LABEL:
+                resolved_target, resolved_reason = route_to_target(final_text)
+            else:
+                resolved_target = target_model
+                resolved_reason = "Manual Override [CIPHER LOCK]"
+                
+            st.session_state[K.AUTO_TARGET] = resolved_target
+            st.session_state[K.AUTO_REASON] = resolved_reason
             
             dna_log = f" | DNA: {', '.join(detected)}" if detected else ""
-            ui_text.markdown(f"`< 45% >` **[ROUTER]** Locking trajectory to **{auto_target.upper()}**{dna_log}...")
+            ui_text.markdown(f"`< 45% >` **[ROUTER]** Locking trajectory to **{resolved_target.upper()}**{dna_log}...")
             prog_bar.progress(45)
             time.sleep(0.4)
             
@@ -259,9 +251,9 @@ def render_workspace(cfg: dict) -> None:
             ui_text.markdown("`< 80% >` **[CORE]** Compiling refinement matrix. Executing handshake...")
             prog_bar.progress(80)
             
-            # API CALL (Real wait time happens here)
+            # API CALL
             result, audit, _ = run_refinement_and_audit(
-                final_text, auto_target, cfg["framework"], 
+                final_text, resolved_target, cfg["framework"], 
                 cfg["source_lang"], cfg["aesthetic_choice"], 
                 cfg["islamic_mode"], cfg.get("active_persona")
             )
@@ -271,17 +263,16 @@ def render_workspace(cfg: dict) -> None:
             prog_bar.progress(100)
             time.sleep(0.3)
             
-            # Clear HUD for clean layout
             ui_text.empty()
             prog_bar.empty()
             
-            # State Saving...
+            # State Saving
             st.session_state[K.LAST_RESULT] = result
             st.session_state[K.LAST_AUDIT] = audit
             st.session_state[K.LAST_INPUT] = cleaned
             st.session_state[K.HISTORY].append({
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "intent": cleaned, "target": auto_target,
+                "intent": cleaned, "target": resolved_target,
                 "score": audit.get("score", 0), "asset": result
             })
             st.rerun()
