@@ -1,10 +1,10 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v13.4: Master Key Persistence Build.
+v13.4: Master Latch Production Build.
+       - Fixed NameError by restoring helper functions.
        - Unified Widget Key: 'sb_persona_global_widget'.
-       - Hardened Precise ID Match for refresh stability.
-       - URL-Param Priority Latch (Fixed Refresh Bug).
+       - URL-Param Priority Latch for absolute refresh stability.
 """
 
 import streamlit as st
@@ -24,14 +24,55 @@ from vault.vault_engine import (
 )
 from i18n.translations import t, set_lang, get_lang, LANGUAGES
 
-# ... [Keep class SidebarConfig and _load_user_personas/render_language_switcher exactly as they are] ...
+
+class SidebarConfig(TypedDict):
+    target_model:     str
+    framework:        str
+    source_lang:      str
+    islamic_mode:     bool
+    aesthetic_choice: str
+    active_persona:   Optional[dict]
+    expert_mode:      bool
+
+# ── HELPER FUNCTIONS ─────────────────────────────────────────────────────────
+
+def _load_user_personas(user_hash: str) -> list:
+    """Loads custom personas from the database."""
+    if SUPABASE_MISSING:
+        return []
+    try:
+        from forge.persona_store import list_personas
+        personas, _ = list_personas(user_hash, target_filter="All")
+        return personas or []
+    except Exception:
+        return []
+
+def render_language_switcher() -> None:
+    """Renders flags for language selection."""
+    current = get_lang()
+    cols = st.columns(len(LANGUAGES))
+    for i, lang in enumerate(LANGUAGES):
+        with cols[i]:
+            is_active = lang["code"] == current
+            if st.button(
+                f"{lang['flag']}",
+                key=f"lang_btn_{lang['code']}",
+                use_container_width=True,
+                help=lang['label'],
+                type="primary" if is_active else "secondary"
+            ):
+                if not is_active:
+                    set_lang(lang["code"])
+                    st.rerun()
+
+# ── MAIN RENDERER ─────────────────────────────────────────────────────────────
 
 def render_sidebar() -> SidebarConfig:
     """
     🟢 MASTER RENDERER: Identity-Locked Uplink
     """
     with st.sidebar:
-        # ── 1. EVALUATE IDENTITY FIRST ─────────────────────────────────────────
+        # ── 1. EVALUATE IDENTITY ──────────────────────────────────────────────
         current_sid = st.session_state.get(K.USER_HASH)
         is_guest = not current_sid or "GUEST_" in str(current_sid).upper()
         sess_ref = str(current_sid)[:8] if current_sid else "GHOST_ID"
@@ -72,20 +113,15 @@ def render_sidebar() -> SidebarConfig:
             new_pin = st.text_input("PIN", placeholder="PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
             is_new_user = st.toggle("Register New?", value=False, key="is_new_user_toggle")
             
-            id_is_valid = True
             if is_new_user and new_sid.strip():
                 available, status_msg = check_id_availability(new_sid.strip())
                 color = "#4CAF9A" if available else "#E53E3E"
                 st.markdown(f"<div style='color:{color}; font-size:0.55rem; font-family:var(--font-m); margin-bottom:8px;'>{status_msg}</div>", unsafe_allow_html=True)
-                id_is_valid = available
             
             if st.button("LATCH IDENTITY", use_container_width=True, key="btn_latch_sid"):
-                if is_new_user and not id_is_valid:
-                    st.error("Cannot latch: ID is unavailable.")
-                elif new_sid.strip() and new_pin.strip():
+                if new_sid.strip() and new_pin.strip():
                     with st.spinner("Uplinking..."):
                         success, error_msg = authenticate_terminal(new_sid.strip(), new_pin.strip(), is_new=is_new_user)
-                    
                     if success:
                         st.session_state[K.USER_HASH] = new_sid.strip()
                         st.query_params["sid"] = new_sid.strip()
@@ -106,15 +142,6 @@ def render_sidebar() -> SidebarConfig:
         target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
         target_model = st.selectbox("Target Model", options=target_options, key="sb_target")
 
-        if target_model == AUTO_SELECT_LABEL:
-            auto_tgt = st.session_state.get(K.AUTO_TARGET)
-            if auto_tgt:
-                st.markdown(f"""
-                    <div style="background:rgba(255,255,255,0.02); border-left:2px solid var(--gold); padding:6px 10px; font-size:0.55rem; color:var(--text-muted); font-family:var(--font-m); margin-top:-10px; margin-bottom:10px;">
-                        CIPHER LOCK: <span style="color:var(--gold); font-weight:bold;">{auto_tgt.upper()}</span>
-                    </div>
-                """, unsafe_allow_html=True)
-
         framework = st.selectbox(t("logic_framework", fallback="Framework"), LOGIC_FRAMEWORKS, key="sb_framework")
         source_lang = st.radio("Input Language", ["English", "Arabic (العربية)"], key="sb_lang")
 
@@ -125,7 +152,7 @@ def render_sidebar() -> SidebarConfig:
         
         user_personas = _load_user_personas(st.session_state.get(K.USER_HASH, ''))
 
-        # A. Build Options Map
+        # A. Build Option Map (Label -> Data)
         options_map: dict = {'None': None}
         for name, p_data in STARTER_PERSONAS.items():
             if name != 'None':
@@ -135,28 +162,27 @@ def render_sidebar() -> SidebarConfig:
         
         options_list = list(options_map.keys())
 
-        # B. Precise ID Latch Logic
+        # B. Resolve Index (The Persistence Latch)
         url_p_name = st.query_params.get("p")
         current_active = st.session_state.get(K.ACTIVE_PERSONA)
         
-        # Priority: URL Parameter > Session State
+        # Priority: URL > Session State
         target_id = url_p_name if url_p_name else (current_active.get('name') if current_active else None)
         
         p_index = 0
         if target_id:
             for i, label in enumerate(options_list):
                 data = options_map[label]
-                # We match against the internal 'name' (the ID) to ignore UI label changes
                 if data and data.get('name') == target_id:
                     p_index = i
                     break
 
-        # C. The Unified Master Widget
+        # C. The Master Widget
         selected_key = st.selectbox(
             'Persona Select', 
             options=options_list,
             index=p_index, 
-            key='sb_persona_global_widget', # Master Key Sync
+            key='sb_persona_global_widget', 
             label_visibility='collapsed',
         )
         
@@ -176,7 +202,7 @@ def render_sidebar() -> SidebarConfig:
             if 'p' in st.query_params:
                 del st.query_params['p']
 
-         # ── 7. SYSTEM TOGGLES ─────────────────────────────────────────────────
+        # ── 7. SYSTEM TOGGLES ─────────────────────────────────────────────────
         st.markdown("<hr style='margin-top:5px;'>", unsafe_allow_html=True)
         aesthetic_choice = st.selectbox(t("aesthetic_preset", fallback="Aesthetic"), options=list(AESTHETIC_PRESETS.keys()), key="sb_aesthetic")
         
@@ -198,15 +224,6 @@ def render_sidebar() -> SidebarConfig:
             from state import reset_session
             reset_session()
             st.rerun()
-
-        if st.session_state.get(K.HISTORY):
-            st.download_button(
-                t("export_archive", fallback="Export Archive"),
-                data=json.dumps(st.session_state[K.HISTORY], ensure_ascii=False, indent=2),
-                file_name=f"inkos_archive_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.json",
-                mime="application/json",
-                use_container_width=True
-            )
 
     return SidebarConfig(
         target_model     = target_model,
