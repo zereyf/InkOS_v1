@@ -37,6 +37,9 @@ from ui.tabs.workspace import render_workspace
 from ui.tabs.vault import render_vault
 from i18n.translations import t, is_rtl
 
+from state import init_session_state, K, get_global_memory # 🟢 Added get_global_memory
+
+
 if API_KEY_MISSING:
     st.error("[!] SYSTEM ERROR: GROQ_API_KEY not found in environment.")
     st.stop()
@@ -136,13 +139,17 @@ st.session_state["app_config"] = cfg
 is_admin = st.session_state.get(K.IS_ADMIN, False)
 
 # ── 📡 GLOBAL BROADCAST RECEIVER ──
-active_broadcast = st.session_state.get(K.GLOBAL_BROADCAST)
+global_mem = get_global_memory()
+active_broadcast = global_mem.get("broadcast")
+
 if active_broadcast:
     st.markdown(f"""
     <div style="background: rgba(201, 168, 76, 0.05); border-left: 3px solid var(--gold); padding: 12px 18px; margin-bottom: 20px; font-family: var(--font-m); font-size: 0.8rem; color: var(--gold); letter-spacing: 1px; border-radius: 2px;">
         <strong style="color:#E2E8F0;">📡 INK_OS DIRECTIVE //</strong> {active_broadcast}
     </div>
     """, unsafe_allow_html=True)
+# ──────────────────────────────────
+
 
 # 🟢 RESTORED: Forge and Guide added back to the UI
 if is_admin:
