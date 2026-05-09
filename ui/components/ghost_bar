@@ -1,0 +1,40 @@
+"""
+ui/components/ghost_bar.py — Command Input
+==========================================
+v1.0: API-Free Terminal Input.
+"""
+import streamlit as st
+
+def render_ghost_bar():
+    # Tech-Noir CSS for the input bar
+    st.markdown("""
+        <style>
+            .stTextInput input {
+                background-color: #000 !important;
+                color: #4CAF9A !important;
+                font-family: var(--font-m) !important;
+                border: 1px solid rgba(255,255,255,0.1) !important;
+                font-size: 0.7rem !important;
+                letter-spacing: 1px;
+                border-radius: 2px !important;
+            }
+            .stTextInput input:focus {
+                border-color: var(--gold) !important;
+                box-shadow: 0 0 5px rgba(201, 168, 76, 0.3) !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    cmd_input = st.text_input(
+        label="COMMAND_DECK",
+        placeholder="TYPE /COMMAND...",
+        label_visibility="collapsed",
+        key="ghost_cmd_input"
+    )
+    
+    # Raw input detection (Will be wired to the Dispatcher in Phase 2)
+    if cmd_input:
+        if cmd_input.startswith("/"):
+            st.toast(f"> COMMAND LOGGED: {cmd_input}")
+        else:
+            st.toast("[!] INVALID SYNTAX. USE '/' PREFIX.")
