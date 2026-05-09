@@ -1,9 +1,9 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2026.4.13: Master Sync — The Premium UI Upgrade (Block Stretch Patch).
+v2026.4.14: Master Sync — The Premium UI Upgrade (Inner Div Stretch Patch).
            - UPGRADED: Ambient OLED Logo Glow.
-           - UPGRADED: Tactical Neon-Edge Navigation Tabs (100% Block Width).
+           - UPGRADED: Tactical Neon-Edge Navigation Tabs (Forced 100% Width).
            - UPGRADED: Ghost Inputs for all sidebar controls.
            - INTEGRATED: Global Broadcast Receiver.
 """
@@ -33,7 +33,7 @@ if not os.path.exists(icon_path):
 # 1. Page Config must be first
 st.set_page_config(
     page_title="InkOS", 
-    page_icon=icon_path,  # 🟢 Streamlit uses the dynamically generated file!
+    page_icon=icon_path, 
     layout="wide", 
     initial_sidebar_state="expanded"
 )
@@ -103,28 +103,37 @@ st.markdown("""
     }
 
     /* ── 1. AMBIENT LOGO GLOW ── */
-    /* Casts a subtle gold light from the top of the sidebar downwards */
     [data-testid="stSidebar"] {
         background: radial-gradient(circle at 50% 5%, rgba(201, 168, 76, 0.04) 0%, rgba(14, 17, 23, 1) 30%) !important;
     }
 
-    /* ── 2. NEON-EDGE NAVIGATION TABS (BLOCK STRETCH FIX) ── */
+    /* ── 2. NEON-EDGE NAVIGATION TABS (ULTIMATE STRETCH FIX) ── */
     div[data-testid="stRadio"]:has(div[aria-label="Navigation"]) {
         width: 100% !important;
     }
     
     div[role="radiogroup"][aria-label="Navigation"] { 
-        display: block !important; /* 🟢 Kills Streamlit flexbox */
+        display: flex !important; 
+        flex-direction: column !important;
         width: 100% !important;
+        align-items: stretch !important;
     }
     
+    /* Hide the radio circle */
     div[role="radiogroup"][aria-label="Navigation"] label > div:first-child { 
         display: none !important; 
     }
     
-    div[role="radiogroup"][aria-label="Navigation"] label {
-        display: block !important; /* 🟢 Forces labels to act as full-width rows */
+    /* 🟢 Sledgehammer: Target both the label AND the inner div wrapping the text */
+    div[role="radiogroup"][aria-label="Navigation"] label,
+    div[role="radiogroup"][aria-label="Navigation"] label > div:nth-child(2) {
         width: 100% !important;
+        max-width: 100% !important;
+        display: flex !important;
+        flex-grow: 1 !important;
+    }
+    
+    div[role="radiogroup"][aria-label="Navigation"] label {
         background-color: transparent !important;
         border-bottom: 1px solid rgba(255,255,255,0.02) !important;
         border-left: 4px solid transparent !important;
@@ -142,6 +151,7 @@ st.markdown("""
         color: var(--text-dim) !important; font-family: var(--font-m) !important; font-size: 0.85rem !important;
         letter-spacing: 2px !important; text-transform: uppercase !important; margin: 0 !important; visibility: visible !important; display: block !important;
         transition: all 0.3s ease !important;
+        width: 100% !important;
     }
     
     /* The Glow Effect (Active State) */
