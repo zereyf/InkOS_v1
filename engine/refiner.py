@@ -32,8 +32,9 @@ from forge.persona_engine import inject_persona
 
 _TAG_CLEANUP = re.compile(r"^(?:REFINED_PROMPT|PROMPT|OUTPUT|thinking):?\s*", flags=re.IGNORECASE | re.MULTILINE)
 
-# 🟢 PATCH: Removed anchors to aggressively strip fences trapped in conversation
-_FENCE_CLEANUP = re.compile(r"markdown[json|text|xml)?\s*/\s**", flags=re.IGNORECASE)
+# 🟢 FIXED: Aggressively target markdown code fences with or without language labels
+_FENCE_CLEANUP = re.compile(r"```(?:markdown|json|text|xml)?|
+```", flags=re.IGNORECASE)
 
 def _extract_json(text: str) -> Optional[str]:
     """
