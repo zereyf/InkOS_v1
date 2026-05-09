@@ -1,8 +1,8 @@
 """
 state.py — Session State Contract
 ===================================
-v20.5: Master Sync — Neural Core Edition.
-       RESTORED: K.HISTORY to prevent Sidebar AttributeError.
+v20.6: Overwatch Edition.
+       ADDED: IS_ADMIN and MAINTENANCE_MODE for Root Access.
 """
 
 import uuid
@@ -13,8 +13,8 @@ import streamlit as st
 
 
 class K:
-    # ── ENGINE & HISTORY (RESTORED) ──────────────────────────────────────────
-    HISTORY         = "prompt_history"  # 🟢 RESTORED
+    # ── ENGINE & HISTORY ─────────────────────────────────────────────────────
+    HISTORY         = "prompt_history"
     
     # ── IDENTITY & SECURITY ──────────────────────────────────────────────────
     USER_HASH       = "user_hash"
@@ -23,6 +23,10 @@ class K:
     LOCKOUT_UNTIL   = "lockout_until"
     SECURITY_LOG    = "security_log"
     TIMESTAMPS      = "call_timestamps"
+
+    # ── 🟢 OVERWATCH (BOSS MODE) ────────────────────────────────────────────
+    IS_ADMIN         = "is_admin"
+    MAINTENANCE_MODE = "maintenance_mode"
     
     # ── HUD METRICS ─────────────────────────────────────────────────
     LAST_RESULT     = "last_result"
@@ -52,13 +56,17 @@ class K:
 
 
 _DEFAULTS: dict = {
-    K.HISTORY:         [],              # 🟢 RESTORED
+    K.HISTORY:         [],
     K.USER_HASH:       None,
     K.USER_PIN:        None,
     K.FAILED_ATTEMPTS: 0,
     K.LOCKOUT_UNTIL:   None,
     K.SECURITY_LOG:    [],
     K.TIMESTAMPS:      [],
+
+    # ── 🟢 ADMIN DEFAULTS ──
+    K.IS_ADMIN:         False,
+    K.MAINTENANCE_MODE: False,
     
     K.LAST_RESULT:     None,
     K.LAST_AUDIT:      {},              
@@ -77,7 +85,6 @@ _DEFAULTS: dict = {
     K.UI_LANG:         "en",
     K.APP_CONFIG:      None,
     K.BOOT_COMPLETE:   False,
-
 
     # 🧪 DNA INITIALIZATION (AmeerInk Defaults)
     K.INK_DNA: (
@@ -106,10 +113,11 @@ def init_session_state() -> None:
 
 
 def reset_session() -> None:
-    """Nuclear reset: flushes processing state but preserves DNA and Identity."""
+    """Nuclear reset: flushes processing state but preserves DNA, Identity, and Admin status."""
     preserved = {
         K.USER_HASH:       st.session_state.get(K.USER_HASH),
         K.USER_PIN:        st.session_state.get(K.USER_PIN),
+        K.IS_ADMIN:        st.session_state.get(K.IS_ADMIN),    # 🟢 PRESERVE ADMIN
         K.INK_DNA:         st.session_state.get(K.INK_DNA),
         K.INTEL_DNA:       st.session_state.get(K.INTEL_DNA),
         K.HIKMAH_DNA:      st.session_state.get(K.HIKMAH_DNA),
