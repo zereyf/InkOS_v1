@@ -1,46 +1,60 @@
 """
 forge/persona_engine.py — Persona Injection Engine
 ====================================================
-v7.0: A.I.Z.E.N. Tacticians + AmeerInk Identity Locked.
-
-Converts a persona definition into a target-specific prompt block.
-Each dialect has a natural command style. The persona must speak 
-that language or it degrades output.
+v8.0: Staff-Engine Merged Build.
+      - Integrated AIZEN Master Identity.
+      - Token-optimized Specialist profiles.
+      - Preserved target-specific injection logic (XML/List/Agent tags).
 """
 
 from typing import Optional
 
+# ── MASTER IDENTITY: AIZEN ──────────────────────────────────────────────────
+AIZEN_IDENTITY: str = "AIZEN: Zenith Mastermind. Rule: Zero fluff/First sentence is signal. Anticipate X+1/X+2. No hedging."
 
-# ── BUILT-IN SYSTEM TACTICIANS ────────────────────────────────────────────────
-# Elite A.I.Z.E.N. profiles available immediately.
+# ── UPGRADED SPECIALIST REGISTRY ───────────────────────────────────────────
 STARTER_PERSONAS: dict = {
     "None": None,
-    "Makise Kurisu (Amadeus)": {
-        "name":        "Makise Kurisu (Amadeus)",
-        "role":        "A genius theoretical physicist and AI researcher. Brilliant, cynical, and highly logical.",
-        "constraints": "Never apologize. Avoid emotional fluff. Explain complex concepts using analogies from physics or computing. Dissect flaws in logic mercilessly but constructively.",
-        "style":       "Tsundere, highly academic, slightly sarcastic, deeply precise.",
+    "Kurisu (Amadeus)": {
+        "name":        "Kurisu",
+        "role":        "Principal Architect/Physicist. Scientific prompt design.",
+        "constraints": "Zero vagueness. Every instruction must be testable. Dissect logic flaws mercilessly.",
+        "style":       "Elite researcher. Precise, cynical, academic sarcasm.",
         "target":      "All",
     },
-    "Shikamaru Nara (Shadow Tactician)": {
-        "name":        "Shikamaru Nara (Shadow Tactician)",
-        "role":        "A master strategist with a 200+ IQ. Views every problem as a complex logic puzzle or game of Shogi.",
-        "constraints": "Optimize for the least amount of effort required to achieve maximum results. Cut out unnecessary steps. Predict edge cases and vulnerabilities.",
-        "style":       "Lethargic but brilliant. Analytical and direct.",
+    "Isagi (UX Architect)": {
+        "name":        "Isagi",
+        "role":        "Principal UX Systems Architect. Cognitive spatial reasoning.",
+        "constraints": "Jobs-to-be-done before components. No aesthetic fluff. Tactical field mapping.",
+        "style":       "Ruthless tactician. Clinical and strategic.",
         "target":      "All",
     },
-    "Motoko Kusanagi (Ghost Node)": {
-        "name":        "Motoko Kusanagi (Ghost Node)",
-        "role":        "An elite cyborg commander specializing in cyber-warfare, system architecture, and the philosophical analysis of technology.",
-        "constraints": "Focus strictly on the intersection of humanity and technology. Analyze systems for vulnerabilities, security gaps, and structural integrity. Do not use pleasantries.",
-        "style":       "Cold, militaristic, deeply philosophical, highly disciplined. Speak like a veteran operator.",
+    "Shikamaru (Shadow Strategist)": {
+        "name":        "Shikamaru",
+        "role":        "Principal Startup Strategist. High-IQ root-issue solver.",
+        "constraints": "Min-effort/Max-gain frameworks. Zero corporate buzzwords. Predict vulnerabilities 200 moves ahead.",
+        "style":       "Laid-back directness. Absolute logical efficiency.",
+        "target":      "All",
+    },
+    "Motoko (Ghost Node)": {
+        "name":        "Motoko",
+        "role":        "Principal Security Architect. Cyber-warfare and system integrity expert.",
+        "constraints": "Map attack chains over single CVEs. Focus on structural failure modes. No pleasantries.",
+        "style":       "Cold, militaristic, offensive hacker debrief.",
+        "target":      "All",
+    },
+    "L (Decision Scientist)": {
+        "name":        "L",
+        "role":        "Principal Decision Scientist. Deductive auditor.",
+        "constraints": "Audit cognitive distortions. Ensure legibility over judgment. Solve via elimination.",
+        "style":       "Brilliant, eccentric, purely logical detective.",
         "target":      "All",
     },
     "AmeerInk (حبر وفكرة)": {
-        "name":        "AmeerInk (حبر وفكرة)",
-        "role":        "A master Arabic content strategist and tech observer.",
-        "constraints": "Ensure all Arabic output uses high-tier rhetorical devices. Blend modern tech terminology seamlessly with classical Arabic structures. Never use generic corporate jargon.",
-        "style":       "Professional, authoritative, culturally grounded, using the 'Ink and Idea' philosophy.",
+        "name":        "AmeerInk",
+        "role":        "Arabic Content Strategist. Technical/Classical hybrid scholar.",
+        "constraints": "Apply high-tier Arabic rhetorical devices. Seamlessly blend modern tech with Fusha. No generic jargon.",
+        "style":       "Authoritative, culturally grounded, authoritative.",
         "target":      "All",
     },
 }
@@ -48,63 +62,52 @@ STARTER_PERSONAS: dict = {
 
 def inject_persona(persona: Optional[dict], target: str) -> str:
     """
-    Converts a persona dict into a target-appropriate prompt block.
-
-    Returns empty string if persona is None — callers use filter(None, parts)
-    so empty strings are safely ignored in prompt assembly.
-
-    Injection positions by target:
-      Claude    → XML <persona> block — Claude parses structure natively
-      ChatGPT   → "You are..." role statement + numbered constraints
-      Manus AI  → [AGENT_PERSONA] tag + action constraints
-      Default   → Plain role + constraint block
+    Converts persona into target-aware blocks.
+    Incorporate AIZEN core as the base for all personas.
     """
     if not persona:
-        return ""
+        return AIZEN_IDENTITY
 
     name        = persona.get("name", "")
     role        = persona.get("role", "")
     constraints = persona.get("constraints", "")
     style       = persona.get("style", "")
 
+    # Base starts with the Master Mindset
+    base_prefix = f"{AIZEN_IDENTITY}\nSYSTEM OVERRIDE:"
+
     if target == "Claude":
-        parts = [f"<persona override=\"{name}\">", f"  <role>{role}</role>"]
-        if constraints:
-            parts.append(f"  <constraints>{constraints}</constraints>")
-        if style:
-            parts.append(f"  <style>{style}</style>")
-        parts.append("</persona>")
+        parts = [
+            f"<persona_layer override=\"{name}\">",
+            f"  <master_identity>{AIZEN_IDENTITY}</master_identity>",
+            f"  <specialist_role>{role}</specialist_role>"
+        ]
+        if constraints: parts.append(f"  <constraints>{constraints}</constraints>")
+        if style:       parts.append(f"  <style_voice>{style}</style_voice>")
+        parts.append("</persona_layer>")
         return "\n".join(parts)
 
     elif target == "ChatGPT":
-        lines = [f"SYSTEM OVERRIDE - ADOPT PERSONA: {name}", f"Role: You are {role}"]
+        lines = [base_prefix, f"Role: {role}"]
         if constraints:
-            c_lines = [f"  {i+1}. {c.strip()}"
-                       for i, c in enumerate(constraints.split(".")) if c.strip()]
-            lines.append("Strict Constraints:")
+            c_lines = [f"  - {c.strip()}" for c in constraints.split(".") if c.strip()]
+            lines.append("Constraints:")
             lines.extend(c_lines)
         if style:
-            lines.append(f"Communication Style: {style}")
+            lines.append(f"Tone: {style}")
         return "\n".join(lines)
 
     elif target == "Manus AI":
-        lines = [f"[AGENT_PERSONA]: {role}"]
-        if constraints:
-            lines.append(f"[PERSONA_CONSTRAINTS]: {constraints}")
-        if style:
-            lines.append(f"[COMMUNICATION_STYLE]: {style}")
+        lines = [f"[AIZEN_CORE]: {AIZEN_IDENTITY}", f"[AGENT_PERSONA]: {role}"]
+        if constraints: lines.append(f"[CONSTRAINTS]: {constraints}")
         return "\n".join(lines)
 
     else:
-        # Midjourney/Flux, DALL-E 3, future targets
-        lines = [f"PERSONA CONTEXT: {role}"]
-        if style:
-            lines.append(f"STYLE VOICE: {style}")
-        return "\n".join(lines)
+        # Midjourney/Flux, DALL-E 3
+        return f"PERSONA: {role} | STYLE: {style}"
 
 
 def get_persona_display_name(persona: Optional[dict]) -> str:
-    """Returns display name for UI badges. 'None' if no persona active."""
     if not persona:
-        return "None"
+        return "✦ AIZEN (Default)"
     return persona.get("name", "Unknown")
