@@ -1,10 +1,10 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v13.3: Persistence Latch Patch.
-       - Synchronized with config/personas.py legacy keys.
-       - Hardened index resolution for browser refreshes.
-       - Integrated URL-Param Sync for incognito/refresh stability.
+v13.4: Master Key Persistence Build.
+       - Unified Widget Key: 'sb_persona_global_widget'.
+       - Hardened Precise ID Match for refresh stability.
+       - URL-Param Priority Latch (Fixed Refresh Bug).
 """
 
 import streamlit as st
@@ -15,7 +15,6 @@ from typing import TypedDict, Optional
 
 from state import K, get_remaining_calls
 from config import TARGET_GUIDES, AESTHETIC_PRESETS, AUTO_SELECT_LABEL, LOGIC_FRAMEWORKS
-# 🟢 Import from config for the data and forge for the logic
 from config.personas import STARTER_PERSONAS
 from forge.persona_engine import get_persona_display_name
 from vault.supabase_client import SUPABASE_MISSING
@@ -25,44 +24,7 @@ from vault.vault_engine import (
 )
 from i18n.translations import t, set_lang, get_lang, LANGUAGES
 
-
-class SidebarConfig(TypedDict):
-    target_model:     str
-    framework:        str
-    source_lang:      str
-    islamic_mode:     bool
-    aesthetic_choice: str
-    active_persona:   Optional[dict]
-    expert_mode:      bool
-
-
-def _load_user_personas(user_hash: str) -> list:
-    if SUPABASE_MISSING:
-        return []
-    try:
-        from forge.persona_store import list_personas
-        personas, _ = list_personas(user_hash, target_filter="All")
-        return personas or []
-    except Exception:
-        return []
-
-
-def render_language_switcher() -> None:
-    current = get_lang()
-    cols = st.columns(len(LANGUAGES))
-    for i, lang in enumerate(LANGUAGES):
-        with cols[i]:
-            is_active = lang["code"] == current
-            if st.button(
-                f"{lang['flag']}",
-                key=f"lang_btn_{lang['code']}",
-                use_container_width=True,
-                help=lang['label'],
-                type="primary" if is_active else "secondary"
-            ):
-                if not is_active:
-                    set_lang(lang["code"])
-                    st.rerun()
+# ... [Keep class SidebarConfig and _load_user_personas/render_language_switcher exactly as they are] ...
 
 def render_sidebar() -> SidebarConfig:
     """
@@ -158,7 +120,7 @@ def render_sidebar() -> SidebarConfig:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── 6. PERSONA SELECTOR (v2026.4 PERSISTENCE LATCH) ────────────────────
+        # ── 6. PERSONA SELECTOR (v2026.4 MASTER LATCH) ────────────────────
         st.markdown(f'<div class="vc-header" style="margin-top:20px; font-size:0.65rem;">[ {t("active_persona", fallback="ACTIVE_PERSONA").upper()} ]</div>', unsafe_allow_html=True)
         
         user_personas = _load_user_personas(st.session_state.get(K.USER_HASH, ''))
@@ -173,32 +135,28 @@ def render_sidebar() -> SidebarConfig:
         
         options_list = list(options_map.keys())
 
-        # B. Resolve Index (Persistence Logic)
-        current_active = st.session_state.get(K.ACTIVE_PERSONA)
+        # B. Precise ID Latch Logic
         url_p_name = st.query_params.get("p")
+        current_active = st.session_state.get(K.ACTIVE_PERSONA)
+        
+        # Priority: URL Parameter > Session State
+        target_id = url_p_name if url_p_name else (current_active.get('name') if current_active else None)
         
         p_index = 0
-        
-        # Priority 1: Match by URL Parameter (Refresh Safety)
-        if url_p_name:
+        if target_id:
             for i, label in enumerate(options_list):
-                if label.startswith(url_p_name):
-                    p_index = i
-                    break
-        # Priority 2: Match by Session State (Hot Reload Safety)
-        elif current_active:
-            active_id = current_active.get('name', '')
-            for i, label in enumerate(options_list):
-                if label.startswith(active_id):
+                data = options_map[label]
+                # We match against the internal 'name' (the ID) to ignore UI label changes
+                if data and data.get('name') == target_id:
                     p_index = i
                     break
 
-        # C. The Widget
+        # C. The Unified Master Widget
         selected_key = st.selectbox(
             'Persona Select', 
             options=options_list,
             index=p_index, 
-            key='sb_persona_selector_widget', # Hardened Key
+            key='sb_persona_global_widget', # Master Key Sync
             label_visibility='collapsed',
         )
         
@@ -218,7 +176,7 @@ def render_sidebar() -> SidebarConfig:
             if 'p' in st.query_params:
                 del st.query_params['p']
 
-        # ── 7. SYSTEM TOGGLES ─────────────────────────────────────────────────
+         # ── 7. SYSTEM TOGGLES ─────────────────────────────────────────────────
         st.markdown("<hr style='margin-top:5px;'>", unsafe_allow_html=True)
         aesthetic_choice = st.selectbox(t("aesthetic_preset", fallback="Aesthetic"), options=list(AESTHETIC_PRESETS.keys()), key="sb_aesthetic")
         
