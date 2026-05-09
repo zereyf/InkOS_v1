@@ -1,10 +1,11 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2026.4.4: Master Sync — Bootloader Hardened.
-           - Destroyed duplicate Persona Rehydration trap.
-           - Injected Task 10 Startup Validation matrix.
-           - V3 Brute-Force Tactical Toggle Override Active.
+v2026.4.6: Master Sync — Horizontal Navigation Refactor.
+           - REFACTORED: Global navigation moved to top-level tabs.
+           - INTEGRATED: "ABOUT" tab persistent across all identity states.
+           - ENFORCED: Soft-Gate Workspace logic (Splash renders inside tab).
+           - PURGED: Standard OS Emojis and sidebar navigation radio.
 """
 
 import sys
@@ -17,10 +18,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 
-# 1. Page Config must be first
+# 1. Page Config must be first — Emoji purged
 st.set_page_config(
     page_title="InkOS", 
-    page_icon="⚡", 
+    page_icon="❖", 
     layout="wide", 
     initial_sidebar_state="expanded"
 )
@@ -29,6 +30,8 @@ from config import API_KEY_MISSING
 from state import init_session_state, K
 from ui.styles import STYLES
 from ui.sidebar import render_sidebar
+from ui.splash import render_splash_screen
+from ui.tabs.about import render_about      # 🟢 New Import
 from ui.tabs.workspace import render_workspace
 from ui.tabs.archive import render_archive
 from ui.tabs.security_log import render_security_log
@@ -39,7 +42,7 @@ from ui.tabs.guide import render_guide
 from i18n.translations import t, is_rtl
 
 if API_KEY_MISSING:
-    st.error("SYSTEM ERROR: GROQ_API_KEY not found in environment.")
+    st.error("[!] SYSTEM ERROR: GROQ_API_KEY not found in environment.")
     st.stop()
 
 # ── URL REHYDRATION (SID ONLY) ──────────────────────────────────────────────
@@ -49,12 +52,12 @@ if "sid" in st.query_params:
 # ── INITIALIZE STATE ────────────────────────────────────────────────────────
 init_session_state()
 
-# ── 🟢 TASK 10: BOOTSTRAP VALIDATION MATRIX ─────────────────────────────────
+# ── 🟢 BOOTSTRAP VALIDATION MATRIX ─────────────────────────────────
 from config import validate_config
 config_errors = validate_config()
 if config_errors:
     for err in config_errors:
-        st.error(f'CONFIG ERROR: {err}')
+        st.error(f'[!] CONFIG ERROR: {err}')
     st.stop()
 
 # ── CSS ROOT INJECTION: The "AmeerInk" Grit Variables ──────────────────────
@@ -74,75 +77,61 @@ st.markdown("""
         --font-d: 'Impact', sans-serif;
         --font-a: 'Amiri', serif;
     }
+    
+    /* ── Tab Layout Override ── */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 45px;
+        background-color: transparent !important;
+        border: none !important;
+        font-family: var(--font-m) !important;
+        font-size: 0.7rem !important;
+        letter-spacing: 2px !important;
+        color: var(--text-dim) !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: var(--gold) !important;
+        border-bottom: 2px solid var(--gold) !important;
+    }
+
     @keyframes pulse-gold {
         0% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.7); }
         70% { box-shadow: 0 0 0 6px rgba(201, 168, 76, 0); }
         100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0); }
     }
     
-    /* ── TACTICAL TOGGLE SWITCHES (V3 BRUTE-FORCE OVERRIDE) ── */
-    
-    /* 1. Terminal Font for the Label */
-    div[data-testid="stToggle"] label p,
-    div[data-testid="stToggle"] label span {
+    /* ── TACTICAL TOGGLE SWITCHES ── */
+    div[data-testid="stToggle"] label p {
         font-family: var(--font-m) !important;
         font-size: 0.65rem !important;
         letter-spacing: 1px !important;
         color: var(--text-muted) !important;
         text-transform: uppercase !important;
     }
-
-    /* 2. Square the Track (Inactive) */
-    div[data-testid="stToggle"] label > div:first-of-type {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        border-radius: 2px !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    }
-
-    /* 3. Square the Thumb (Inactive) */
-    div[data-testid="stToggle"] label > div:first-of-type > div {
-        background-color: var(--text-dim) !important;
-        border-radius: 1px !important;
-        box-shadow: none !important;
-    }
-
-    /* 4. ACTIVE STATE: The Amber Forensic Track */
-    div[data-testid="stToggle"] input:checked + div {
-        background-color: rgba(201, 168, 76, 0.15) !important;
-        border-color: var(--gold) !important;
-        box-shadow: inset 0 0 8px rgba(201, 168, 76, 0.1) !important;
-    }
-
-    /* 5. ACTIVE STATE: The Glowing Amber Thumb */
-    div[data-testid="stToggle"] input:checked + div > div {
-        background-color: var(--gold) !important;
-        box-shadow: 0 0 8px rgba(201, 168, 76, 0.6) !important;
-    }
-
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown(STYLES, unsafe_allow_html=True)
 
-# ── REHYDRATION PROTOCOL (Zero-Cost Persistence) ─────────────────────────────
+# ── REHYDRATION PROTOCOL ─────────────────────────────────────────────
 current_sid = st.session_state.get(K.USER_HASH)
+is_guest = not current_sid or "GUEST_" in str(current_sid).upper()
 
-if current_sid and not str(current_sid).upper().startswith("GUEST_"):
+if not is_guest:
     if not st.session_state.get("boot_rehydrated"):
         with st.spinner("Re-establishing Neural Uplink..."):
             from vault.vault_engine import rehydrate_session
             recovered = rehydrate_session(current_sid)
-            
             if recovered:
                 st.session_state[K.PERSONA_LIST] = recovered.get("personas", [])
-                
-                # Recover DNA Strings (Only overwrite if data exists in DB)
                 dna = recovered.get("dna", {})
                 if dna.get("ink"): st.session_state[K.INK_DNA] = dna["ink"]
                 if dna.get("intel"): st.session_state[K.INTEL_DNA] = dna["intel"]
                 if dna.get("hikmah"): st.session_state[K.HIKMAH_DNA] = dna["hikmah"]
-                
-                st.toast(f"Terminal Identity Rehydrated: {current_sid[:8]}", icon="⚡")
+                st.toast(f"> IDENTITY REHYDRATED: {current_sid[:8]}")
         st.session_state["boot_rehydrated"] = True
 
 # ── SECURITY GATE: LOCKOUT CHECK ────────────────────────────────────────────
@@ -154,7 +143,7 @@ if lockout_ts:
         lockout_html = textwrap.dedent(f"""
             <div style="height:80vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
                 <div style="font-family:var(--font-m); color:var(--danger); font-size:2rem; letter-spacing:4px; margin-bottom:10px;">
-                    TERMINAL LOCKED
+                    [ ⨂ ] TERMINAL LOCKED
                 </div>
                 <div style="font-family:var(--font-m); color:var(--text-muted); font-size:0.8rem; max-width:400px; line-height:1.6;">
                     Multiple failed authentication attempts detected.<br>
@@ -175,11 +164,11 @@ if current_sid:
 
 # ── BOOT SEQUENCE ───────────────────────────────────────────────────────────
 if "boot_complete" not in st.session_state:
-    if not current_sid or "GUEST_" in str(current_sid).upper():
-        st.toast("InkOS System Initialized. Running in Ghost Mode.", icon="📡")
+    if is_guest:
+        st.toast("> SYSTEM INITIALIZED [ GHOST MODE ]")
     else:
         if "boot_rehydrated" not in st.session_state:
-            st.toast(f"Terminal Identity Latch: {current_sid[:8]}", icon="🔐")
+            st.toast(f"[◈] IDENTITY LATCH: {current_sid[:8]}")
     st.session_state["boot_complete"] = True
 
 # ── RTL CLASS INJECTION ─────────────────────────────────────────────────────
@@ -187,27 +176,37 @@ rtl_js = "<script>const app = window.parent.document.querySelector('.stApp'); if
 ltr_js = "<script>const app = window.parent.document.querySelector('.stApp'); if (app) app.classList.remove('rtl-mode');</script>"
 st.markdown(rtl_js if is_rtl() else ltr_js, unsafe_allow_html=True)
 
-# ── NAVIGATION MATRIX ───────────────────────────────────────────────────────
-nav_options = {
-    t("tab_workspace"):     render_workspace,
-    t("tab_archive"):       render_archive,
-    t("tab_security"):      render_security_log,
-    t("tab_cognitive_map"): render_cognitive_map,
-    t("tab_vault"):         render_vault,
-    t("tab_forge"):         render_forge,
-    t("tab_guide"):         render_guide,
-}
-
+# ── COMMAND DECK (Sidebar) ──────────────────────────────────────────────────
 with st.sidebar:
-    selected_nav = st.radio("Nav", list(nav_options.keys()), label_visibility="collapsed")
+    if is_guest:
+        st.markdown("<div style='text-align:center; color:var(--danger); font-family:var(--font-m); font-size:0.7rem; letter-spacing:2px; margin-bottom:15px;'>[ ⨂ ] ACCESS RESTRICTED</div>", unsafe_allow_html=True)
     st.markdown("---")
     cfg = render_sidebar()
 
-# Store config globally for the execution loop
+# Store config globally
 st.session_state["app_config"] = cfg
 
-# ── EXECUTE SELECTED TAB ────────────────────────────────────────────────────
-if selected_nav == t("tab_workspace"):
-    nav_options[selected_nav](cfg)
-else:
-    nav_options[selected_nav]()
+# ── NAVIGATION MATRIX: Horizontal Tabular Refactor ──────────────────────────
+# 🟢 Architecture: Documentation is global. Functional assets are identity-locked.
+
+tab_labels = [t("tab_workspace"), t("tab_vault"), "ABOUT"]
+tab_workspace, tab_vault, tab_about = st.tabs(tab_labels)
+
+with tab_workspace:
+    if is_guest:
+        # Show the Gateway UI if not latched
+        render_splash_screen()
+    else:
+        # Show the full logic workspace if latched
+        render_workspace(cfg)
+
+with tab_vault:
+    if is_guest:
+        st.markdown("<div style='height:100px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align:center; font-family:var(--font-m); color:var(--text-dim); letter-spacing:1px;'>[ ⨂ ] NEURAL VAULT LOCKED: IDENTITY LATCH REQUIRED.</div>", unsafe_allow_html=True)
+    else:
+        render_vault()
+
+with tab_about:
+    # Globally accessible architecture manifesto
+    render_about()
