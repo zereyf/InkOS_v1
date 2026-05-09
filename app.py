@@ -127,42 +127,48 @@ if active_broadcast:
 # ── 🟢 TACTICAL MENU CSS HACK ───────────────────────────────────────────────
 st.markdown("""
 <style>
-    /* Hide the default radio circles completely */
-    [data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"] div:first-child {
+    /* 1. Target ONLY the Navigation Radio Group (Protects Input Language) */
+    div[role="radiogroup"][aria-label="Navigation"] {
+        gap: 0 !important;
+    }
+    
+    /* 2. Hide specifically the radio circle, not the text */
+    div[role="radiogroup"][aria-label="Navigation"] label > div:first-child {
         display: none !important;
     }
     
-    /* Style the radio items to look like full-width blocks */
-    [data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"] {
-        background-color: transparent;
-        border: 1px solid rgba(255,255,255,0.01);
-        border-bottom: 1px solid rgba(255,255,255,0.05); /* Faint separator */
-        border-left: 4px solid transparent; /* Space for the active gold bar */
-        padding: 16px 20px;
-        margin: 0;
-        border-radius: 0;
-        width: 100%;
-        cursor: pointer;
-        transition: all 0.2s ease;
+    /* 3. Style the Navigation blocks */
+    div[role="radiogroup"][aria-label="Navigation"] label {
+        background-color: transparent !important;
+        border: 1px solid rgba(255,255,255,0.01) !important;
+        border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+        border-left: 4px solid transparent !important;
+        padding: 12px 20px !important;
+        margin: 0 !important;
+        width: 100% !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
     }
     
-    /* Hover effect */
-    [data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"]:hover {
-        background-color: rgba(255,255,255,0.02);
+    /* 4. Hover effect */
+    div[role="radiogroup"][aria-label="Navigation"] label:hover {
+        background-color: rgba(255,255,255,0.02) !important;
     }
     
-    /* Default Text styling */
-    [data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"] p {
+    /* 5. Base Text Styling */
+    div[role="radiogroup"][aria-label="Navigation"] label p {
         color: var(--text-dim) !important;
         font-family: var(--font-m) !important;
         font-size: 0.85rem !important;
         letter-spacing: 2px !important;
         text-transform: uppercase !important;
         margin: 0 !important;
+        visibility: visible !important;
+        display: block !important;
     }
     
-    /* 🟢 ACTIVE STATE STYLING (Gold Border + Gradient) */
-    [data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) {
+    /* 6. 🟢 ACTIVE STATE STYLING */
+    div[role="radiogroup"][aria-label="Navigation"] label:has(input:checked) {
         background: linear-gradient(90deg, rgba(201, 168, 76, 0.08) 0%, transparent 100%) !important;
         border-left: 4px solid var(--gold) !important;
         border-top: 1px solid rgba(201, 168, 76, 0.05) !important;
@@ -170,17 +176,13 @@ st.markdown("""
     }
     
     /* Active Text Color */
-    [data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) p {
+    div[role="radiogroup"][aria-label="Navigation"] label:has(input:checked) p {
         color: var(--gold) !important;
         font-weight: 600 !important;
     }
-    
-    /* Remove gaps between items */
-    [data-testid="stSidebar"] div[role="radiogroup"] {
-        gap: 0 !important;
-    }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # ── COMMAND DECK (Sidebar) ──────────────────────────────────────────────────
