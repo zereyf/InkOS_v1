@@ -1,8 +1,9 @@
 """
 state.py — Session State Contract
 ===================================
-v20.6: Overwatch Edition.
+v20.7: Overwatch Edition.
        ADDED: IS_ADMIN and MAINTENANCE_MODE for Root Access.
+       ADDED: GLOBAL_BROADCAST for terminal-wide directives.
 """
 
 import uuid
@@ -27,6 +28,7 @@ class K:
     # ── 🟢 OVERWATCH (BOSS MODE) ────────────────────────────────────────────
     IS_ADMIN         = "is_admin"
     MAINTENANCE_MODE = "maintenance_mode"
+    GLOBAL_BROADCAST = "global_broadcast"  # 🟢 ADDED
     
     # ── HUD METRICS ─────────────────────────────────────────────────
     LAST_RESULT     = "last_result"
@@ -67,6 +69,7 @@ _DEFAULTS: dict = {
     # ── 🟢 ADMIN DEFAULTS ──
     K.IS_ADMIN:         False,
     K.MAINTENANCE_MODE: False,
+    K.GLOBAL_BROADCAST: None,  # 🟢 ADDED
     
     K.LAST_RESULT:     None,
     K.LAST_AUDIT:      {},              
@@ -117,7 +120,7 @@ def reset_session() -> None:
     preserved = {
         K.USER_HASH:       st.session_state.get(K.USER_HASH),
         K.USER_PIN:        st.session_state.get(K.USER_PIN),
-        K.IS_ADMIN:        st.session_state.get(K.IS_ADMIN),    # 🟢 PRESERVE ADMIN
+        K.IS_ADMIN:        st.session_state.get(K.IS_ADMIN),    
         K.INK_DNA:         st.session_state.get(K.INK_DNA),
         K.INTEL_DNA:       st.session_state.get(K.INTEL_DNA),
         K.HIKMAH_DNA:      st.session_state.get(K.HIKMAH_DNA),
