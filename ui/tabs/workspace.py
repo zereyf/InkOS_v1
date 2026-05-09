@@ -115,13 +115,14 @@ def render_workspace(cfg: dict) -> None:
         f'<div class="vc-header" style="margin:0; display:flex; align-items:center; flex-wrap:nowrap;">'
         f'<span class="status-dot"></span><span style="padding-right:15px; flex-shrink:0;">{t("tab_workspace", fallback="WORKSPACE")}</span>'
         f'{expert_badge}{islamic_badge}{persona_badge}{misalignment_badge}</div>'
-        f'<div style="font-family:var(--font-a); color:var(--gold); font-size:1.1rem; opacity:0.9; flex-shrink:0;">حبر وفكرة</div></div>'
+        f'</div>'
         f'<div style="display:flex; justify-content:space-between; font-family:var(--font-m); font-size:0.55rem; color:var(--text-dim); letter-spacing:1px; margin-bottom:15px; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">'
         f'<div>A.I.Z.E.N. // REF: {(st.session_state.get(K.USER_HASH) or "GHOST_ID")[:8]}</div>'
         f'<div>LOAD: {cognitive_load} B</div></div>'
     ).replace("\n", "")
     
     st.markdown(header_html, unsafe_allow_html=True)
+
 
     # ── 2. DNA ARMORY & GHOST WARNING ────────────────────────────────────────
     current_uid = st.session_state.get(K.USER_HASH)
