@@ -1,38 +1,43 @@
 """
 forge/persona_engine.py — Persona Logic Controller
 ====================================================
-v9.2: Logic/Data Separation Build.
-      - Transforms static assets from config/personas.py.
-      - Handles operational target-specific injection.
+v9.3: Type-Agnostic Build.
+      - Handles both dict (Session State) and str (Legacy/Direct) inputs.
+      - Synchronized with Refiner v9.4.3.
 """
 
-from typing import Optional
+from typing import Optional, Any
 import textwrap
-# 🟢 Importing the Data from the Vault we just sync'd
+# 🟢 Importing the Data from the Vault
 from config.personas import AIZEN_IDENTITY, STARTER_PERSONAS
 
-def inject_persona(persona_name: Optional[str], target: str) -> str:
+def inject_persona(persona_input: Optional[Any], target: str) -> str:
     """
-    The main engine for prompt transformation.
-    Takes a selection and converts it into a high-pressure instruction block.
+    Surgical Injection Engine.
+    Resolves the persona input into a formatted block for the target model.
     """
-    # 1. Fallback to AIZEN Core if no persona is selected
-    if not persona_name or persona_name not in STARTER_PERSONAS:
+    p_data = None
+
+    # 1. RESOLUTION PHASE: Dict vs String
+    if isinstance(persona_input, dict):
+        # Direct dictionary passed (Common in current Workspace)
+        p_data = persona_input
+    elif isinstance(persona_input, str):
+        # String name passed (Common in Legacy or API calls)
+        p_data = STARTER_PERSONAS.get(persona_input)
+    
+    # 2. FALLBACK PHASE: If no valid data found, return Master Identity
+    if not p_data:
         return AIZEN_IDENTITY
 
-    p_data = STARTER_PERSONAS[persona_name]
-    if p_data is None: 
-        return AIZEN_IDENTITY
-    
-    # 2. Extract specific expert traits
+    # 3. EXTRACTION PHASE
     name = p_data.get("name", "Expert")
     role = p_data.get("role", "")
     anti = p_data.get("anti_pattern", "Avoid generic responses.")
     tone = p_data.get("tone", "Professional and analytical.")
 
-    # 3. Target-Specific Assembly Matrix
+    # 4. ASSEMBLY PHASE: Target-Specific Formatting
     if target == "Claude":
-        # Claude responds best to nested XML for instruction weighting
         return textwrap.dedent(f"""
             {AIZEN_IDENTITY}
             <active_specialist>
@@ -46,7 +51,6 @@ def inject_persona(persona_name: Optional[str], target: str) -> str:
         """).strip()
 
     elif target == "ChatGPT":
-        # GPT-4o prefers direct "SYSTEM OVERRIDE" and bulleted lists
         return textwrap.dedent(f"""
             {AIZEN_IDENTITY}
             SYSTEM OVERRIDE — ADOPT EXPERT LAYER: {name}
@@ -59,14 +63,11 @@ def inject_persona(persona_name: Optional[str], target: str) -> str:
         return f"[AIZEN_CORE]\n[AGENT_PERSONA]: {role}\n[TONE]: {tone}\n[NEVER]: {anti}"
 
     else:
-        # Default fallback for Image Models (Midjourney/Flux)
+        # Default for Image Models or General Fallback
         return f"{AIZEN_IDENTITY}\nPERSONA: {role} | TONE: {tone}"
 
 def get_persona_display_name(persona_data: Optional[dict]) -> str:
-    """
-    Helper for UI badges. 
-    Note: This expects a dict because it's often called on session_state[K.ACTIVE_PERSONA]
-    """
+    """Helper for UI badges."""
     if not persona_data:
         return "None"
     return persona_data.get("name", "Unknown")
