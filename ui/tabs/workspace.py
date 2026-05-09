@@ -1,11 +1,12 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v31.5: Final Launch Protocol — Cosmetic Polish.
+v31.6: Final Launch Protocol — Terminal Typography Enforced.
        - FIXED: Manual Target selection now overrides the Auto-Router.
        - Eliminated HTML Leaks (Atomic String Concatenation).
        - Stabilized Thermal HUD (Zero-Lag Cognitive Metrics).
        - INJECTED: InkOS Standard (8B) Launch Telemetry.
+       - PURGED: Standard Emojis removed for UI consistency.
 """
 
 import textwrap
@@ -76,7 +77,8 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
     
     st.markdown(score_html, unsafe_allow_html=True)
     if expert_mode:
-        with st.expander("🛠️ NEURAL UPLINK DIAGNOSTICS"):
+        # 🟢 PURGED: Replaced tool emoji with ❖
+        with st.expander("❖ NEURAL UPLINK DIAGNOSTICS"):
             st.json(safe_audit)
 
 # ── MAIN RENDERER ─────────────────────────────────────────────────────────────
@@ -96,7 +98,9 @@ def render_workspace(cfg: dict) -> None:
 
     current_global_target = cfg.get("target_model")
     is_misaligned = p_target != "All" and p_target != current_global_target and current_global_target != AUTO_SELECT_LABEL
-    misalignment_badge = f"&nbsp;<span style='background:rgba(229,62,62,0.15); color:#FF4B4B; border:1px solid #FF4B4B; padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>⚠️ MISMATCH</span>" if is_misaligned else ""
+    
+    # 🟢 PURGED: Replaced ⚠️ with [!]
+    misalignment_badge = f"&nbsp;<span style='background:rgba(229,62,62,0.15); color:#FF4B4B; border:1px solid #FF4B4B; padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>[!] MISMATCH</span>" if is_misaligned else ""
 
     expert_badge = f"&nbsp;<span style='background:rgba(229,62,62,0.1); color:var(--danger); border:1px solid rgba(229,62,62,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>EXPERT</span>" if cfg.get("expert_mode") else ""
     islamic_badge = f"&nbsp;<span style='background:rgba(76,175,154,0.1); color:#4CAF9A; border:1px solid rgba(76,175,154,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>HIKMAH</span>" if cfg.get("islamic_mode") else ""
@@ -161,7 +165,8 @@ def render_workspace(cfg: dict) -> None:
         col_cta, _ = st.columns([1, 2])
         with col_cta:
             if st.button("[ INITIATE LATCH ]", key="btn_latch_ghost", use_container_width=True):
-                st.toast("Awaiting identity credentials in the Sidebar Command Deck.", icon="📡")
+                # 🟢 PURGED: Replaced 📡 with Text Typography
+                st.toast("> AWAITING CREDENTIALS.")
         st.markdown("<div style='height:15px;'></div>", unsafe_allow_html=True)
 
 
@@ -189,10 +194,11 @@ def render_workspace(cfg: dict) -> None:
                             curr_val = st.session_state.get("ta_input_widget", "")
                             st.session_state["ta_input_widget"] = f"{curr_val} {transcription.text}".strip()
                             st.session_state["last_audio_hash"] = current_audio_hash
-                            st.toast("Voice Transcribed.", icon="🎙️")
+                            # 🟢 PURGED: Replaced 🎙️ with Text Typography
+                            st.toast("> AUDIO_IN TRANSCRIBED.")
                             st.rerun()
                     except Exception as e:
-                        st.error(f"Voice Uplink Failed: {e}")
+                        st.error(f"[!] Voice Uplink Failed: {e}")
 
     with v_col2:
         intent_val = st.text_area(
@@ -296,7 +302,7 @@ def render_workspace(cfg: dict) -> None:
                 if st.button("SECURE"):
                     uid = st.session_state.get(K.USER_HASH)
                     if not uid or "GUEST_" in str(uid).upper():
-                        st.error("Vault Lock Failed: Identity Unlatched.")
+                        st.error("[!] Vault Lock Failed: Identity Unlatched.")
                     else:
                         from vault.vault_engine import save_prompt
                         res, err = save_prompt(
@@ -309,6 +315,7 @@ def render_workspace(cfg: dict) -> None:
                         )
                         if not err:
                             st.session_state[K.LAST_SAVED] = datetime.now().strftime("%H:%M")
-                            st.toast("Neural Vault Updated.")
+                            # 🟢 PURGED: Replaced simple text with bracket iconography
+                            st.toast("[◈] NEURAL VAULT SECURED.")
                             st.rerun()
-                        else: st.error(f"Vault Lock Failed: {err}")
+                        else: st.error(f"[!] Vault Lock Failed: {err}")
