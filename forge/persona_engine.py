@@ -1,58 +1,72 @@
 """
-forge/persona_engine.py — Persona Injection Engine
-==================================================
-v9.1: Logic Layer.
-      - Imports from config/personas.py.
-      - Handles target-specific prompt assembly.
+forge/persona_engine.py — Persona Logic Controller
+====================================================
+v9.2: Logic/Data Separation Build.
+      - Transforms static assets from config/personas.py.
+      - Handles operational target-specific injection.
 """
 
 from typing import Optional
 import textwrap
-# 🟢 Importing Data from the Vault
+# 🟢 Importing the Data from the Vault we just sync'd
 from config.personas import AIZEN_IDENTITY, STARTER_PERSONAS
 
 def inject_persona(persona_name: Optional[str], target: str) -> str:
     """
-    Transforms a persona selection into a formatted system block.
+    The main engine for prompt transformation.
+    Takes a selection and converts it into a high-pressure instruction block.
     """
+    # 1. Fallback to AIZEN Core if no persona is selected
     if not persona_name or persona_name not in STARTER_PERSONAS:
         return AIZEN_IDENTITY
 
-    p = STARTER_PERSONAS[persona_name]
-    if p is None: return AIZEN_IDENTITY
+    p_data = STARTER_PERSONAS[persona_name]
+    if p_data is None: 
+        return AIZEN_IDENTITY
     
-    name, role, anti, tone = p["name"], p["role"], p["anti_pattern"], p["tone"]
+    # 2. Extract specific expert traits
+    name = p_data.get("name", "Expert")
+    role = p_data.get("role", "")
+    anti = p_data.get("anti_pattern", "Avoid generic responses.")
+    tone = p_data.get("tone", "Professional and analytical.")
 
-    # ── TARGET-SPECIFIC ASSEMBLY ──────────────────────────────────────────
+    # 3. Target-Specific Assembly Matrix
     if target == "Claude":
+        # Claude responds best to nested XML for instruction weighting
         return textwrap.dedent(f"""
             {AIZEN_IDENTITY}
             <active_specialist>
               <name>{name}</name>
               <role>{role}</role>
               <constraints>
-                <anti_pattern_avoid>{anti}</anti_pattern_avoid>
+                <critical_anti_pattern>{anti}</critical_anti_pattern>
               </constraints>
               <tonal_anchor>{tone}</tonal_anchor>
             </active_specialist>
         """).strip()
 
     elif target == "ChatGPT":
+        # GPT-4o prefers direct "SYSTEM OVERRIDE" and bulleted lists
         return textwrap.dedent(f"""
             {AIZEN_IDENTITY}
-            SYSTEM OVERRIDE — ADOPT EXPERT: {name}
+            SYSTEM OVERRIDE — ADOPT EXPERT LAYER: {name}
             - ROLE: {role}
             - AVOID: {anti}
             - TONE: {tone}
         """).strip()
 
     elif target == "Manus AI":
-        return f"[AIZEN_CORE]: {AIZEN_IDENTITY}\n[AGENT_PERSONA]: {role}\n[ANTI_PATTERN]: {anti}"
+        return f"[AIZEN_CORE]\n[AGENT_PERSONA]: {role}\n[TONE]: {tone}\n[NEVER]: {anti}"
 
     else:
-        # Default for Image Models or fallback
-        return f"{AIZEN_IDENTITY}\nPersona Context: {role} | Tone: {tone}"
+        # Default fallback for Image Models (Midjourney/Flux)
+        return f"{AIZEN_IDENTITY}\nPERSONA: {role} | TONE: {tone}"
 
-def get_persona_display_name(persona_name: Optional[str]) -> str:
-    """Helper for UI badges."""
-    return persona_name if persona_name else "✦ AIZEN (Mastermind)"
+def get_persona_display_name(persona_data: Optional[dict]) -> str:
+    """
+    Helper for UI badges. 
+    Note: This expects a dict because it's often called on session_state[K.ACTIVE_PERSONA]
+    """
+    if not persona_data:
+        return "None"
+    return persona_data.get("name", "Unknown")
