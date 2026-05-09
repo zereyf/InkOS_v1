@@ -87,21 +87,27 @@ def render_workspace(cfg: dict) -> None:
     raw_text = st.session_state.get("ta_input_widget") or ""
     cognitive_load = len(raw_text)
 
-    # Active Persona Logic
+       # Active Persona Logic
     active_persona = st.session_state.get(K.ACTIVE_PERSONA)
     p_name, p_target = "", "All"
     if isinstance(active_persona, dict):
-        p_name, p_target = active_persona.get("name", "").upper(), active_persona.get("target", "All")
+        raw_name = active_persona.get("name", "").upper()
+        # 🟢 ANTI-COLLISION: Truncate name if it's too long for mobile
+        p_name = raw_name if len(raw_name) <= 10 else raw_name[:10] + "..."
+        p_target = active_persona.get("target", "All")
 
-    # Thermal Drift Warning
+    # Thermal Drift Warning (Shortened)
     current_global_target = cfg.get("target_model")
     is_misaligned = p_target != "All" and p_target != current_global_target
-    misalignment_badge = f"&nbsp;<span style='background:rgba(229,62,62,0.15); color:#FF4B4B; border:1px solid #FF4B4B; padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>⚠️ THERMAL DRIFT: TARGET MISMATCH</span>" if is_misaligned else ""
+    misalignment_badge = f"&nbsp;<span style='background:rgba(229,62,62,0.15); color:#FF4B4B; border:1px solid #FF4B4B; padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>⚠️ MISMATCH</span>" if is_misaligned else ""
 
-    # Badge Logic
+    # Badge Logic (Shortened for mobile spacing)
     expert_badge = f"&nbsp;<span style='background:rgba(229,62,62,0.1); color:var(--danger); border:1px solid rgba(229,62,62,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>EXPERT</span>" if cfg.get("expert_mode") else ""
-    islamic_badge = f"&nbsp;<span style='background:rgba(76,175,154,0.1); color:#4CAF9A; border:1px solid rgba(76,175,154,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>HIKMAH LATCH</span>" if cfg.get("islamic_mode") else ""
-    persona_badge = f"&nbsp;<span style='background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>PERSONA: {p_name}</span>" if p_name else ""
+    islamic_badge = f"&nbsp;<span style='background:rgba(76,175,154,0.1); color:#4CAF9A; border:1px solid rgba(76,175,154,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>HIKMAH</span>" if cfg.get("islamic_mode") else ""
+    
+    # Persona Badge (Added CSS constraints)
+    persona_badge = f"&nbsp;<span style='background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:1; display:inline-block; vertical-align:middle; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:90px;'>{p_name}</span>" if p_name else ""
+
 
     # 🟢 ATOMIC HEADER: No newlines or indentation to prevent raw HTML leaks
     header_html = (
