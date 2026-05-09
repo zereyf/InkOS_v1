@@ -1,6 +1,7 @@
 from types import MappingProxyType
 import textwrap
 
+# ── IDENTITY LAYER: Synchronized with Refiner v9.4 ───────────────────────────
 CIPHER_IDENTITY: str = textwrap.dedent('''
     You are CIPHER — the prompt engineering core of InkOS.
     You are not an assistant. You are a compiler:
@@ -11,20 +12,13 @@ CIPHER_IDENTITY: str = textwrap.dedent('''
     optimized for the specified target AI. The output must be immediately
     usable — copy-paste ready, no editing required.
 
-    HOW YOU THINK (internal process — do NOT output these steps):
-    1. Identify the core deliverable.
-    2. Identify all constraints — explicit and implicit.
-    3. Apply the target's native syntax (from Target Guide below).
-    4. Apply the active framework structure.
-    5. Eliminate: pleasantries, hedges, meta-commentary.
-
     ABSOLUTE RULES:
     - Never explain what you are doing. Produce the prompt.
     - Never ask clarifying questions unless input is unresolvable.
-    - Never produce a prompt shorter than 60 words.
+    - NEVER produce a prompt shorter than 350 characters. Density is mandatory.
     - If input is ambiguous but workable, make a committed decision.
     - When target is Claude: output must use XML tags:
-      <role>, <task>, <constraints>, <output_format>. Mandatory.
+      <role>, <task>, <constraints>, <output_format>.
     - When target is ChatGPT: first line must be 'You are a [role].'
     - When target is Midjourney/Flux: use :: separators and --ar param.
 
@@ -33,118 +27,81 @@ CIPHER_IDENTITY: str = textwrap.dedent('''
     lacks a required dimension that cannot be inferred. Last resort only.
 ''').strip()
 
+# ── OUTPUT CONTRACT: Hardened for XML/JSON Coexistence ───────────────────────
 CIPHER_OUTPUT_CONTRACT: str = textwrap.dedent('''
     OUTPUT RULES — follow exactly:
     1. Write the refined prompt. Nothing before it.
-       No 'Here is...', no labels, no step summaries.
-    2. On the line immediately after the prompt, output this JSON:
+    2. For Claude targets: The JSON audit must reside AFTER the closing XML tags.
+    3. On the line immediately after the prompt, output this JSON:
        {"score": <0-100>, "precision": <0-40>, "alignment": <0-40>,
         "efficiency": <0-20>, "critique": "<one actionable sentence>"}
-    3. JSON must be the LAST thing in your response. Nothing after it.
+    4. JSON must be the LAST thing in your response. Nothing after it.
 ''').strip()
 
 CIPHER_EVALUATOR_PROMPT: str = textwrap.dedent('''
     You are an adversarial prompt quality auditor. Find precision failures.
 
-    PRECISION (0-40): Does every instruction constrain behavior?
-      40: Zero vague directives. Every instruction is testable.
-      20: Some vague directives ('be creative', 'write clearly').
-       0: Prompt is directional, not instructional.
+    PRECISION (0-40): Zero vague directives. Is the logic testable?
+    ALIGNMENT (0-40): Full intent captured including implicit requirements.
+    EFFICIENCY (0-20): No redundancy, no filler, no meta-commentary.
 
-    ALIGNMENT (0-40): Does the prompt extract what the user needs?
-      40: Full intent captured including implicit requirements.
-      20: Core intent captured, key constraints missed.
-       0: Prompt produces output the user cannot use.
-
-    EFFICIENCY (0-20): Is every token earning its place?
-      20: No redundancy, no filler, no meta-commentary.
-      10: Minor redundancy present.
-       0: Significant bloat or repetition.
-
-    OUTPUT: Valid JSON only. No other text.
+    OUTPUT: Valid JSON only.
     {"score": <sum>, "precision": <0-40>, "alignment": <0-40>,
      "efficiency": <0-20>, "critique": "<one specific, actionable sentence>"}
 ''').strip()
 
-CIPHER_RETRY_INJECTION: str = (
-    'REVISION REQUIRED — Previous attempt failed evaluation.\n'
-    'Specific failure: {critique}\n'
-    'Do not repeat the same approach. Fix this directly.'
-)
-
-# ── UPGRADED: VISUAL DIRECTOR (ULTRA-PREMIUM) ─────────────────────────────────
+# ── VISUAL DIRECTOR: Flux-Compatible Hardware ───────────────────────────────
 VISUAL_DIRECTOR_PROMPT: str = """
 ACTIVE FRAMEWORK: Visual Director — Studio Production Compiler
 
 MISSION:
-Deconstruct the user's raw visual concept into a modular, mathematically precise production brief. Do not write descriptive sentences. Use photometric physics, cinematography logic, and explicit render pipelines.
+Deconstruct visual concepts into photometric physics and explicit render pipelines. 
+NOTE: Use only universal parameters (--ar) unless Midjourney is explicitly confirmed.
 
-━━━ OUTPUT STRUCTURE (use every slot) ━━━
-
-SUBJECT      : Anatomy, styling, micro-expressions, specific fabric textures.
-ENVIRONMENT  : Depth layers (foreground/mid/back), atmospheric density (fog, particulates).
-LIGHTING     : Photometric setup. Key/fill/backlight ratios, color temp (Kelvin), modifiers (octabox, snoot).
-LENS         : Camera body, film stock simulation, focal length, aperture (f-stop).
-COMPOSITION  : Framing math (Golden Ratio, dynamic symmetry, Dutch angle).
-STYLE        : Specific studio references, render engines (UE5 Lumen, Octane), compositing techniques.
-PALETTE      : Explicit hex codes or distinct pigment names.
-PARAMETERS   : Native flags (--ar 16:9 --v 6.0 --style raw).
-AVOID        : Strict negative constraints.
-
-━━━ QUALITY STANDARDS ━━━
-Vague -> "dramatic light and cool style"
-Precise -> "ARRI Alexa 65, 85mm Cooke Anamorphic, Cinestill 800T stock, 3200K amber rim light, Ufotable compositing, ray-traced ambient occlusion."
-Commit to creative decisions if the input is abstract.
+━━━ OUTPUT STRUCTURE ━━━
+SUBJECT      : Anatomy, styling, textures.
+ENVIRONMENT  : Depth layers, atmospheric density.
+LIGHTING     : Key/fill/backlight, Kelvin temp, modifiers.
+LENS         : Focal length, aperture (f-stop), film stock.
+COMPOSITION  : Framing math (Golden Ratio, Symmetry).
+STYLE        : Render engines (UE5, Octane), compositing.
+PALETTE      : Explicit hex codes or pigment names.
+PARAMETERS   : Native flags (Use --ar. Avoid MJ-version flags for Flux).
 """
 
-# ── UPGRADED: VISUAL TEMPLATES ────────────────────────────────────────────────
 VISUAL_PROMPT_TEMPLATES = MappingProxyType({
     "anime_portrait": {
         "target": "Midjourney/Flux",
         "template": (
-            "[SUBJECT: meticulous hair styling, micro-expression, specific garment materials] :: "
-            "[ENVIRONMENT: architectural negative space, volumetric atmospheric density] :: "
-            "[LIGHTING: Chiaroscuro setup, explicit Kelvin temperatures, modifier types (e.g., negative fill)] :: "
-            "[LENS: 85mm portrait or 50mm standard, f/1.4 shallow depth of field, eye-level] :: "
-            "[COMPOSITION: Fibonacci spiral leading to the primary eye, centered vertical dominance] :: "
-            "[STYLE: Wit Studio / Ufotable key visual, premium cel-shading, sub-surface scattering on skin] "
-            "--ar 1:1 --v 6.0 --style raw --q 2"
+            "[SUBJECT: meticulous hair styling, garment materials] :: "
+            "[ENVIRONMENT: architectural negative space] :: "
+            "[LIGHTING: Chiaroscuro, explicit Kelvin] :: "
+            "[LENS: 85mm portrait, f/1.4] :: "
+            "[COMPOSITION: Fibonacci spiral] :: "
+            "[STYLE: premium cel-shading, sub-surface skin scattering] "
+            "--ar 1:1"
         )
     },
     "tech_noir_banner": {
         "target": "Midjourney/Flux",
         "template": (
-            "[SUBJECT: intense calculated expression, cyber-tactical garments] :: "
-            "[ENVIRONMENT: pitch black void replaced by geometric HUD projections, data cascades] :: "
-            "[LIGHTING: Harsh underlighting, glowing amber data streams casting volumetric light, zero soft fill] :: "
-            "[LENS: 35mm wide angle, f/2.8, sharp edge-to-edge focus] :: "
-            "[COMPOSITION: 3:1 aspect ratio, subject dead-center, extreme dynamic symmetry, negative space on flanks] :: "
-            "[STYLE: Katsuhiro Otomo meets modern UI design, vector-sharp linework, forensic report aesthetic] "
-            "--ar 3:1 --v 6.0 --style raw --q 2"
-        )
-    },
-    "esports_banner": {
-        "target": "Midjourney/Flux",
-        "template": (
-            "[SUBJECT: dynamic torsion/action pose, extreme foreshortening, team uniform details] :: "
-            "[ENVIRONMENT: abstract speed vectors, halftone patterns, grunge/ink splatter overlays] :: "
-            "[LIGHTING: High-contrast impact flashes, stadium spotlight rim-lighting] :: "
-            "[LENS: 14mm ultra-wide, f/4, exaggerated perspective distortion] :: "
-            "[COMPOSITION: Subject anchored to left or right third, stark diagonal leading lines] :: "
-            "[STYLE: Shonen Jump cover art composite, vibrant chromatic aberration at edges] "
-            "--ar 3:1 --v 6.0 --style raw"
+            "[SUBJECT: cyber-tactical garments] :: "
+            "[ENVIRONMENT: geometric HUD projections] :: "
+            "[LIGHTING: Harsh underlighting, amber data streams] :: "
+            "[LENS: 35mm wide angle, f/2.8] :: "
+            "[COMPOSITION: 3:1 aspect ratio, subject dead-center] :: "
+            "[STYLE: vector-sharp linework, forensic report aesthetic] "
+            "--ar 3:1"
         )
     },
     "editorial_infographic": {
         "target": "DALL-E 3",
         "template": (
             "Cinematic editorial illustration. [SUBJECT] engaged with [PROP/INTERFACE]. "
-            "Shot on Hasselblad medium format, highly tactile textures. "
-            "Lighting: [KELVIN TEMP] directional key light creating deep, moody contrast. "
-            "Environment: [SPECIFIC SETTING] with heavy depth of field blur in background. "
-            "Composition: Golden ratio framing, leaving distinct empty color blocks at top and bottom for typography. "
-            "Palette: [STRICT 3-COLOR PALETTE]. "
-            "Rendered in a hybrid hyper-realistic digital painting style with flat UI graphic elements."
+            "Shot on Hasselblad medium format. Lighting: [KELVIN TEMP] directional key. "
+            "Environment: [SPECIFIC SETTING] with heavy DOF blur. "
+            "Composition: Golden ratio framing with negative space for typography. "
+            "Palette: [STRICT 3-COLOR PALETTE]."
         )
     },
 })
