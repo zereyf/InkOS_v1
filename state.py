@@ -154,3 +154,9 @@ def record_api_call() -> None:
     if K.TIMESTAMPS not in st.session_state:
         st.session_state[K.TIMESTAMPS] = []
     st.session_state[K.TIMESTAMPS].append(datetime.now(timezone.utc))
+
+#shared memory 
+@st.cache_resource
+def get_global_memory() -> dict:
+    """Creates a shared memory space across ALL active users on the server."""
+    return {"broadcast": None}
