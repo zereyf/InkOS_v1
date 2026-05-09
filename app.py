@@ -142,7 +142,11 @@ else:
 
 # Content Distribution
 with tab_workspace:
-    render_splash_screen() if is_guest else render_workspace(cfg)
+    if is_guest:
+        render_splash_screen()
+    else:
+        render_workspace(cfg)
+)
 
 with tab_vault:
     if is_guest:
