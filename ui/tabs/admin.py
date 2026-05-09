@@ -1,7 +1,11 @@
 """
 ui/tabs/admin.py — The Overwatch Board
 ======================================
-v1.0: Phase 1 — Core Directives & UI Grid.
+v1.3: UI Evolution — Cyber-Noir Tactical HUD.
+      - ADDED: CSS clip-path for chamfered edges.
+      - ADDED: Glassmorphism (backdrop-filter) to metric cards.
+      - ADDED: Breathing glow animation for Security Events.
+      - ADDED: Terminal dot-matrix background for the Panopticon.
 """
 
 import streamlit as st
@@ -18,32 +22,85 @@ def render_admin_board():
     stats = get_global_metrics()
     recent_logs = get_recent_activity()
 
+    # ── TACTICAL CSS INJECTION ──
+    st.markdown("""
+    <style>
+        @keyframes breathe-alert {
+            0% { box-shadow: -5px 0 15px -5px rgba(229,62,62,0.1); border-left-color: #9C4E4E; }
+            50% { box-shadow: -5px 0 25px -5px rgba(229,62,62,0.6); border-left-color: #E53E3E; }
+            100% { box-shadow: -5px 0 15px -5px rgba(229,62,62,0.1); border-left-color: #9C4E4E; }
+        }
+        .neural-card {
+            background: rgba(18, 22, 30, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.05);
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+            padding: 16px 20px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        .neural-card:hover {
+            background: rgba(25, 30, 40, 0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .alert-pulse {
+            animation: breathe-alert 2.5s infinite ease-in-out;
+        }
+        .panopticon-feed {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 12px 12px;
+            background-color: rgba(10, 12, 16, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+            padding: 15px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown('<div class="ow-header">❖ VELVETCODEX OVERWATCH // ROOT_ACCESS</div>', unsafe_allow_html=True)
 
-    # ── TOP LEVEL METRICS ──
-    m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.metric("TOTAL OPERATORS", stats["users"])
-    with m2:
-        st.metric("FORGED PERSONAS", stats["personas"])
-    with m3:
-        st.metric("SECURITY EVENTS", stats["logs"], delta_color="inverse")
-    with m4:
-        # Subtle nod to your MLBB leadership
-        st.metric("TEAM_REI_UPLINKS", "STABLE", help="Uplink status for Team Rei assets.")
+    # ── NEURAL CARD UI COMPONENT ──
+    def _neural_card(title, value, border_color, val_color="#E2E8F0", is_alert=False):
+        # Trigger the breathing CSS class only if it's an alert card and value isn't 0
+        alert_class = "alert-pulse" if is_alert and str(value) != "0" else ""
+        return f"""
+        <div class="neural-card {alert_class}" style="border-left: 4px solid {border_color};">
+            <div style="font-family:var(--font-m); font-size:0.65rem; color:var(--steel); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:12px;">
+                {title}
+            </div>
+            <div style="font-family:'Times New Roman', Times, serif; font-size:2.2rem; color:{val_color}; line-height:1; letter-spacing: 0.5px;">
+                {value}
+            </div>
+        </div>
+        """
 
+    # ── TOP LEVEL METRICS ──
+    st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
+    m1, m2, m3, m4 = st.columns(4)
+    
+    with m1:
+        st.markdown(_neural_card("TOTAL OPERATORS", stats["users"], "#5B85AA"), unsafe_allow_html=True) 
+    with m2:
+        st.markdown(_neural_card("FORGED PERSONAS", stats["personas"], "#4E9C81"), unsafe_allow_html=True) 
+    with m3:
+        st.markdown(_neural_card("SECURITY EVENTS", stats["logs"], "#9C4E4E", is_alert=True), unsafe_allow_html=True) 
+    with m4:
+        st.markdown(_neural_card("TEAM_REI_UPLINKS", "STABLE", "var(--gold)", "var(--gold)"), unsafe_allow_html=True)
+
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
     st.markdown("---")
 
     col_left, col_right = st.columns([1.5, 1])
 
     with col_left:
         # THE PANOPTICON: LIVE LOGS
-        st.markdown('<div class="ow-panel">', unsafe_allow_html=True)
         st.markdown('<div class="ow-title">THE PANOPTICON // LIVE_SECURITY_FEED</div>', unsafe_allow_html=True)
         
+        # Wrapped the feed in our new dot-matrix background div
+        st.markdown('<div class="panopticon-feed">', unsafe_allow_html=True)
         if recent_logs:
             df = pd.DataFrame(recent_logs)
-            # Format the dataframe for a cleaner terminal look
             st.dataframe(
                 df[['created_at', 'user_hash', 'event_type', 'status']], 
                 use_container_width=True,
@@ -67,6 +124,16 @@ def render_admin_board():
         if st.button("🔥 PURGE SERVER CACHE", use_container_width=True):
             st.cache_data.clear()
             st.toast("CACHE OBLITERATED.")
+
+        # BROADCAST FIELD
+        st.markdown("<hr style='border-color: rgba(255,255,255,0.1); margin: 15px 0;'>", unsafe_allow_html=True)
+        broadcast_msg = st.text_input("Terminal Broadcast", placeholder="Enter directive for all operators...")
+        if st.button("📡 TRANSMIT", use_container_width=True):
+            if broadcast_msg:
+                st.session_state[K.GLOBAL_BROADCAST] = broadcast_msg
+                st.toast("TRANSMISSION SENT.")
+            else:
+                st.warning("Enter a message to transmit.")
             
         st.markdown('</div>', unsafe_allow_html=True)
         
