@@ -1,12 +1,11 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2026.4.7: Master Sync — Horizontal Navigation + Operator Dossier.
+v2026.4.6: Master Sync — Horizontal Navigation Refactor.
            - REFACTORED: Global navigation moved to top-level tabs.
            - INTEGRATED: "ABOUT" tab persistent across all identity states.
            - ENFORCED: Soft-Gate Workspace logic (Splash renders inside tab).
            - PURGED: Standard OS Emojis and sidebar navigation radio.
-           - INJECTED: Operator Profile Overlay (SVG Radar).
 """
 
 import sys
@@ -32,7 +31,7 @@ from state import init_session_state, K
 from ui.styles import STYLES
 from ui.sidebar import render_sidebar
 from ui.splash import render_splash_screen
-from ui.tabs.about import render_about      
+from ui.tabs.about import render_about      # 🟢 New Import
 from ui.tabs.workspace import render_workspace
 from ui.tabs.archive import render_archive
 from ui.tabs.security_log import render_security_log
@@ -186,10 +185,6 @@ with st.sidebar:
 
 # Store config globally
 st.session_state["app_config"] = cfg
-
-# 🟢 INJECT: THE DOSSIER OVERLAY 🟢
-from ui.components.profile_overlay import render_profile_overlay
-render_profile_overlay()
 
 # ── NAVIGATION MATRIX: Horizontal Tabular Refactor ──────────────────────────
 # 🟢 Architecture: Documentation is global. Functional assets are identity-locked.
