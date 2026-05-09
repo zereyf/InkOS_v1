@@ -30,7 +30,9 @@ from state import init_session_state, K
 from ui.styles import STYLES
 from ui.sidebar import render_sidebar
 from ui.splash import render_splash_screen
-from ui.tabs.about import render_about      
+from ui.tabs.about import render_about
+from ui.tabs.forge import render_forge
+from ui.tabs.guide import render_guide     
 from ui.tabs.workspace import render_workspace
 from ui.tabs.vault import render_vault
 from i18n.translations import t, is_rtl
