@@ -1,8 +1,8 @@
 """
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
-v9.3.1: Hardened Production Build (Syntax Patch).
-      - Fixed line-break SyntaxError in _FENCE_CLEANUP
+v9.3.2: Hardened Production Build (Wrap-Safety Patch).
+      - Fixed persistent SyntaxError via explicit string concatenation
       - Mathematical Brace-Balancing JSON Recovery
       - Evaluator Rate-Limit Best-Effort Fallback
       - Global Label-Aware Fence Strip
@@ -33,9 +33,13 @@ from forge.persona_engine import inject_persona
 
 _TAG_CLEANUP = re.compile(r"^(?:REFINED_PROMPT|PROMPT|OUTPUT|thinking):?\s*", flags=re.IGNORECASE | re.MULTILINE)
 
-# 🟢 FIXED: Single-line regex to prevent unterminated string literal
-_FENCE_CLEANUP = re.compile(r"```(?:markdown|json|text|xml)?|
-```", flags=re.IGNORECASE)
+# 🟢 FIXED: Split string to prevent line-wrap SyntaxErrors
+_FENCE_CLEANUP = re.compile(
+    r"```(?:markdown|json|text|xml)?|"
+    r"
+```", 
+    flags=re.IGNORECASE
+)
 
 def _extract_json(text: str) -> Optional[str]:
     """
