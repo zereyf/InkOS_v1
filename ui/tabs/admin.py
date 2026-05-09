@@ -3,79 +3,75 @@ ui/tabs/admin.py — The Overwatch Board
 ======================================
 v1.0: Phase 1 — Core Directives & UI Grid.
 """
+
 import streamlit as st
-import sys
+import pandas as pd
 from state import K
+from logic.admin_telemetry import get_global_metrics, get_recent_activity
 
 def render_admin_board():
-    # ── SECURITY PERIMETER ──
     if not st.session_state.get(K.IS_ADMIN):
-        st.error("[ ⨂ ] CLEARANCE REJECTED. THIS ANOMALY HAS BEEN LOGGED.")
+        st.error("[ ⨂ ] CLEARANCE REJECTED.")
         return
 
-    # ── OVERWATCH CSS ──
-    st.markdown("""
-        <style>
-            .ow-header { font-family: var(--font-m); color: var(--danger); font-size: 1.5rem; letter-spacing: 4px; border-bottom: 1px solid rgba(229, 62, 62, 0.3); padding-bottom: 10px; margin-bottom: 20px; }
-            .ow-panel { background: rgba(15, 5, 5, 0.8); border: 1px solid rgba(229, 62, 62, 0.2); padding: 20px; border-radius: 3px; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
-            .ow-title { color: var(--danger); font-family: var(--font-d); font-size: 1.1rem; letter-spacing: 2px; margin-bottom: 15px; }
-            .ow-title-gold { color: var(--gold); font-family: var(--font-d); font-size: 1.1rem; letter-spacing: 2px; margin-bottom: 15px; }
-        </style>
-    """, unsafe_allow_html=True)
+    # Fetch Live Data
+    stats = get_global_metrics()
+    recent_logs = get_recent_activity()
 
     st.markdown('<div class="ow-header">❖ VELVETCODEX OVERWATCH // ROOT_ACCESS</div>', unsafe_allow_html=True)
 
-    # ── GRID LAYOUT ──
+    # ── TOP LEVEL METRICS ──
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.metric("TOTAL OPERATORS", stats["users"])
+    with m2:
+        st.metric("FORGED PERSONAS", stats["personas"])
+    with m3:
+        st.metric("SECURITY EVENTS", stats["logs"], delta_color="inverse")
+    with m4:
+        # Subtle nod to your MLBB leadership
+        st.metric("TEAM_REI_UPLINKS", "STABLE", help="Uplink status for Team Rei assets.")
+
+    st.markdown("---")
+
     col_left, col_right = st.columns([1.5, 1])
 
-    # ==========================================
-    # LEFT COLUMN: ACTIONS & OVERRIDES
-    # ==========================================
     with col_left:
-        # PANEL 1: GLOBAL DIRECTIVES
+        # THE PANOPTICON: LIVE LOGS
         st.markdown('<div class="ow-panel">', unsafe_allow_html=True)
-        st.markdown('<div class="ow-title">GLOBAL DIRECTIVES</div>', unsafe_allow_html=True)
+        st.markdown('<div class="ow-title">THE PANOPTICON // LIVE_SECURITY_FEED</div>', unsafe_allow_html=True)
         
-        is_locked = st.session_state.get(K.MAINTENANCE_MODE, False)
-        if st.toggle("🔒 INITIATE SYSTEM LOCKDOWN (GUEST EXPULSION)", value=is_locked, key="admin_lockdown_toggle"):
-            if not is_locked:
-                st.session_state[K.MAINTENANCE_MODE] = True
-                st.toast("[!] SYSTEM LOCKED. ALL GUESTS EXPELLED.", icon="🚨")
+        if recent_logs:
+            df = pd.DataFrame(recent_logs)
+            # Format the dataframe for a cleaner terminal look
+            st.dataframe(
+                df[['created_at', 'user_hash', 'event_type', 'status']], 
+                use_container_width=True,
+                hide_index=True
+            )
         else:
-            if is_locked:
-                st.session_state[K.MAINTENANCE_MODE] = False
-                st.toast("> SYSTEM UNLOCKED.", icon="✅")
-
-        st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin: 15px 0;'>", unsafe_allow_html=True)
-        
-        if st.button("⚠️ PURGE GLOBAL CACHE", use_container_width=True, type="primary"):
-            st.cache_data.clear()
-            st.cache_resource.clear()
-            st.toast("> SERVER CACHE OBLITERATED.", icon="🔥")
+            st.info("No recent security anomalies detected.")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # PANEL 2: DATABASE CONTROLS (Placeholder for Phase 2)
-        st.markdown('<div class="ow-panel">', unsafe_allow_html=True)
-        st.markdown('<div class="ow-title" style="color: var(--steel);">THE PANOPTICON [ SUPABASE ]</div>', unsafe_allow_html=True)
-        st.markdown("<span style='font-family: var(--font-m); font-size: 0.7rem; color: var(--text-dim);'>Awaiting Phase 2 Neural Wiring...</span>", unsafe_allow_html=True)
-        with st.expander("View Global Personas"):
-            st.info("Will pull all personas from DB.")
-        with st.expander("Manage Locked Accounts"):
-            st.info("Will allow unbanning SIDs.")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # ==========================================
-    # RIGHT COLUMN: TELEMETRY & SURVEILLANCE
-    # ==========================================
     with col_right:
-        # PANEL 3: LIVE TELEMETRY
+        # SYSTEM CONTROLS
         st.markdown('<div class="ow-panel">', unsafe_allow_html=True)
-        st.markdown('<div class="ow-title-gold">LIVE TELEMETRY</div>', unsafe_allow_html=True)
+        st.markdown('<div class="ow-title-gold">SYSTEM DIRECTIVES</div>', unsafe_allow_html=True)
         
-        st.metric("Root Identity", st.session_state.get(K.USER_HASH))
-        st.metric("Session State Load", f"{sys.getsizeof(st.session_state) // 1024} KB")
-        st.metric("UI Language", st.session_state.get(K.UI_LANG).upper())
+        # Maintenance Switch
+        is_locked = st.session_state.get(K.MAINTENANCE_MODE, False)
+        if st.toggle("🔒 GLOBAL LOCKDOWN", value=is_locked):
+            st.session_state[K.MAINTENANCE_MODE] = True
+            st.toast("SYSTEM LOCKED.", icon="🚨")
+            
+        if st.button("🔥 PURGE SERVER CACHE", use_container_width=True):
+            st.cache_data.clear()
+            st.toast("CACHE OBLITERATED.")
+            
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin: 15px 0;'>", unsafe_allow_html=True)
-        st.markdown("<span style='font-family: var(--font-m); font-size: 0.7rem; color: var(--text-dim);'>Active Broadcasts: 0</span>", unsafe_allow_html=True)
+        # ARABIC BRANDING METRICS
+        st.markdown('<div class="ow-panel" style="border-color: var(--gold);">', unsafe_allow_html=True)
+        st.markdown('<div class="ow-title-gold">LISAAN AL-ARAB // حبر وفكرة</div>', unsafe_allow_html=True)
+        st.markdown("<div style='font-family: var(--font-a); font-size: 0.9rem; color: var(--gold);'>تحديثات النظام نشطة</div>", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
