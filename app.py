@@ -1,9 +1,9 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v2026.4.11: Master Sync — The Premium UI Upgrade.
+v2026.4.12: Master Sync — The Premium UI Upgrade (Stretch Patch).
            - UPGRADED: Ambient OLED Logo Glow.
-           - UPGRADED: Tactical Neon-Edge Navigation Tabs.
+           - UPGRADED: Tactical Neon-Edge Navigation Tabs (Full Width).
            - UPGRADED: Ghost Inputs for all sidebar controls.
            - INTEGRATED: Global Broadcast Receiver.
 """
@@ -97,7 +97,15 @@ st.markdown("""
     }
 
     /* ── 2. NEON-EDGE NAVIGATION TABS ── */
-    div[role="radiogroup"][aria-label="Navigation"] { gap: 0 !important; }
+    /* 🟢 PATCHED: Forces the radio group to stretch to 100% width */
+    div[role="radiogroup"][aria-label="Navigation"] { 
+        gap: 0 !important; 
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important; 
+    }
+    
     div[role="radiogroup"][aria-label="Navigation"] label > div:first-child { display: none !important; }
     
     div[role="radiogroup"][aria-label="Navigation"] label {
