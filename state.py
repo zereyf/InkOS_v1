@@ -79,13 +79,6 @@ _DEFAULTS: dict = {
     K.BOOT_COMPLETE:   False,
 
 
-# for profile 
-    PROMPT_COUNT = "prompt_count",
-    OPERATOR_NAME = "operator_name",
-    SHOW_PROFILE = "show_profile",
-    BOOT_TIME = "boot_time",
-    CYCLES = "cycles",
-
     # 🧪 DNA INITIALIZATION (AmeerInk Defaults)
     K.INK_DNA: (
         "ROLE: Creative Director. AESTHETIC: Chiaroscuro lighting, tech-noir minimalist vibes. "
