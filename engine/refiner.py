@@ -1,19 +1,19 @@
 """
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
-v9.4.3: Structural & Cognitive Sync Build.
-      - Integrated Arabic Pattern Negation instructions.
-      - Synchronized with forge/persona_engine.py v9.2.
-      - Hardened JSON recovery & structural validation.
+v9.4.5: Total Unpacking Synchronization.
+      - FIXED: _call_cipher return signature (refined, audit, error).
+      - FIXED: _parse_output return signature (refined, audit).
+      - INTEGRATED: Arabic Pattern Negation & Persona Engine v9.3.
 """
 
 import json
 import re
 import textwrap
 import time
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
 
-# 🟢 Import constants and prompts
+# 🟢 Import constants and prompts from config
 from config import (
     client, MODEL_ID, TEMPERATURE, MAX_TOKENS, 
     RETRY_THRESHOLD, MAX_RETRIES, EVAL_TEMPERATURE,
@@ -61,15 +61,18 @@ def _clamp_audit(raw: dict) -> dict:
     }
 
 def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
+    """Returns a 2-tuple: (refined_text, audit_dict)"""
     cleaned = _FENCE_CLEANUP.sub("", raw).strip()
     json_str = _extract_json(cleaned)
-    if not json_str: return None, None
+    if not json_str: 
+        return cleaned, {"score": 0, "critique": "JSON not found."}
+    
     json_start_pos = cleaned.rfind(json_str)
     refined = _TAG_CLEANUP.sub("", cleaned[:json_start_pos].strip()).strip()
     try:
         audit = _clamp_audit(json.loads(json_str))
     except:
-        audit = {"score": 0, "critique": "JSON failure.", "precision": 0, "alignment": 0, "efficiency": 0}
+        audit = {"score": 0, "critique": "JSON parse error.", "precision": 0, "alignment": 0, "efficiency": 0}
     return refined, audit
 
 def _validate_structure(refined: str, target: str) -> Tuple[bool, str]:
@@ -79,7 +82,7 @@ def _validate_structure(refined: str, target: str) -> Tuple[bool, str]:
         return False, "Output density insufficient (< 350 chars)."
     if target == 'Claude':
         if not re.search(r'<(?:role|task|constraints|output_format)>', text, re.IGNORECASE):
-            return False, 'Claude requires XML: <role>, <task>, <constraints>.'
+            return False, 'Claude requires XML tags.'
     if target == 'ChatGPT':
         if not re.search(r'^you\s+are\s+a?\s+\w', text[:80], re.IGNORECASE):
             return False, "ChatGPT requires 'You are a [role]' opener."
@@ -105,7 +108,8 @@ def _call_evaluator(original_input: str, target: str, refined_prompt: str) -> di
         return {"score": 0, "critique": f"Audit Failed: {str(e)[:40]}"}
 
 def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
-    if not client: return None, None, "Offline"
+    """Returns a 3-tuple: (refined_text, audit_dict, error_string)"""
+    if not client: return None, None, "Client Offline"
     try:
         completion = client.chat.completions.create(
             model=MODEL_ID,
@@ -113,9 +117,11 @@ def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Opt
             temperature=TEMPERATURE,
             max_tokens=MAX_TOKENS,
         )
-        return _parse_output(completion.choices[0].message.content)
+        # 🟢 THE FIX: Explicitly unpack 2 values from _parse_output and return 3.
+        refined, audit = _parse_output(completion.choices[0].message.content)
+        return refined, audit, None
     except Exception as e:
-        return None, None, f"[FAULT]: {str(e)[:80]}"
+        return None, None, str(e)
 
 # ── PIPELINE EXECUTION ────────────────────────────────────────────────────────
 
@@ -129,11 +135,10 @@ def _build_system_prompt(target, framework, lang, cognitive_directive, persona, 
     if cognitive_directive:
         parts.append(f'COGNITIVE_DIRECTIVE:\n{cognitive_directive}')
     
-    # 🟢 SYNCED: Passes persona dict to the forge engine
     if persona:
-        # Note: persona here is the dict from st.session_state[K.ACTIVE_PERSONA]
-        # In forge/persona_engine.py, ensure inject_persona handles the dict.
-        parts.append(f'ACTIVE PERSONA LAYER:\n{inject_persona(persona.get("name") if isinstance(persona, dict) else persona, target)}')
+        # Pass name or dict; persona_engine v9.3 handles both
+        p_input = persona.get("name") if isinstance(persona, dict) else persona
+        parts.append(f'ACTIVE PERSONA LAYER:\n{inject_persona(p_input, target)}')
     
     if islamic_mode:
         parts.append(f'CULTURAL LAYER:\n{ISLAMIC_CONTEXT_LAYER}')
@@ -147,14 +152,13 @@ def _build_system_prompt(target, framework, lang, cognitive_directive, persona, 
 def run_refinement_and_audit(
     user_text: str, target: str, framework: str, lang: str, 
     aesthetic_choice: str = "None", islamic_mode: bool = False, 
-    persona: Optional[dict] = None
-) -> Tuple[str, dict, Optional[dict]]:
+    persona: Optional[Any] = None
+) -> Tuple[str, dict, Optional[Any]]:
     
     cognitive = ""
     pattern_data = None
     
     if lang == "Arabic (العربية)":
-        # 🟢 SYNCED: Extract pattern negation logic
         pattern_data = detect_arabic_pattern(user_text)
         if pattern_data:
             cognitive = f"[PATTERN: {pattern_data['pattern']}] {pattern_data['prompt_instruction']}"
@@ -168,15 +172,20 @@ def run_refinement_and_audit(
         sys_prompt = _build_system_prompt(
             target, framework, lang, cognitive, persona, islamic_mode, retry_critique
         )
+        
+        # 🟢 SYNCED: Unpacks 3 values correctly
         refined, self_audit, error = _call_cipher(sys_prompt, user_text)
         
-        if error or not refined: 
-            return error or "Failed", {"score":0, "critique":error}, None
+        if error: 
+            return f"System Fault: {error}", {"score":0, "critique":error}, None
+        if not refined: 
+            return "Refinement failed.", {"score":0, "critique":"Empty response."}, None
 
         passed, reason = _validate_structure(refined, target)
         if not passed:
             retry_critique = reason
-            best_refined, best_audit = refined, self_audit
+            if not best_refined:
+                best_refined, best_audit = refined, self_audit
             continue
 
         if "[CLARIFICATION_REQUIRED]" in refined:
