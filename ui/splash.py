@@ -72,7 +72,7 @@ def render_splash_screen():
     
     st.markdown(splash_html, unsafe_allow_html=True)
     
-    # Also dedent the hint
+    # Dedent the hint as well to be safe
     hint_html = textwrap.dedent("""
     <div style="text-align: center; margin-top: 20px;">
         <span style="background: rgba(229,62,62,0.05); border: 1px solid rgba(229,62,62,0.2); color: var(--danger); padding: 8px 15px; font-family: var(--font-m); font-size: 0.65rem; letter-spacing: 2px;">
