@@ -1,7 +1,8 @@
 """
 ui/tabs/vault.py — Prompt Memory Vault Tab
 ============================================
-v8.6: Master Sync — The Athar Protocol.
+v8.7: Master Sync — The Athar Protocol.
+      - FIXED: Temporal Paradox (StreamlitAPIException) via Callback Protocol.
       - Hardened against Null-returns (TypeError Fix).
       - Atomic HTML Rendering (Prevents card fracture).
       - Forensic String Sanitization (html.escape injection).
@@ -53,6 +54,14 @@ def _render_vault_locked() -> None:
         </div>
     """)
     st.markdown(html_code, unsafe_allow_html=True)
+
+# ── 🟢 CALLBACK FUNCTION (THE FIX) ──
+def _deploy_callback(content: str) -> None:
+    """Safely injects memory into the Workspace widget before rendering."""
+    st.session_state["ta_input_widget"] = content
+    st.session_state[K.LAST_RESULT] = content
+    # Note: Streamlit automatically triggers a rerun after a callback, 
+    # so we don't need st.rerun() here.
 
 def render_vault() -> None:
     st.markdown('<div class="vc-header"><span class="status-dot" style="background:var(--gold);"></span>Neural Memory Vault</div>', unsafe_allow_html=True)
@@ -180,12 +189,14 @@ def render_vault() -> None:
             
             a1, a2 = st.columns(2)
             with a1:
-                if st.button("⚡ DEPLOY TO WORKSPACE", key=f"dep_{entry['id']}", use_container_width=True):
-                    # Direct state sync to ensure HUD metrics rehydrate correctly
-                    st.session_state["ta_input_widget"] = entry["content"]
-                    st.session_state[K.LAST_RESULT] = entry["content"]
-                    st.toast("Neural Asset Deployed.")
-                    st.rerun()
+                # 🟢 THE CALLBACK INJECTION (Replaces the broken 'if' block)
+                st.button(
+                    "⚡ DEPLOY TO WORKSPACE", 
+                    key=f"dep_{entry['id']}", 
+                    use_container_width=True,
+                    on_click=_deploy_callback,
+                    args=(entry["content"],)
+                )
             with a2:
                 if st.button("🗑 DELETE", key=f"del_{entry['id']}", use_container_width=True):
                     ok, _ = delete_prompt(user_hash, entry["id"])
