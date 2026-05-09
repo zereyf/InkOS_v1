@@ -1,10 +1,9 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v13.5: Command Deck Purge — Terminal Iconography Enforced.
-       - PURGED: Standard emojis removed from Wordmark and Buttons.
-       - UPDATED: Language switcher now uses ISO-text instead of Flags.
-       - Unified Widget Key: 'sb_persona_global_widget'.
+v13.7: Command Deck Purge — Ghost Bar Removed.
+       - SECURED: Stealth Master Intercept for IS_ADMIN status.
+       - CLEANED: Standard UI only.
 """
 
 import streamlit as st
@@ -54,7 +53,6 @@ def render_language_switcher() -> None:
     for i, lang in enumerate(LANGUAGES):
         with cols[i]:
             is_active = lang["code"] == current
-            # 🟢 PURGED: Replaced flag with ISO code text (e.g., EN, AR)
             label_text = lang["code"].upper()
             if st.button(
                 label_text,
@@ -99,7 +97,6 @@ def render_sidebar() -> SidebarConfig:
         st.markdown(link_html, unsafe_allow_html=True)
 
         # ── 3. WORDMARK ────────────────────────────────────────────────────────
-        # 🟢 PURGED: Replaced ⚡ with Unicode ❖
         wordmark_html = textwrap.dedent(f"""
             <div style="padding:0 0 14px 0; border-bottom:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
                 <div class="vc-wordmark" style="font-size:1.4rem;">❖ {t('app_name')}</div>
@@ -126,16 +123,28 @@ def render_sidebar() -> SidebarConfig:
                     with st.spinner("Uplinking..."):
                         success, error_msg = authenticate_terminal(new_sid.strip(), new_pin.strip(), is_new=is_new_user)
                     if success:
-                        st.session_state[K.USER_HASH] = new_sid.strip()
-                        st.query_params["sid"] = new_sid.strip()
+                        latch_id = new_sid.strip()
+                        st.session_state[K.USER_HASH] = latch_id
+                        
+                        # 🟢 THE STEALTH MASTER INTERCEPT 🟢
+                        master_secret = st.secrets.get("MASTER_IDS", "")
+                        master_list = [x.strip().upper() for x in master_secret.split(",")]
+                        
+                        if latch_id.upper() in master_list and latch_id.upper() != "":
+                            st.session_state[K.IS_ADMIN] = True
+                            st.toast("[◈] OVERWATCH ACCESS GRANTED", icon="👁️")
+                        else:
+                            st.session_state[K.IS_ADMIN] = False
+
+                        st.query_params["sid"] = latch_id
                         st.rerun()
                     else:
                         st.error(f"[!] {error_msg}")
         else:
-            # 🟢 PURGED: Secure iconography updated
             st.markdown('<div style="background:rgba(201,168,76,0.05); border:1px solid rgba(201,168,76,0.2); padding:10px; border-radius:3px; margin-bottom:10px; font-size:0.55rem; color:var(--gold); display:flex; align-items:center; gap:8px;">[◈] IDENTITY SECURED</div>', unsafe_allow_html=True)
             if st.button("Terminate Latch", use_container_width=True):
                 st.session_state[K.USER_HASH] = None 
+                st.session_state[K.IS_ADMIN] = False
                 st.query_params.clear()
                 st.rerun()
 
