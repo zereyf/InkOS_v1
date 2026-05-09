@@ -1,16 +1,16 @@
 """
 ui/splash.py — The Terminal Gateway
 =====================================
-v1.1: Fixed HTML Leaking.
-      - Injected textwrap.dedent to prevent Markdown code-block interpretation.
+v1.2: Fixed HTML Leaking (Root Cause).
+      - Removed leading newline via backslash after triple-quote.
+      - textwrap.dedent retained for indentation cleanup.
 """
 
 import streamlit as st
-import textwrap # 🟢 Essential for stripping leading spaces
+import textwrap
 
 def render_splash_screen():
-    # We wrap the string in textwrap.dedent() to fix the "Raw HTML" glitch
-    splash_html = textwrap.dedent("""
+    splash_html = textwrap.dedent("""\
     <div style="max-width: 700px; margin: 40px auto; padding: 30px; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
         
         <!-- HEADER -->
@@ -69,15 +69,15 @@ def render_splash_screen():
         }
     </style>
     """)
-    
+
     st.markdown(splash_html, unsafe_allow_html=True)
-    
-    # Dedent the hint as well to be safe
-    hint_html = textwrap.dedent("""
+
+    hint_html = textwrap.dedent("""\
     <div style="text-align: center; margin-top: 20px;">
         <span style="background: rgba(229,62,62,0.05); border: 1px solid rgba(229,62,62,0.2); color: var(--danger); padding: 8px 15px; font-family: var(--font-m); font-size: 0.65rem; letter-spacing: 2px;">
             [<<] ALIGN IDENTITY IN SIDEBAR TO UNLOCK
         </span>
     </div>
     """)
+
     st.markdown(hint_html, unsafe_allow_html=True)
