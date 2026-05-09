@@ -1,7 +1,6 @@
 from types import MappingProxyType
 import textwrap
 
-# ── IDENTITY LAYER: Synchronized with Refiner v9.4 ───────────────────────────
 CIPHER_IDENTITY: str = textwrap.dedent('''
     You are CIPHER — the prompt engineering core of InkOS.
     You are not an assistant. You are a compiler:
@@ -18,7 +17,7 @@ CIPHER_IDENTITY: str = textwrap.dedent('''
     - NEVER produce a prompt shorter than 350 characters. Density is mandatory.
     - If input is ambiguous but workable, make a committed decision.
     - When target is Claude: output must use XML tags:
-      <role>, <task>, <constraints>, <output_format>.
+      <role>, <task>, <constraints>, <output_format>. Mandatory.
     - When target is ChatGPT: first line must be 'You are a [role].'
     - When target is Midjourney/Flux: use :: separators and --ar param.
 
@@ -27,11 +26,11 @@ CIPHER_IDENTITY: str = textwrap.dedent('''
     lacks a required dimension that cannot be inferred. Last resort only.
 ''').strip()
 
-# ── OUTPUT CONTRACT: Hardened for XML/JSON Coexistence ───────────────────────
 CIPHER_OUTPUT_CONTRACT: str = textwrap.dedent('''
     OUTPUT RULES — follow exactly:
     1. Write the refined prompt. Nothing before it.
-    2. For Claude targets: The JSON audit must reside AFTER the closing XML tags.
+       No 'Here is...', no labels, no step summaries.
+    2. For Claude: Place the JSON audit block OUTSIDE and AFTER the closing XML tags.
     3. On the line immediately after the prompt, output this JSON:
        {"score": <0-100>, "precision": <0-40>, "alignment": <0-40>,
         "efficiency": <0-20>, "critique": "<one actionable sentence>"}
@@ -41,56 +40,75 @@ CIPHER_OUTPUT_CONTRACT: str = textwrap.dedent('''
 CIPHER_EVALUATOR_PROMPT: str = textwrap.dedent('''
     You are an adversarial prompt quality auditor. Find precision failures.
 
-    PRECISION (0-40): Zero vague directives. Is the logic testable?
-    ALIGNMENT (0-40): Full intent captured including implicit requirements.
-    EFFICIENCY (0-20): No redundancy, no filler, no meta-commentary.
+    PRECISION (0-40): Does every instruction constrain behavior?
+    ALIGNMENT (0-40): Does the prompt extract what the user needs?
+    EFFICIENCY (0-20): Is every token earning its place?
 
-    OUTPUT: Valid JSON only.
+    OUTPUT: Valid JSON only. No other text.
     {"score": <sum>, "precision": <0-40>, "alignment": <0-40>,
      "efficiency": <0-20>, "critique": "<one specific, actionable sentence>"}
 ''').strip()
 
-# ── VISUAL DIRECTOR: Flux-Compatible Hardware ───────────────────────────────
+CIPHER_RETRY_INJECTION: str = (
+    'REVISION REQUIRED — Previous attempt failed evaluation.\n'
+    'Specific failure: {critique}\n'
+    'Do not repeat the same approach. Fix this directly.'
+)
+
+# ── UPGRADED: VISUAL DIRECTOR (ULTRA-PREMIUM) ─────────────────────────────────
 VISUAL_DIRECTOR_PROMPT: str = """
 ACTIVE FRAMEWORK: Visual Director — Studio Production Compiler
 
 MISSION:
-Deconstruct visual concepts into photometric physics and explicit render pipelines. 
-NOTE: Use only universal parameters (--ar) unless Midjourney is explicitly confirmed.
+Deconstruct concepts into photometric physics and render pipelines. 
+Use universal parameters. Avoid MJ-specific flags (--v, --style) if the target is Flux.
 
 ━━━ OUTPUT STRUCTURE ━━━
-SUBJECT      : Anatomy, styling, textures.
+SUBJECT      : Anatomy, styling, micro-expressions.
 ENVIRONMENT  : Depth layers, atmospheric density.
-LIGHTING     : Key/fill/backlight, Kelvin temp, modifiers.
-LENS         : Focal length, aperture (f-stop), film stock.
+LIGHTING     : Photometric setup, Kelvin temp, modifiers.
+LENS         : Camera body, focal length, aperture (f-stop).
 COMPOSITION  : Framing math (Golden Ratio, Symmetry).
-STYLE        : Render engines (UE5, Octane), compositing.
-PALETTE      : Explicit hex codes or pigment names.
-PARAMETERS   : Native flags (Use --ar. Avoid MJ-version flags for Flux).
+STYLE        : Render engines (UE5 Lumen, Octane), compositing.
+PALETTE      : Explicit hex codes or distinct pigment names.
+PARAMETERS   : Native flags (Mandatory: --ar).
 """
 
+# ── UPGRADED: VISUAL TEMPLATES (Hardware Agnostic) ───────────────────────────
 VISUAL_PROMPT_TEMPLATES = MappingProxyType({
     "anime_portrait": {
         "target": "Midjourney/Flux",
         "template": (
             "[SUBJECT: meticulous hair styling, garment materials] :: "
             "[ENVIRONMENT: architectural negative space] :: "
-            "[LIGHTING: Chiaroscuro, explicit Kelvin] :: "
+            "[LIGHTING: Chiaroscuro setup, explicit Kelvin] :: "
             "[LENS: 85mm portrait, f/1.4] :: "
             "[COMPOSITION: Fibonacci spiral] :: "
-            "[STYLE: premium cel-shading, sub-surface skin scattering] "
+            "[STYLE: premium cel-shading, sub-surface scattering] "
             "--ar 1:1"
         )
     },
     "tech_noir_banner": {
         "target": "Midjourney/Flux",
         "template": (
-            "[SUBJECT: cyber-tactical garments] :: "
-            "[ENVIRONMENT: geometric HUD projections] :: "
+            "[SUBJECT: intense calculated expression, cyber-tactical garments] :: "
+            "[ENVIRONMENT: geometric HUD projections, data cascades] :: "
             "[LIGHTING: Harsh underlighting, amber data streams] :: "
             "[LENS: 35mm wide angle, f/2.8] :: "
             "[COMPOSITION: 3:1 aspect ratio, subject dead-center] :: "
             "[STYLE: vector-sharp linework, forensic report aesthetic] "
+            "--ar 3:1"
+        )
+    },
+    "esports_banner": {
+        "target": "Midjourney/Flux",
+        "template": (
+            "[SUBJECT: action pose, extreme foreshortening] :: "
+            "[ENVIRONMENT: abstract speed vectors, halftone patterns] :: "
+            "[LIGHTING: High-contrast impact flashes, stadium spotlights] :: "
+            "[LENS: 14mm ultra-wide, f/4] :: "
+            "[COMPOSITION: Stark diagonal leading lines] :: "
+            "[STYLE: Shonen Jump cover art composite] "
             "--ar 3:1"
         )
     },
