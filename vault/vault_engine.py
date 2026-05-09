@@ -18,7 +18,7 @@ TABLE_PERSONAS = "personas" # 🟢 Standardized table name
 # ── INTERNAL UTILITIES ────────────────────────────────────────────────────────
 
 def _require_sb() -> Optional[str]:
-    if SUPABASE_MISSING or sb is None:
+    if SUPABASE_MISSING or supabase is None:
         return "Vault offline: SUPABASE_URL/KEY missing."
     return None
 
