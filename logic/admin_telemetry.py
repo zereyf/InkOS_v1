@@ -1,31 +1,34 @@
 """
-logic/admin_telemetry.py
-========================
-v1.0: Real-time database telemetry for Overwatch.
+logic/admin_telemetry.py — Overwatch Data Engine
 """
-from vault.supabase_client import supabase, SUPABASE_MISSING
+from vault.supabase_client import supabase, SUPABASE_MISSING # 🟢 Changed sb to supabase
 
 def get_global_metrics():
-    """Fetches high-level system stats from Supabase."""
-    if SUPABASE_MISSING:
-        return {"users": 0, "personas": 0, "logs": 0}
+    """Fetches stats from the database safely."""
+    stats = {"users": 0, "personas": 0, "logs": 0}
+    if SUPABASE_MISSING or not supabase:
+        return stats
     
-    # 1. Count Total Identities
-    users = supabase.table("identities").select("user_hash", count="exact").execute()
-    # 2. Count Total Personas
-    personas = supabase.table("personas").select("id", count="exact").execute()
-    # 3. Count Security Anomalies (Failed Logins)
-    logs = supabase.table("security_logs").select("id", count="exact").execute()
-    
-    return {
-        "users": users.count if users.count else 0,
-        "personas": personas.count if personas.count else 0,
-        "logs": logs.count if logs.count else 0
-    }
+    try:
+        # Changed 'sb' to 'supabase' below
+        u_res = supabase.table("users").select("id", count="exact").execute()
+        stats["users"] = u_res.count if u_res.count else 0
+        
+        p_res = supabase.table("personas").select("id", count="exact").execute()
+        stats["personas"] = p_res.count if p_res.count else 0
+        
+        v_res = supabase.table("vault").select("id", count="exact").execute()
+        stats["logs"] = v_res.count if v_res.count else 0
+    except Exception:
+        pass
+    return stats
 
 def get_recent_activity(limit=10):
-    """Retrieves the latest system events."""
-    if SUPABASE_MISSING:
+    if SUPABASE_MISSING or not supabase:
         return []
-    response = supabase.table("security_logs").select("*").order("created_at", desc=True).limit(limit).execute()
-    return response.data
+    try:
+        # Changed 'sb' to 'supabase' below
+        res = supabase.table("security_logs").select("*").order("created_at", desc=True).limit(limit).execute()
+        return res.data
+    except Exception:
+        return []
