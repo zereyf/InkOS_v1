@@ -1,10 +1,10 @@
 """
 ui/tabs/forge.py — Persona Forge Tab
 ======================================
-v18.3: Persistence & Sidebar Sync Build.
-       - Synchronized with Sidebar v13.3 (Widget Key: sb_persona_selector_widget).
-       - Fixed Active-State detection logic for Starter Personas.
-       - Integrated Type-Agnostic Engine v9.3.
+v18.4: Master Key Persistence Build.
+       - Unified Widget Key: 'sb_persona_global_widget'.
+       - Precise Sidebar-Label Reconstruction for Callback sync.
+       - Synchronized with Sidebar v13.4 Master Latch.
 """
 
 import streamlit as st
@@ -22,34 +22,37 @@ from i18n.translations import t
 # ── STREAMLIT CALLBACKS ───────────────────────────────────────────────────────
 
 def toggle_persona_callback(persona_data: dict, is_currently_active: bool):
-    """Latches or unlatches a persona while syncing with Sidebar widget state."""
-    # 🟢 SYNCED: This key must match the Sidebar selectbox 'key' parameter
-    SIDEBAR_WIDGET_KEY = "sb_persona_selector_widget"
+    """Latches identity while forcing the Master Sidebar widget to sync."""
+    
+    # 🟢 MASTER KEY SYNC: Must match sidebar v13.4 exactly
+    MASTER_KEY = "sb_persona_global_widget"
 
     if is_currently_active:
         st.session_state[K.ACTIVE_PERSONA] = None
-        st.session_state[SIDEBAR_WIDGET_KEY] = "None" 
+        st.session_state[MASTER_KEY] = "None" 
         if "p" in st.query_params:
             del st.query_params["p"]
         st.toast("🎭 Identity Matrix Reset.")
     else:
         st.session_state[K.ACTIVE_PERSONA] = persona_data
         p_short_name = persona_data.get("name", "Unknown")
+        
+        # 1. Update URL (The absolute Source of Truth for refreshes)
         st.query_params["p"] = p_short_name
         
-        # Resolve the UI Label for the sidebar index
-        # We find the label in STARTER_PERSONAS that contains this short name
-        sidebar_label = "None"
-        for label, data in STARTER_PERSONAS.items():
-            if data and data.get("name") == p_short_name:
-                sidebar_label = f"{label} [S]"
-                break
+        # 2. Reconstruct the Sidebar's UI Label (Suffix-Aware)
+        # We need to find the exact string the Sidebar selectbox is using as a key.
+        is_starter = any(p_short_name == v.get('name') for k, v in STARTER_PERSONAS.items() if v)
         
-        # If not found in starters, check custom personas
-        if sidebar_label == "None":
-            sidebar_label = f"{p_short_name} [C]"
+        if is_starter:
+            # Find the legacy key (e.g., "Makise Kurisu (Amadeus)")
+            legacy_key = next((k for k, v in STARTER_PERSONAS.items() if v and v.get('name') == p_short_name), p_short_name)
+            target_label = f"{legacy_key} [S]"
+        else:
+            target_label = f"{p_short_name} [C]"
 
-        st.session_state[SIDEBAR_WIDGET_KEY] = sidebar_label
+        # 3. Force the Sidebar widget to move
+        st.session_state[MASTER_KEY] = target_label
         st.toast(f"🎭 LATCHED: {p_short_name}")
 
 
@@ -110,7 +113,6 @@ def _render_persona_card(persona: dict, is_active: bool, user_hash: str, is_star
 
         if st.session_state.get(f"show_preview_{pid}"):
             st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--steel); letter-spacing:1px; margin-top:10px; margin-bottom:4px; text-transform:uppercase;">[ XML NEURAL PAYLOAD ]</div>', unsafe_allow_html=True)
-            # 🟢 SYNCED: Uses the v9.3 Type-Agnostic inject_persona
             st.code(inject_persona(persona, "Claude"), language="xml")
 
 # ── MAIN RENDERER ─────────────────────────────────────────────────────────────
@@ -120,7 +122,6 @@ def render_forge() -> None:
     
     user_hash = st.session_state.get(K.USER_HASH, "")
     active_persona = st.session_state.get(K.ACTIVE_PERSONA)
-    # This returns the Short Name (e.g., 'KURISU')
     active_short_name = get_persona_display_name(active_persona)
 
     tab_browse, tab_forge, tab_dna = st.tabs(["Neural Matrix", "Forge Construct", "Visual DNA 🧬"])
@@ -129,7 +130,6 @@ def render_forge() -> None:
         st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
         for label, p in STARTER_PERSONAS.items():
             if label != "None" and p: 
-                # Match based on internal Short Name for consistency
                 is_active = (active_short_name == p.get("name"))
                 _render_persona_card(p, is_active, user_hash, is_starter=True)
         
