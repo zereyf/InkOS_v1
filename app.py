@@ -146,7 +146,7 @@ with tab_workspace:
         render_splash_screen()
     else:
         render_workspace(cfg)
-)
+
 
 with tab_vault:
     if is_guest:
