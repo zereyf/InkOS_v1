@@ -135,12 +135,17 @@ st.session_state["app_config"] = cfg
 # ── NAVIGATION MATRIX ───────────────────────────────────────────────────────
 is_admin = st.session_state.get(K.IS_ADMIN, False)
 
+# 🟢 RESTORED: Forge and Guide added back to the UI
 if is_admin:
     from ui.tabs.admin import render_admin_board
-    tab_workspace, tab_vault, tab_about, tab_admin = st.tabs([t("tab_workspace"), t("tab_vault"), "ABOUT", "◈ OVERWATCH"])
+    tab_workspace, tab_vault, tab_forge, tab_guide, tab_about, tab_admin = st.tabs([
+        t("tab_workspace"), t("tab_vault"), "FORGE", "GUIDE", "ABOUT", "◈ OVERWATCH"
+    ])
     with tab_admin: render_admin_board()
 else:
-    tab_workspace, tab_vault, tab_about = st.tabs([t("tab_workspace"), t("tab_vault"), "ABOUT"])
+    tab_workspace, tab_vault, tab_forge, tab_guide, tab_about = st.tabs([
+        t("tab_workspace"), t("tab_vault"), "FORGE", "GUIDE", "ABOUT"
+    ])
 
 # Content Distribution
 with tab_workspace:
@@ -149,12 +154,23 @@ with tab_workspace:
     else:
         render_workspace(cfg)
 
-
 with tab_vault:
     if is_guest:
         st.markdown("<div style='text-align:center; font-family:var(--font-m); color:var(--text-dim); padding-top:100px;'>[ ⨂ ] NEURAL VAULT LOCKED.</div>", unsafe_allow_html=True)
     else:
         render_vault()
 
+# ── NEW CONTENT ROUTING ──
+with tab_forge:
+    if is_guest:
+        st.markdown("<div style='text-align:center; font-family:var(--font-m); color:var(--text-dim); padding-top:100px;'>[ ⨂ ] FORGE RESTRICTED.</div>", unsafe_allow_html=True)
+    else:
+        render_forge()
+
+with tab_guide:
+    render_guide()
+
+# ─────────────────────────
 with tab_about:
     render_about()
+
