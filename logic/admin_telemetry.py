@@ -1,10 +1,9 @@
 """
 logic/admin_telemetry.py — Overwatch Data Engine
 ================================================
-v1.1: Replaced all 'sb' with 'supabase'.
-      Synced with 'users', 'personas', and 'vault' tables.
+v1.1: Replaced all 'sb' with 'supabase' for InkOS v2026.4.
 """
-from vault.supabase_client import supabase, SUPABASE_MISSING # 🟢 Import matches Source
+from vault.supabase_client import supabase, SUPABASE_MISSING
 
 def get_global_metrics():
     """Fetches stats from the database safely."""
@@ -20,11 +19,10 @@ def get_global_metrics():
         p_res = supabase.table("personas").select("id", count="exact").execute()
         stats["personas"] = p_res.count if p_res.count else 0
         
-        # Pulling from 'vault' to show activity count
         v_res = supabase.table("vault").select("id", count="exact").execute()
         stats["logs"] = v_res.count if v_res.count else 0
     except Exception:
-        pass # Silent fail to keep UI stable
+        pass 
     return stats
 
 def get_recent_activity(limit=10):
