@@ -1,8 +1,7 @@
 """
 state.py — Session State Contract
 ===================================
-v20.5: Master Sync — Neural Core Edition.
-       RESTORED: K.HISTORY to prevent Sidebar AttributeError.
+v20.6: Master Sync — Neural Core Edition + Dossier Telemetry.
 """
 
 import uuid
@@ -14,7 +13,7 @@ import streamlit as st
 
 class K:
     # ── ENGINE & HISTORY (RESTORED) ──────────────────────────────────────────
-    HISTORY         = "prompt_history"  # 🟢 RESTORED
+    HISTORY         = "prompt_history"  
     
     # ── IDENTITY & SECURITY ──────────────────────────────────────────────────
     USER_HASH       = "user_hash"
@@ -40,6 +39,13 @@ class K:
     VAULT_SEARCH    = "vault_search"
     VAULT_STATS     = "vault_stats"
     
+    # ── PROFILE & DOSSIER (NEW) ──────────────────────────────────────────────
+    PROMPT_COUNT    = "prompt_count"
+    OPERATOR_NAME   = "operator_name"
+    SHOW_PROFILE    = "show_profile"
+    BOOT_TIME       = "boot_time"
+    CYCLES          = "cycles"
+
     # ── ADVANCED DNA KEYS (The AmeerInk Trifecta) ───────────────────────────
     INK_DNA         = "ink_dna"          
     INTEL_DNA       = "intel_dna"        
@@ -52,7 +58,7 @@ class K:
 
 
 _DEFAULTS: dict = {
-    K.HISTORY:         [],              # 🟢 RESTORED
+    K.HISTORY:         [],              
     K.USER_HASH:       None,
     K.USER_PIN:        None,
     K.FAILED_ATTEMPTS: 0,
@@ -74,17 +80,16 @@ _DEFAULTS: dict = {
     K.VAULT_SEARCH:    "",
     K.VAULT_STATS:     {},
     
+    # 🟢 PROFILE & DOSSIER DEFAULTS
+    K.PROMPT_COUNT:    0,
+    K.OPERATOR_NAME:   "GUEST",
+    K.SHOW_PROFILE:    False,
+    K.BOOT_TIME:       None,
+    K.CYCLES:          0,
+    
     K.UI_LANG:         "en",
     K.APP_CONFIG:      None,
     K.BOOT_COMPLETE:   False,
-
-
-# for profile 
-    PROMPT_COUNT = "prompt_count",
-    OPERATOR_NAME = "operator_name",
-    SHOW_PROFILE = "show_profile",
-    BOOT_TIME = "boot_time",
-    CYCLES = "cycles",
 
     # 🧪 DNA INITIALIZATION (AmeerInk Defaults)
     K.INK_DNA: (
@@ -110,6 +115,10 @@ def init_session_state() -> None:
     for key, default in _DEFAULTS.items():
         if key not in st.session_state:
             st.session_state[key] = deepcopy(default)
+            
+    # 🟢 INJECTED: BOOT TELEMETRY
+    if st.session_state[K.BOOT_TIME] is None:
+        st.session_state[K.BOOT_TIME] = datetime.now()
 
 
 def reset_session() -> None:
