@@ -1,12 +1,12 @@
 """
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
-v9.3.2: Hardened Production Build (Wrap-Safety Patch).
-      - Fixed persistent SyntaxError via explicit string concatenation
+v9.3.3: Hardened Production Build (Unicode-Hex Patch).
+      - Replaced literal backticks with hex escapes to bypass Streamlit mangling
+      - Fixed persistent SyntaxError via single-line hex-encoded regex
       - Mathematical Brace-Balancing JSON Recovery
       - Evaluator Rate-Limit Best-Effort Fallback
       - Global Label-Aware Fence Strip
-      - Deterministic Assembly Order
 """
 
 import json
@@ -33,13 +33,8 @@ from forge.persona_engine import inject_persona
 
 _TAG_CLEANUP = re.compile(r"^(?:REFINED_PROMPT|PROMPT|OUTPUT|thinking):?\s*", flags=re.IGNORECASE | re.MULTILINE)
 
-# 🟢 FIXED: Split string to prevent line-wrap SyntaxErrors
-_FENCE_CLEANUP = re.compile(
-    r"```(?:markdown|json|text|xml)?|"
-    r"
-```", 
-    flags=re.IGNORECASE
-)
+# 🟢 FIXED: Using hex escapes (\x60 = `) to ensure Streamlit Cloud doesn't mangle the string
+_FENCE_CLEANUP = re.compile("\x60\x60\x60(?:markdown|json|text|xml)?|\x60\x60\x60", flags=re.IGNORECASE)
 
 def _extract_json(text: str) -> Optional[str]:
     """
