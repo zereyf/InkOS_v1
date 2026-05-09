@@ -1,10 +1,10 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v13.4: Master Latch Production Build.
-       - Fixed NameError by restoring helper functions.
+v13.5: Command Deck Purge — Terminal Iconography Enforced.
+       - PURGED: Standard emojis removed from Wordmark and Buttons.
+       - UPDATED: Language switcher now uses ISO-text instead of Flags.
        - Unified Widget Key: 'sb_persona_global_widget'.
-       - URL-Param Priority Latch for absolute refresh stability.
 """
 
 import streamlit as st
@@ -48,14 +48,16 @@ def _load_user_personas(user_hash: str) -> list:
         return []
 
 def render_language_switcher() -> None:
-    """Renders flags for language selection."""
+    """Renders text-based codes for language selection (Emoji-Free)."""
     current = get_lang()
     cols = st.columns(len(LANGUAGES))
     for i, lang in enumerate(LANGUAGES):
         with cols[i]:
             is_active = lang["code"] == current
+            # 🟢 PURGED: Replaced flag with ISO code text (e.g., EN, AR)
+            label_text = lang["code"].upper()
             if st.button(
-                f"{lang['flag']}",
+                label_text,
                 key=f"lang_btn_{lang['code']}",
                 use_container_width=True,
                 help=lang['label'],
@@ -69,7 +71,7 @@ def render_language_switcher() -> None:
 
 def render_sidebar() -> SidebarConfig:
     """
-    🟢 MASTER RENDERER: Identity-Locked Uplink
+    Master Renderer with Terminal Iconography.
     """
     with st.sidebar:
         # ── 1. EVALUATE IDENTITY ──────────────────────────────────────────────
@@ -97,9 +99,10 @@ def render_sidebar() -> SidebarConfig:
         st.markdown(link_html, unsafe_allow_html=True)
 
         # ── 3. WORDMARK ────────────────────────────────────────────────────────
+        # 🟢 PURGED: Replaced ⚡ with Unicode ❖
         wordmark_html = textwrap.dedent(f"""
             <div style="padding:0 0 14px 0; border-bottom:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
-                <div class="vc-wordmark" style="font-size:1.4rem;">⚡ {t('app_name')}</div>
+                <div class="vc-wordmark" style="font-size:1.4rem;">❖ {t('app_name')}</div>
                 <div class="vc-wordmark-sub" style="letter-spacing:2px; font-size:0.5rem; color:var(--gold);">حبر وفكرة // INKOS v2026.4</div>
             </div>
         """)
@@ -127,9 +130,10 @@ def render_sidebar() -> SidebarConfig:
                         st.query_params["sid"] = new_sid.strip()
                         st.rerun()
                     else:
-                        st.error(error_msg)
+                        st.error(f"[!] {error_msg}")
         else:
-            st.markdown('<div style="background:rgba(201,168,76,0.05); border:1px solid rgba(201,168,76,0.2); padding:10px; border-radius:3px; margin-bottom:10px; font-size:0.55rem; color:var(--gold); display:flex; align-items:center; gap:8px;">IDENTITY SECURED</div>', unsafe_allow_html=True)
+            # 🟢 PURGED: Secure iconography updated
+            st.markdown('<div style="background:rgba(201,168,76,0.05); border:1px solid rgba(201,168,76,0.2); padding:10px; border-radius:3px; margin-bottom:10px; font-size:0.55rem; color:var(--gold); display:flex; align-items:center; gap:8px;">[◈] IDENTITY SECURED</div>', unsafe_allow_html=True)
             if st.button("Terminate Latch", use_container_width=True):
                 st.session_state[K.USER_HASH] = None 
                 st.query_params.clear()
@@ -147,12 +151,11 @@ def render_sidebar() -> SidebarConfig:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # ── 6. PERSONA SELECTOR (v2026.4 MASTER LATCH) ────────────────────
+        # ── 6. PERSONA SELECTOR ──────────────────────────────────────────
         st.markdown(f'<div class="vc-header" style="margin-top:20px; font-size:0.65rem;">[ {t("active_persona", fallback="ACTIVE_PERSONA").upper()} ]</div>', unsafe_allow_html=True)
         
         user_personas = _load_user_personas(st.session_state.get(K.USER_HASH, ''))
 
-        # A. Build Option Map (Label -> Data)
         options_map: dict = {'None': None}
         for name, p_data in STARTER_PERSONAS.items():
             if name != 'None':
@@ -161,12 +164,8 @@ def render_sidebar() -> SidebarConfig:
             options_map[f"{p_data['name']} [C]"] = p_data
         
         options_list = list(options_map.keys())
-
-        # B. Resolve Index (The Persistence Latch)
         url_p_name = st.query_params.get("p")
         current_active = st.session_state.get(K.ACTIVE_PERSONA)
-        
-        # Priority: URL > Session State
         target_id = url_p_name if url_p_name else (current_active.get('name') if current_active else None)
         
         p_index = 0
@@ -177,7 +176,6 @@ def render_sidebar() -> SidebarConfig:
                     p_index = i
                     break
 
-        # C. The Master Widget
         selected_key = st.selectbox(
             'Persona Select', 
             options=options_list,
@@ -186,7 +184,6 @@ def render_sidebar() -> SidebarConfig:
             label_visibility='collapsed',
         )
         
-        # D. Sync State & URL
         active_p = options_map[selected_key]
         st.session_state[K.ACTIVE_PERSONA] = active_p
 
@@ -212,15 +209,15 @@ def render_sidebar() -> SidebarConfig:
         # ── 8. METRICS ────────────────────────────────────────────────────────
         m1, m2, m3 = st.columns(3)
         with m1:
-            st.metric(t("session_runs", fallback="Runs"), len(st.session_state.get(K.HISTORY, [])))
+            st.metric("RUNS", len(st.session_state.get(K.HISTORY, [])))
         with m2:
-            st.metric(t("session_remaining", fallback="Calls"), get_remaining_calls())
+            st.metric("CALLS", get_remaining_calls())
         with m3:
-            st.metric(t("last_saved", fallback="Saved"), st.session_state.get(K.LAST_SAVED, "Never"))
+            st.metric("SAVED", st.session_state.get(K.LAST_SAVED, "Never"))
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        if st.button(t("reset_session", fallback="Reset Session"), use_container_width=True):
+        if st.button("RESET SESSION", use_container_width=True):
             from state import reset_session
             reset_session()
             st.rerun()
