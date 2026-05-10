@@ -68,21 +68,29 @@ def render_workspace(cfg: dict) -> None:
         st.markdown("</div>", unsafe_allow_html=True)
 
     if st.button(t("execute_btn", fallback="Execute"), use_container_width=True):
-        cleaned, _ = sanitize_input(intent_val)
-        if cleaned:
+        cleaned, violations = sanitize_input(intent_val)
+        if not cleaned:
+            st.warning("Please enter an input prompt before executing.")
+        elif violations:
+            st.error("Input blocked by security policy. Remove prompt-injection directives and try again.")
+        else:
             sk = st.empty(); sk.markdown("<div class='skeleton'></div><br><div class='skeleton'></div><br><div class='skeleton'></div>", unsafe_allow_html=True)
-            resolved_target, resolved_reason = resolve_target_model(cfg.get("target_model"), cleaned)
-            st.session_state[K.AUTO_TARGET] = resolved_target; st.session_state[K.AUTO_REASON] = resolved_reason
-            payload = assemble_master_payload(cleaned, cfg, _get_dna_context())
-            start = time.perf_counter()
-            result, audit, _ = run_refinement_and_audit(payload, resolved_target, cfg["framework"], cfg["source_lang"], cfg["aesthetic_choice"], hikmah_style=str(cfg.get("hikmah_style") or "None"), skip_security=st.session_state.get(K.IS_ADMIN, False) and cfg.get("expert_mode", False))
-            _extract_telemetry(result, start)
-            sk.empty()
-            st.session_state[K.LAST_RESULT]=result; st.session_state[K.LAST_AUDIT]=audit; st.session_state[K.LAST_INPUT]=cleaned
-            hist = st.session_state.get(K.HISTORY, [])
-            hist.append({"input": cleaned, "output": result, "ts": datetime.now(WAT_TZ).isoformat(timespec='seconds')})
-            st.session_state[K.HISTORY] = hist[-50:]
-            st.rerun()
+            try:
+                resolved_target, resolved_reason = resolve_target_model(cfg.get("target_model"), cleaned)
+                st.session_state[K.AUTO_TARGET] = resolved_target; st.session_state[K.AUTO_REASON] = resolved_reason
+                payload = assemble_master_payload(cleaned, cfg, _get_dna_context())
+                start = time.perf_counter()
+                result, audit, _ = run_refinement_and_audit(payload, resolved_target, cfg["framework"], cfg["source_lang"], cfg["aesthetic_choice"], hikmah_style=str(cfg.get("hikmah_style") or "None"), skip_security=st.session_state.get(K.IS_ADMIN, False) and cfg.get("expert_mode", False))
+                _extract_telemetry(result, start)
+                st.session_state[K.LAST_RESULT]=result; st.session_state[K.LAST_AUDIT]=audit; st.session_state[K.LAST_INPUT]=cleaned
+                hist = st.session_state.get(K.HISTORY, [])
+                hist.append({"input": cleaned, "output": result, "ts": datetime.now(WAT_TZ).isoformat(timespec='seconds')})
+                st.session_state[K.HISTORY] = hist[-50:]
+                st.rerun()
+            except Exception as e:
+                st.error(f"Execution failed: {e}")
+            finally:
+                sk.empty()
 
     if st.session_state.get(K.LAST_RESULT):
         _render_score(st.session_state.get(K.LAST_AUDIT))

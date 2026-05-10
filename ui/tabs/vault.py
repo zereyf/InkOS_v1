@@ -108,17 +108,19 @@ def render_vault() -> None:
     with sc4:
         sort_order = st.selectbox("Chronos", ["Newest", "Oldest", "Highest Score", "Lowest Score"], label_visibility="collapsed")
 
-    vault_response = search_vault(
+    results, search_err = search_vault(
         user_hash=user_hash, query=query,
         tag_filter="" if tag_filter == "All Tags" else tag_filter,
         target_filter="" if target_filter == "All Targets" else target_filter
     )
 
-    if not vault_response or not vault_response[0]:
-        st.markdown('<div style="text-align:center; padding: 40px; opacity:0.5; font-size:0.7rem;">[ ⨂ ] NO MATCHING ASSETS FOUND.</div>', unsafe_allow_html=True)
+    if search_err:
+        st.error(f"VAULT_SEARCH_FAILED: {search_err}")
         return
 
-    results, _ = vault_response
+    if not results:
+        st.markdown('<div style="text-align:center; padding: 40px; opacity:0.5; font-size:0.7rem;">[ ⨂ ] NO MATCHING ASSETS FOUND.</div>', unsafe_allow_html=True)
+        return
 
     # ── Chronos Sort ──
     if sort_order == "Highest Score":
@@ -179,8 +181,10 @@ def render_vault() -> None:
                 )
             with a2:
                 if st.button("🗑 PURGE", key=f"del_{entry['id']}", use_container_width=True):
-                    ok, _ = delete_prompt(user_hash, entry["id"])
+                    ok, delete_err = delete_prompt(user_hash, entry["id"])
                     if ok: 
                         st.session_state["_archive_cache_dirty"] = True
                         st.toast("ASSET PURGED.")
                         st.rerun()
+                    else:
+                        st.error(f"VAULT_PURGE_FAILED: {delete_err or 'Unknown error.'}")
