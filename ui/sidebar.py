@@ -114,7 +114,7 @@ def render_sidebar() -> SidebarConfig:
     if is_guest:
         new_sid = st.text_input("ID", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
         new_pin = st.text_input("PIN", placeholder="PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
-        if if st.button("LATCH IDENTITY", use_container_width=True):
+        if st.button("LATCH IDENTITY", use_container_width=True):
     if new_sid.strip() and new_pin.strip():
         success, _ = authenticate_terminal(new_sid.strip(), new_pin.strip())
         if success: 
