@@ -138,7 +138,7 @@ def render_sidebar() -> SidebarConfig:
 
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ── 🟢 REACTIVE PERSONA SELECTOR ──
+    # ── 🟢 REACTIVE PERSONA SELECTOR (Two-Way Binding Restored) ──
     st.markdown(f'<div class="vc-header" style="font-size:0.65rem;">[ {t("active_persona", fallback="ACTIVE_PERSONA").upper()} ]</div>', unsafe_allow_html=True)
     user_personas = st.session_state.get(K.PERSONA_LIST, [])
     options_map = {'None': None}
@@ -150,20 +150,14 @@ def render_sidebar() -> SidebarConfig:
     
     options_list = list(options_map.keys())
     
-    # Resolve the correct index to sync with the Forge tab
-    active_p_state = st.session_state.get(K.ACTIVE_PERSONA)
-    current_index = 0
-    if active_p_state:
-        target_name = active_p_state.get("name")
-        for i, opt_key in enumerate(options_list):
-            if options_map[opt_key] and options_map[opt_key].get("name") == target_name:
-                current_index = i
-                break
-                
-    # No 'key' parameter here so it can accept programmatic index changes
-    selected_key = st.selectbox('Persona Select', options=options_list, index=current_index, label_visibility='collapsed')
-    active_p = options_map[selected_key]
+    # 1. Provide the key so forge.py can mutate this widget programmatically.
+    # 2. Removed 'index' logic; Streamlit handles state natively via the key.
+    selected_key = st.selectbox('Persona Select', options=options_list, key='sb_persona_global_widget', label_visibility='collapsed')
+    
+    # Write back to Global State so the Refiner uses the active persona
+    active_p = options_map.get(selected_key)
     st.session_state[K.ACTIVE_PERSONA] = active_p
+
 
     # ── SYSTEM TOGGLES ──
     st.markdown("<hr style='margin-top:5px;'>", unsafe_allow_html=True)
