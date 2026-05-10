@@ -1,19 +1,18 @@
 """
 ui/tabs/vault.py — Prompt Memory Vault Tab
 ============================================
-v8.7: Master Sync — The Athar Protocol.
-      - FIXED: Temporal Paradox (StreamlitAPIException) via Callback Protocol.
-      - Hardened against Null-returns (TypeError Fix).
-      - Atomic HTML Rendering (Prevents card fracture).
-      - Forensic String Sanitization (html.escape injection).
-      - Synchronized with Workspace v31.0 HUD logic.
+v9.0: Zenith Edition — Forensic Retrieval & Deep Rehydration.
+      - ADDED: Deep Rehydration callback (Syncs Sidebar state).
+      - ADDED: Chronos Sort (Score/Date ordering).
+      - UPDATED: High-Density Forensic UI with Scan-line FX.
+      - FIXED: Synchronized state-dirty flags for Archive consistency.
 """
 
 import streamlit as st
 import textwrap
-import html  # Critical for leak protection
+import html
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List
 from state import K
 from vault.vault_engine import (
     search_vault,
@@ -22,52 +21,54 @@ from vault.vault_engine import (
     get_all_tags,
 )
 from vault.supabase_client import SUPABASE_MISSING
-from config import TARGET_GUIDES
+from config import TARGET_GUIDES, LOGIC_FRAMEWORKS, AESTHETIC_PRESETS
 from i18n.translations import t
 
+# ── 🟢 DYNAMIC UI HELPERS ───────────────────────────────────────────────────
+
 def _score_color(score: int) -> str:
-    if score >= 90: return "#C9A84C" # Gold
-    if score >= 70: return "#4CAF9A" # Green
+    if score >= 90: return "var(--gold)"
+    if score >= 75: return "#4CAF9A" # Hikmah Teal
     if score >= 50: return "#7C9EBF" # Steel
     return "#E53E3E" # Danger
 
-def _render_unavailable() -> None:
-    html_code = textwrap.dedent("""
-        <div style="background: rgba(229, 62, 62, 0.05); border-left: 3px solid #E53E3E; padding: 20px 24px; font-family: var(--font-m); font-size: 0.78rem; color: #E2E8F0; line-height: 1.8;">
-            <strong style="color:#FC8181;letter-spacing:0.1em;font-size:0.9rem;">✦ VAULT UPLINK OFFLINE</strong><br><br>
-            <span style="color:var(--text-muted);">Supabase credentials not found in environment.</span><br>
-            Add <code>SUPABASE_URL</code> and <code>SUPABASE_KEY</code> to activate cloud storage.
-        </div>
-    """)
-    st.markdown(html_code, unsafe_allow_html=True)
-
 def _render_vault_locked() -> None:
-    html_code = textwrap.dedent(f"""
-        <div style="height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px dashed rgba(201,168,76,0.15); border-radius: 8px; background: rgba(255,255,255,0.01);">
-            <span class="status-dot" style="background:var(--gold); animation: pulse-gold 2s infinite; margin-bottom: 20px;"></span>
-            <div style="font-family:var(--font-m); color:var(--gold); font-size:1rem; letter-spacing:2px; text-transform:uppercase; font-weight:600;">
-                Vault Uplink Encrypted
+    st.markdown(textwrap.dedent(f"""
+        <div style="height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px dashed rgba(201,168,76,0.15); border-radius: 4px; background: rgba(0,0,0,0.2);">
+            <div class="status-dot" style="background:var(--gold); animation: pulse-gold 2s infinite; margin-bottom: 20px;"></div>
+            <div style="font-family:var(--font-m); color:var(--gold); font-size:0.8rem; letter-spacing:4px; text-transform:uppercase; font-weight:bold;">
+                VAULT_UPLINK_ENCRYPTED
             </div>
-            <div style="font-family:var(--font-m); color:var(--text-muted); font-size:0.75rem; max-width:450px; line-height:1.7; margin-top:12px; padding: 0 20px;">
-                To recover persistent assets and view stats, latch a <b>Terminal Identity</b> via the sidebar.
+            <div style="font-family:var(--font-m); color:var(--text-dim); font-size:0.6rem; max-width:350px; line-height:1.8; margin-top:15px; letter-spacing:1px;">
+                IDENTITY NOT LATCHED. PLEASE VERIFY TERMINAL CREDENTIALS IN THE SIDEBAR TO ACCESS THE NEURAL ARCHIVE.
             </div>
         </div>
-    """)
-    st.markdown(html_code, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
-# ── 🟢 CALLBACK FUNCTION (THE FIX) ──
-def _deploy_callback(content: str) -> None:
-    """Safely injects memory into the Workspace widget before rendering."""
+# ── 🟢 DEEP REHYDRATION CALLBACK ──────────────────────────────────────────
+
+def _vault_rehydrate_callback(content: str, target: str, framework: str, aesthetic: str, title: str) -> None:
+    """Teleports saved mission settings back into the primary UI state."""
+    # 1. Inject Content
     st.session_state["ta_input_widget"] = content
     st.session_state[K.LAST_RESULT] = content
-    # Note: Streamlit automatically triggers a rerun after a callback, 
-    # so we don't need st.rerun() here.
+    
+    # 2. Inject Sidebar Settings (Matching sidebar.py keys)
+    st.session_state["sb_target"] = target
+    st.session_state["sb_framework"] = framework
+    st.session_state["sb_aesthetic"] = aesthetic
+    
+    # 3. Notification
+    st.session_state["rehydrate_msg"] = f"VAULT_REHYDRATION: {title[:20]}..."
+    st.session_state["_archive_cache_dirty"] = True
+
+# ── 🟢 MAIN RENDERER ──────────────────────────────────────────────────────────
 
 def render_vault() -> None:
-    st.markdown('<div class="vc-header"><span class="status-dot" style="background:var(--gold);"></span>Neural Memory Vault</div>', unsafe_allow_html=True)
+    st.markdown('<div class="vc-header"><span class="status-dot" style="background:var(--gold);"></span>NEURAL_MEMORY_VAULT</div>', unsafe_allow_html=True)
 
     if SUPABASE_MISSING:
-        _render_unavailable()
+        st.error("DATABASE_OFFLINE: Credentials missing from environment.")
         return
 
     user_hash = st.session_state.get(K.USER_HASH, "")
@@ -75,131 +76,129 @@ def render_vault() -> None:
         _render_vault_locked()
         return
 
-    # ── 1. STATS HUD ────────────────────────────────────────────────────────────
+    # ── 1. STATS HUD (Asymmetric Command Row) ──────────────────────────────────
     stats, err = get_vault_stats(user_hash)
     if not err and stats.get("count", 0) > 0:
         s_color = _score_color(stats["avg_score"])
-        stats_html = textwrap.dedent(f"""
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 30px;">
-                <div style="background:var(--bg-card); border:1px solid rgba(255,255,255,0.05); border-left:3px solid var(--steel); padding:12px 16px; border-radius:3px;">
-                    <div style="font-size:0.55rem; color:var(--text-muted); letter-spacing:0.1em; font-family:var(--font-m);">MEMORY ASSETS</div>
-                    <div style="font-size:1.4rem; color:#E2E8F0; font-family:var(--font-d); margin-top:4px;">{stats['count']}</div>
+        st.markdown(f"""
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 10px; margin-bottom: 25px;">
+                <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-left:2px solid var(--steel); padding:15px; border-radius:2px;">
+                    <div style="font-size:0.45rem; color:var(--text-dim); letter-spacing:2px; font-family:var(--font-m);">ASSETS</div>
+                    <div style="font-size:1.4rem; color:var(--text); font-family:var(--font-d);">{stats['count']}</div>
                 </div>
-                <div style="background:var(--bg-card); border:1px solid rgba(255,255,255,0.05); border-left:3px solid {s_color}; padding:12px 16px; border-radius:3px;">
-                    <div style="font-size:0.55rem; color:var(--text-muted); letter-spacing:0.1em; font-family:var(--font-m);">AVG PRECISION</div>
-                    <div style="font-size:1.4rem; color:{s_color}; font-family:var(--font-d); margin-top:4px;">{stats['avg_score']}%</div>
+                <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-left:2px solid {s_color}; padding:15px; border-radius:2px;">
+                    <div style="font-size:0.45rem; color:var(--text-dim); letter-spacing:2px; font-family:var(--font-m);">PRECISION</div>
+                    <div style="font-size:1.4rem; color:{s_color}; font-family:var(--font-d);">{stats['avg_score']}%</div>
                 </div>
-                <div style="background:var(--bg-card); border:1px solid rgba(255,255,255,0.05); border-left:3px solid var(--gold); padding:12px 16px; border-radius:3px;">
-                    <div style="font-size:0.55rem; color:var(--text-muted); letter-spacing:0.1em; font-family:var(--font-m);">TOP TARGET</div>
-                    <div style="font-size:0.85rem; color:var(--gold); font-weight:600; padding-top:6px;">{stats['top_target']}</div>
+                <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-left:2px solid var(--gold); padding:15px; border-radius:2px;">
+                    <div style="font-size:0.45rem; color:var(--text-dim); letter-spacing:2px; font-family:var(--font-m);">TOP_TARGET</div>
+                    <div style="font-size:0.75rem; color:var(--gold); font-family:var(--font-m); padding-top:8px; font-weight:bold; letter-spacing:1px;">{stats['top_target'].upper()}</div>
                 </div>
             </div>
-        """)
-        st.markdown(stats_html, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-    # ── 2. SEARCH & FILTERS (HARDENED) ──────────────────────────────────────────
-    sc1, sc2, sc3 = st.columns([3, 2, 2])
+    # ── 2. FORENSIC SEARCH MATRIX ──────────────────────────────────────────
+    st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-dim); letter-spacing:2px; margin-bottom:10px;">FORENSIC_QUERY_MATRIX</div>', unsafe_allow_html=True)
+    
+    sc1, sc2, sc3, sc4 = st.columns([2.5, 1.5, 1.5, 1.5])
     with sc1: 
-        query = st.text_input(
-            "Search", 
-            placeholder=t("vault_search_placeholder", fallback="NEURAL_HASH OR DESIGNATION..."), 
-            label_visibility="collapsed",
-            key="vault_search_input"
-        )
+        query = st.text_input("Search", placeholder="NEURAL_HASH OR DESIGNATION...", label_visibility="collapsed", key="v_search")
     with sc2: 
-        tag_filter = st.selectbox("Tag", [t("all_tags", fallback="All Tags")] + get_all_tags(user_hash), label_visibility="collapsed")
+        tag_filter = st.selectbox("Tag", ["All Tags"] + get_all_tags(user_hash), label_visibility="collapsed")
     with sc3: 
-        target_filter = st.selectbox("Target", ["All"] + list(TARGET_GUIDES.keys()), label_visibility="collapsed")
+        target_filter = st.selectbox("Target", ["All Targets"] + list(TARGET_GUIDES.keys()), label_visibility="collapsed")
+    with sc4:
+        sort_order = st.selectbox("Chronos", ["Newest", "Oldest", "Highest Score", "Lowest Score"], label_visibility="collapsed")
 
-    # 🟢 FIXED: Null-safe search call to prevent TypeError on unpacking
     vault_response = search_vault(
         user_hash=user_hash,
         query=query,
-        tag_filter="" if tag_filter == t("all_tags", fallback="All Tags") else tag_filter,
-        target_filter=target_filter
+        tag_filter="" if tag_filter == "All Tags" else tag_filter,
+        target_filter="" if target_filter == "All Targets" else target_filter
     )
 
-    if vault_response is None:
-        st.error("Vault Uplink Interrupted: Database returned Null.")
+    if not vault_response or not vault_response[0]:
+        st.markdown('<div style="text-align:center; padding: 40px; opacity:0.5; font-size:0.7rem;">[ ⨂ ] NO MATCHING ASSETS FOUND.</div>', unsafe_allow_html=True)
         return
 
-    results, err = vault_response if isinstance(vault_response, tuple) else (vault_response, None)
+    results, _ = vault_response
 
-    if err:
-        st.error(f"Neural Vault Error: {err}")
-        return
-
-    if not results:
-        st.caption("No matching assets in local or cloud storage.")
-        return
+    # ── 🟢 CHRONOS SORT (In-Memory Processing) ──
+    if sort_order == "Highest Score":
+        results = sorted(results, key=lambda x: x.get('score', 0), reverse=True)
+    elif sort_order == "Lowest Score":
+        results = sorted(results, key=lambda x: x.get('score', 0))
+    elif sort_order == "Oldest":
+        results = sorted(results, key=lambda x: x.get('created_at', ''))
+    else: # Default: Newest
+        results = sorted(results, key=lambda x: x.get('created_at', ''), reverse=True)
 
     # ── 3. ASSET LISTING (ATHAR PROTOCOL) ───────────────────────────────────────
     now = datetime.now(timezone.utc)
     
     for entry in results:
         score = entry.get("score", 0)
-        indicator = "🟢" if score >= 85 else "🟡" if score >= 50 else "🔴"
+        s_color = _score_color(score)
         
-        # 🟢 SAFETY: Escape strings to prevent layout fracturing
-        safe_title  = html.escape(entry.get("title", "UNTITLED_CONSTRUCT")).upper()
-        safe_tags   = html.escape(entry.get("tags", ""))
+        safe_title = html.escape(entry.get("title", "UNTITLED_CONSTRUCT")).upper()
         safe_intent = html.escape(entry.get("intent", "No original intent recorded."))
         
-        # Temporal Decay Calculation
+        # Temporal Logic
         try:
             created_dt = datetime.fromisoformat(entry.get("created_at", now.isoformat()).replace('Z', '+00:00'))
             age_days = (now - created_dt).days
-        except Exception:
+        except:
             age_days = 0
 
-        # Archival Branding & Decay FX
-        time_tag, opacity, border_fx = "", "1.0", "border:1px solid rgba(255,255,255,0.05);"
-        if age_days > 30:
-            time_tag, opacity, border_fx = " [DEEP ARCHIVE]", "0.6", "border:1px dashed #E53E3E; border-left:3px solid #E53E3E;"
-        elif age_days > 7:
-            time_tag, opacity, border_fx = " [DECAYING]", "0.8", "border:1px dashed rgba(124, 158, 191, 0.4);"
+        # Scan-line Branding FX
+        border_fx = f"border:1px solid rgba(255,255,255,0.05); border-left:3px solid {s_color};"
+        
+        label = f"[{score}%] {safe_title} // ID:{entry['id'][:6]}"
 
-        # Render Expander
-        with st.expander(f"{indicator} [{entry['id'][:6]}] {safe_title} · {score}% {time_tag}"):
+        with st.expander(label):
             
-            # Metadata Extraction
-            aesthetic = entry.get("aesthetic")
-            islamic = entry.get("islamic", False)
+            aesthetic = entry.get("aesthetic", "Default")
+            framework = entry.get("framework", "RACE")
+            target = entry.get("target", "ChatGPT")
 
-            aesthetic_badge = f"<span style='background:rgba(201,168,76,0.1); color:var(--gold); padding:2px 6px; border-radius:2px; margin-right:5px;'>{aesthetic.upper() if aesthetic else 'DEFAULT'}</span>"
-            islamic_badge = f"<span style='background:rgba(76,175,154,0.1); color:#4CAF9A; padding:2px 6px; border-radius:2px;'>HIKMAH DNA</span>" if islamic else ""
-
-            # 🟢 ATOMIC RENDERING: HTML collapsed to prevent Streamlit tag leaking
-            meta_html = (
-                f'<div style="background:rgba(255,255,255,0.02); {border_fx} padding:15px; border-radius:3px; margin-bottom:12px; font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); opacity:{opacity};">'
-                f'<div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">'
-                f'<span>TARGET: <b style="color:var(--text);">{entry.get("target", "GPT").upper()}</b></span>'
-                f'<span>AGE: <b style="color:var(--text);">{age_days} DAYS</b></span></div>'
-                f'<div style="margin-bottom:10px;"><span>FRAMEWORK: <b style="color:var(--text);">{entry.get("framework", "RACE").upper()}</b></span></div>'
-                f'<div style="background:rgba(201,168,76,0.05); padding:8px; border-radius:2px; margin-bottom:10px; color:var(--text-dim); font-style:italic; line-height:1.4;">"{safe_intent}"</div>'
-                f'<div style="display:flex; gap:5px; flex-wrap:wrap;">{aesthetic_badge} {islamic_badge}</div>'
-                f'<div style="margin-top:10px; font-size:0.5rem; color:var(--steel); letter-spacing:1px;">TAGS: {safe_tags.upper()}</div>'
-                f'</div>'
-            ).replace("\n", "")
+            # Forensic HUD Card
+            meta_html = textwrap.dedent(f"""
+                <div style="background:rgba(10,12,16,0.6); {border_fx} padding:15px; border-radius:2px; margin-bottom:12px; font-family:var(--font-m); position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:0; left:0; width:100%; height:100%; background: repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.01) 1px, rgba(255,255,255,0.01) 2px); pointer-events:none;"></div>
+                    
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:0.5rem; color:var(--text-dim); letter-spacing:1px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">
+                        <span>UPLINK: {target.upper()}</span>
+                        <span>AGE: {age_days}D</span>
+                    </div>
+                    
+                    <div style="font-size:0.65rem; color:var(--text); line-height:1.5; margin-bottom:12px; font-style:italic; opacity:0.8;">"{safe_intent}"</div>
+                    
+                    <div style="display:flex; gap:8px;">
+                        <span style="background:rgba(201,168,76,0.1); color:var(--gold); padding:2px 6px; border-radius:2px; font-size:0.5rem;">{aesthetic.upper()}</span>
+                        <span style="background:rgba(255,255,255,0.05); color:var(--text-dim); padding:2px 6px; border-radius:2px; font-size:0.5rem;">{framework.upper()}</span>
+                    </div>
+                </div>
+            """).replace("\n", "")
             
             st.markdown(meta_html, unsafe_allow_html=True)
             
-            # Content & Actions
             st.code(entry["content"], language="markdown")
             
             a1, a2 = st.columns(2)
             with a1:
-                # 🟢 THE CALLBACK INJECTION (Replaces the broken 'if' block)
+                # 🟢 THE REHYDRATE BUTTON
                 st.button(
-                    "⚡ DEPLOY TO WORKSPACE", 
+                    "⚡ REHYDRATE STATE", 
                     key=f"dep_{entry['id']}", 
                     use_container_width=True,
-                    on_click=_deploy_callback,
-                    args=(entry["content"],)
+                    type="primary",
+                    on_click=_vault_rehydrate_callback,
+                    args=(entry["content"], target, framework, aesthetic, safe_title)
                 )
             with a2:
-                if st.button("🗑 DELETE", key=f"del_{entry['id']}", use_container_width=True):
+                if st.button("🗑 PURGE", key=f"del_{entry['id']}", use_container_width=True):
                     ok, _ = delete_prompt(user_hash, entry["id"])
                     if ok: 
-                        st.toast("Memory Asset Purged.")
+                        st.session_state["_archive_cache_dirty"] = True
+                        st.toast("ASSET PURGED FROM NEURAL VAULT.")
                         st.rerun()
