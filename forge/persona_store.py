@@ -1,9 +1,10 @@
 """
 forge/persona_store.py — Persona Persistence Layer
 ====================================================
-v5.1: Master Sync — Telemetry Alignment.
-      FIXED: Replaced 'sb' with 'supabase' to match vault/supabase_client.py.
-      Armored with User Hash isolation for multi-tenant security.
+v6.0: Zenith Edition — Rhetoric Alignment.
+      - REFACTORED: save_persona signature to include hikmah_style and aesthetic.
+      - UPDATED: Record mapping to match v15.0 Sidebar config.
+      - RETAINED: Deterministic MD5 hashing and User Hash isolation.
 """
 
 import hashlib
@@ -24,36 +25,38 @@ def _require_sb() -> Optional[str]:
 # ── PERSISTENCE OPERATIONS ───────────────────────────────────────────────────
 
 def save_persona(
-    user_hash:   str,
-    name:        str,
-    role:        str,
-    constraints: str,
-    style:       str,
-    target:      str,
-    tags:        str,
+    user_hash:    str,
+    name:         str,
+    role:         str,
+    constraints:  str,
+    hikmah_style: str,  # 🟢 NEW: Rhetorical Profile (mapped to 'style')
+    aesthetic:    str,  # 🟢 NEW: Visual Identity
+    target:       str,
+    tags:         str,
 ) -> Tuple[Optional[dict], Optional[str]]:
-    """🟢 UPDATED: Saves or updates a tactical construct in the SQL armory."""
+    """🟢 v6.0: Saves/Updates a tactical construct with full Rhetorical DNA."""
     if err := _require_sb():
         return None, err
 
-    # 🛡️ DETERMINISTIC ID: Prevents name collisions within the same user space
+    # 🛡️ DETERMINISTIC ID: user_hash + name ensures unique records per user
     seed = f"{user_hash}{name.strip().lower()}"
     record_id = hashlib.md5(seed.encode()).hexdigest()[:16]
 
     record = {
-        "id":          record_id,
-        "user_hash":   user_hash,
-        "name":        name.strip()[:80],
-        "role":        role.strip(),
-        "constraints": constraints.strip(),
-        "style":       style.strip(),
-        "target":      target,
-        "tags":        tags.strip().lower(),
-        "created_at":  datetime.now(timezone.utc).isoformat(),
+        "id":           record_id,
+        "user_hash":    user_hash,
+        "name":         name.strip()[:80],
+        "role":         role.strip(),
+        "constraints":  constraints.strip(),
+        "style":        hikmah_style, # 🟢 Behavioral Logic
+        "aesthetic":    aesthetic,    # 🟢 Visual Identity
+        "target":       target,
+        "tags":         tags.strip().lower(),
+        "created_at":   datetime.now(timezone.utc).isoformat(),
     }
 
     try:
-        # 🟢 UPDATED: sb -> supabase
+        # Perform Upsert: Insert if new, Update if ID exists
         res = supabase.table(TABLE).upsert(record).execute()
         return res.data[0] if res.data else record, None
     except Exception as e:
@@ -64,16 +67,16 @@ def list_personas(
     user_hash:     str,
     target_filter: str = "All",
 ) -> Tuple[List[dict], Optional[str]]:
-    """🟢 UPDATED: Retrieves constructs from the user's specific registry."""
+    """Retrieves constructs isolated by user_hash and filtered by target."""
     if err := _require_sb():
         return [], err
 
     try:
-        # 🛰️ BASE QUERY: Isolate by identity first (sb -> supabase)
+        # Base query: Order by newest first
         q = supabase.table(TABLE).select("*").eq("user_hash", user_hash).order("created_at", desc=True)
         
-        # 🔗 LOGICAL UNION: Fetch specific target + universal "All" constructs
         if target_filter and target_filter != "All":
+            # Fetch target-specific AND universal constructs
             res_specific = q.eq("target", target_filter).execute()
             res_universal = (
                 supabase.table(TABLE)
@@ -101,42 +104,23 @@ def list_personas(
         return [], f"Neural Registry Read Error: {str(e)}"
 
 
-def get_persona(
-    user_hash:  str,
-    persona_id: str,
-) -> Tuple[Optional[dict], Optional[str]]:
+def get_persona(user_hash: str, persona_id: str) -> Tuple[Optional[dict], Optional[str]]:
     """Fetch a single construct from the vault."""
     if err := _require_sb():
         return None, err
     try:
-        # 🟢 UPDATED: sb -> supabase
-        res = (
-            supabase.table(TABLE)
-            .select("*")
-            .eq("id", persona_id)
-            .eq("user_hash", user_hash)
-            .single()
-            .execute()
-        )
+        res = supabase.table(TABLE).select("*").eq("id", persona_id).eq("user_hash", user_hash).single().execute()
         return res.data, None
     except Exception as e:
         return None, f"Uplink Fault: {str(e)}"
 
 
-def delete_persona(
-    user_hash:  str,
-    persona_id: str,
-) -> Tuple[bool, Optional[str]]:
+def delete_persona(user_hash: str, persona_id: str) -> Tuple[bool, Optional[str]]:
     """Erase a construct from the permanent armory."""
     if err := _require_sb():
         return False, err
     try:
-        # 🟢 UPDATED: sb -> supabase
-        supabase.table(TABLE)\
-            .delete()\
-            .eq("id", persona_id)\
-            .eq("user_hash", user_hash)\
-            .execute()
+        supabase.table(TABLE).delete().eq("id", persona_id).eq("user_hash", user_hash).execute()
         return True, None
     except Exception as e:
         return False, f"De-initialization Error: {str(e)}"
