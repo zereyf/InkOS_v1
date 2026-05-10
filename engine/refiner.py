@@ -1,9 +1,10 @@
 """
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
-v9.6.0: Overwatch Shield Protocol.
-      - INJECTED: Hard security gate in `run_refinement_and_audit`.
-      - OPTIMIZED: Aborts LLM execution upon threat detection.
+v10.0: Zenith Neural Handshake.
+      - INTEGRATED: 3-Layer Master Payload (Persona + Rhetoric + DNA).
+      - REFACTORED: Replaced 'islamic_mode' with 'hikmah_style' profiles.
+      - OPTIMIZED: Removed redundant prompt construction; payload-driven execution.
 """
 
 import json
@@ -15,18 +16,14 @@ from typing import Optional, Tuple, Any
 from config import (
     client, MODEL_ID, TEMPERATURE, MAX_TOKENS, 
     RETRY_THRESHOLD, MAX_RETRIES, EVAL_TEMPERATURE,
-    TARGET_GUIDES, CIPHER_IDENTITY, CIPHER_EVALUATOR_PROMPT, 
-    CIPHER_OUTPUT_CONTRACT, CIPHER_RETRY_INJECTION,
-    VISUAL_DIRECTOR_PROMPT, VISUAL_PROMPT_TEMPLATES, FRAMEWORK_BLUEPRINTS
+    CIPHER_EVALUATOR_PROMPT, CIPHER_OUTPUT_CONTRACT, 
+    CIPHER_RETRY_INJECTION
 )
 
-from engine.router import route_to_target
 from engine.cognitive_map import detect_arabic_pattern
-from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
-from forge.persona_engine import inject_persona
-from security.sanitizer import sanitize_input  # 🟢 ADDED: Security Dependency
+from security.sanitizer import sanitize_input
 
-# ── CORE PARSING & VALIDATION ENGINE ──────────────────────────────────────────
+# ── 🟢 PARSING & UTILITIES ───────────────────────────────────────────────────
 
 _TAG_CLEANUP = re.compile(r"^(?:REFINED_PROMPT|PROMPT|OUTPUT|thinking):?\s*", flags=re.IGNORECASE | re.MULTILINE)
 _FENCE_CLEANUP = re.compile("\x60\x60\x60(?:markdown|json|text|xml)?|\x60\x60\x60", flags=re.IGNORECASE)
@@ -70,47 +67,56 @@ def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
     try:
         audit = _clamp_audit(json.loads(json_str))
     except:
-        audit = {"score": 0, "critique": "JSON parse error.", "precision": 0, "alignment": 0, "efficiency": 0}
+        audit = {"score": 0, "critique": "JSON parse error."}
     return refined, audit
 
 def _validate_structure(refined: str, target: str) -> Tuple[bool, str]:
     if "[CLARIFICATION_REQUIRED]" in refined: return True, ""
     text = refined.strip()
-    if len(text) < 300: 
-        return False, "Output density insufficient (< 300 chars)."
-    if target == 'Claude':
+    if len(text) < 200: return False, "Output density insufficient."
+    
+    # Target-specific structure validation
+    if 'Claude' in target:
         if not re.search(r'<(?:role|task|constraints|output_format)>', text, re.IGNORECASE):
-            return False, 'Claude requires XML tags.'
-    if target == 'ChatGPT' or target == 'Gemini':
+            return False, 'Claude requires XML-structured blocks.'
+    if 'GPT' in target:
         if not re.search(r'^you\s+are\s+a?\s+\w', text[:100], re.IGNORECASE):
-            return False, "Prompt requires 'You are a [role]' opener."
+            return False, "Prompt requires 'You are a [role]' identity opener."
     return True, ""
 
-# ── LLM API WRAPPERS ──────────────────────────────────────────────────────────
+# ── 🟢 LLM API HANDSHAKES ─────────────────────────────────────────────────────
 
-def _call_evaluator(original_input: str, target: str, refined_prompt: str) -> dict:
+def _call_evaluator(master_payload: str, target: str, refined_prompt: str, hikmah_style: str) -> dict:
+    """External audit with Rhetoric awareness."""
     if not client: return {"score": 0, "critique": "Offline"}
+    
+    rhetoric_note = f"\nRHETORIC_EXPECTATION: {hikmah_style}" if hikmah_style != "None" else ""
+    
     try:
         completion = client.chat.completions.create(
             model=MODEL_ID,
             messages=[
-                {"role": "system", "content": CIPHER_EVALUATOR_PROMPT},
-                {"role": "user",   "content": f"INPUT: {original_input}\nTARGET: {target}\nPROMPT: {refined_prompt}"},
+                {"role": "system", "content": f"{CIPHER_EVALUATOR_PROMPT}{rhetoric_note}"},
+                {"role": "user",   "content": f"TARGET_NODE: {target}\nMASTER_PAYLOAD: {master_payload}\nREFINED_OUTPUT: {refined_prompt}"},
             ],
             response_format={"type": "json_object"},
             temperature=EVAL_TEMPERATURE,
-            max_tokens=250,
+            max_tokens=300,
         )
         return _clamp_audit(json.loads(completion.choices[0].message.content))
     except Exception as e:
-        return {"score": 0, "critique": f"Audit Failed: {str(e)[:40]}"}
+        return {"score": 0, "critique": f"Audit Error: {str(e)[:40]}"}
 
-def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
+def _call_cipher(system_prompt: str) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
+    """Executes the neural refraction. Master Payload acts as the System Instruction."""
     if not client: return None, None, "Client Offline"
     try:
         completion = client.chat.completions.create(
             model=MODEL_ID,
-            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_text}],
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": "EXECUTE_REFINEMENT_NODE: Process the mission objective within the provided system constraints."}
+            ],
             temperature=TEMPERATURE,
             max_tokens=MAX_TOKENS,
         )
@@ -119,97 +125,70 @@ def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Opt
     except Exception as e:
         return None, None, str(e)
 
-# ── PIPELINE EXECUTION ────────────────────────────────────────────────────────
+# ── 🟢 PIPELINE EXECUTION ─────────────────────────────────────────────────────
 
-def _build_system_prompt(target, framework, lang, cognitive_directive, persona, islamic_mode, retry_critique) -> str:
-    parts = [CIPHER_IDENTITY]
-    parts.append(f'SESSION_CONTEXT: Target={target} | Language={lang}')
-    if framework in FRAMEWORK_BLUEPRINTS:
-        parts.append(f'FRAMEWORK_CONSTRAINTS:\n{FRAMEWORK_BLUEPRINTS[framework]}')
-    if cognitive_directive:
-        parts.append(f'LINGUISTIC_DIRECTIVE:\n{cognitive_directive}')
-    if persona:
-        p_input = persona.get("name") if isinstance(persona, dict) else persona
-        parts.append(f'ACTIVE_PERSONA_OVERLAY:\n{inject_persona(p_input, target)}')
-    if islamic_mode:
-        parts.append(f'MAQASID_ETHICAL_LAYER:\n{ISLAMIC_CONTEXT_LAYER}')
-    if retry_critique:
-        parts.append(CIPHER_RETRY_INJECTION.format(critique=retry_critique))
-    parts.append(CIPHER_OUTPUT_CONTRACT)
-    return '\n\n'.join(parts)
 def run_refinement_and_audit(
-    user_text: str, target: str, framework: str, lang: str, 
-    aesthetic_choice: str = "None", islamic_mode: bool = False, 
-    persona: Optional[Any] = None,
-    skip_security: bool = False  # 🟢 ADDED: Security Bypass Flag
+    master_payload: str, 
+    target: str, 
+    framework: str, 
+    lang: str, 
+    aesthetic_choice: str = "Default", 
+    hikmah_style: str = "None", 
+    skip_security: bool = False
 ) -> Tuple[str, dict, Optional[Any]]:
+    """
+    Main Neural Refinement Loop.
+    Converts a 3-layer Master Payload into a verified refined asset.
+    """
     
-    # 🛡️ THE OVERWATCH SHIELD (Execution Intercept)
+    # 🛡️ THE OVERWATCH SHIELD
     if not skip_security:
-        _, violations = sanitize_input(user_text)
+        _, violations = sanitize_input(master_payload)
         if violations:
             threat_sig = " | ".join(violations)
-            hostile_asset = (
-                f"🛑 OVERWATCH PROTOCOL ACTIVATED\n"
-                f"================================\n"
-                f"[!] CONNECTION SEVERED.\n\n"
-                f"Hostile cognitive patterns detected in payload.\n"
-                f"Adversarial Signature: {threat_sig}\n\n"
-                f"Action: Execution aborted. Payload diverted to quarantine log."
+            return (
+                f"🛑 OVERWATCH INTERCEPT: Hostile patterns detected in mission payload.\n"
+                f"SIGNATURE: {threat_sig}\n"
+                f"ACTION: UPLINK TERMINATED.",
+                {"score": 0, "critique": f"SECURITY_BREACH: {threat_sig}"},
+                None
             )
-            audit_payload = {
-                "score": 0, 
-                "critique": f"SECURITY BREACH DETECTED. Vector: {threat_sig}", 
-                "precision": 0, "alignment": 0, "efficiency": 0
-            }
-            return hostile_asset, audit_payload, None
-
-    # Normal Execution Pipeline
-    cognitive = ""
-    pattern_data = None
-    
-    if lang == "Arabic (العربية)":
-        pattern_data = detect_arabic_pattern(user_text)
-        if pattern_data:
-            cognitive = f"[PATTERN_DETECTION: {pattern_data['pattern']}] {pattern_data['prompt_instruction']}"
-        else:
-            cognitive = "[LINGUISTIC_OVERRIDE] Enforce Classical Fusha. Negate dialectal bleed."
 
     retry_critique = None
     best_refined, best_audit = None, {"score": 0}
 
     for attempt in range(MAX_RETRIES + 1):
-        sys_prompt = _build_system_prompt(
-            target, framework, lang, cognitive, persona, islamic_mode, retry_critique
-        )
+        # 🟢 CONSTRUCT FINAL UPLINK
+        # We append the mandatory output contract to the master_payload
+        final_system_prompt = f"{master_payload}\n\n{CIPHER_OUTPUT_CONTRACT}"
         
-        refined, self_audit, error = _call_cipher(sys_prompt, user_text)
+        if retry_critique:
+            final_system_prompt += f"\n\n[ RETRY_CORRECTION_DIRECTIVE ]\n{retry_critique}"
+
+        # UPLINK
+        refined, self_audit, error = _call_cipher(final_system_prompt)
         
         if error: return f"System Fault: {error}", {"score":0, "critique":error}, None
-        if not refined: return "Refinement failed.", {"score":0, "critique":"Empty response."}, None
+        if not refined: return "Neural refraction failed.", {"score":0}, None
 
+        # STRUCTURE VALIDATION
         passed, reason = _validate_structure(refined, target)
         if not passed:
-            retry_critique = reason
-            if not best_refined or (self_audit.get('score', 0) > best_audit.get('score', 0)):
-                best_refined, best_audit = refined, self_audit
+            retry_critique = f"Structural Failure: {reason}. Ensure output matches model-specific requirements."
             continue
 
-        if self_audit and self_audit.get('score', 0) >= RETRY_THRESHOLD:
-            return refined, self_audit, pattern_data
-
-        if "[CLARIFICATION_REQUIRED]" in refined:
-            return refined, {"score": 0, "critique": "Clarification needed."}, pattern_data
-
-        audit = _call_evaluator(user_text, target, refined)
-        
-        if audit['score'] >= RETRY_THRESHOLD:
-            return refined, audit, pattern_data
-        
-        if audit.get('score', 0) > best_audit.get('score', 0):
-            best_refined, best_audit = refined, audit
+        # EVALUATION (Self-Audit vs External Audit)
+        if self_audit.get('score', 0) >= RETRY_THRESHOLD:
+            # External verification for high-score confidence
+            audit = _call_evaluator(master_payload, target, refined, hikmah_style)
+            if audit['score'] >= RETRY_THRESHOLD:
+                return refined, audit, None
             
-        retry_critique = audit['critique']
+            # If external audit disagrees, use it as a critique for retry
+            retry_critique = audit['critique']
+            if audit.get('score', 0) > best_audit.get('score', 0):
+                best_refined, best_audit = refined, audit
+        else:
+            retry_critique = self_audit.get('critique', 'Score below threshold.')
 
-    return best_refined or refined, best_audit or self_audit, pattern_data
-
+    return best_refined or refined, best_audit or self_audit, None
