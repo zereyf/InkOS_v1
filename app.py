@@ -1,8 +1,8 @@
 """
 InkOS | app.py — Entry Point
 ==============================
-v21.0: Zenith Neural Edition.
-       - INTEGRATED: URL-based Neural Rehydration.
+v21.1: Zenith Neural Edition (Persistence Patch).
+       - FIXED: URL-based Neural Rehydration condition.
        - REFACTORED: Dynamic nav_options (Ghost Lockdown).
        - HARDENED: Unified State Initialization.
 """
@@ -29,20 +29,20 @@ st.set_page_config(
 # ── 🟢 NEURAL CORE INITIALIZATION ──
 init_session_state()
 
-# ── 🟢 URL REHYDRATION HOOK ──
-# If sid exists in URL but DNA isn't loaded yet, rehydrate the session
-if "sid" in st.query_params and not st.session_state.get(K.INK_DNA):
+# ── 🟢 URL REHYDRATION HOOK (PATCHED) ──
+# Only triggers if USER_HASH is None (Fresh load), preventing refresh logouts.
+if "sid" in st.query_params and st.session_state.get(K.USER_HASH) is None:
     sid = st.query_params["sid"]
     st.session_state[K.USER_HASH] = sid
     
     from vault.vault_engine import rehydrate_session
     user_data = rehydrate_session(sid)
     
-    # Instate DNA
+    # Instate DNA (Fallback to defaults if DB returns empty)
     dna = user_data.get("dna", {})
-    st.session_state[K.INK_DNA] = dna.get("ink", st.session_state[K.INK_DNA])
-    st.session_state[K.INTEL_DNA] = dna.get("intel", st.session_state[K.INTEL_DNA])
-    st.session_state[K.HIKMAH_DNA] = dna.get("hikmah", st.session_state[K.HIKMAH_DNA])
+    st.session_state[K.INK_DNA] = dna.get("ink") or st.session_state[K.INK_DNA]
+    st.session_state[K.INTEL_DNA] = dna.get("intel") or st.session_state[K.INTEL_DNA]
+    st.session_state[K.HIKMAH_DNA] = dna.get("hikmah") or st.session_state[K.HIKMAH_DNA]
     
     # Instate Personas
     st.session_state[K.PERSONA_LIST] = user_data.get("personas", [])
@@ -54,7 +54,7 @@ from ui.sidebar import render_sidebar, render_sidebar_brand
 from ui.tabs.workspace import render_workspace
 from i18n.translations import t
 
-# (Other imports like render_vault, render_forge, etc.)
+# (Other imports)
 from ui.tabs.vault import render_vault
 from ui.tabs.forge import render_forge
 from ui.tabs.archive import render_archive
