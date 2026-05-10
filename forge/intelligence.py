@@ -1,40 +1,57 @@
 """
-forge/intelligence.py — Proactive Routing Engine
-===================================================
-v1.2: Neural Resolver with Arabic Bias.
+forge/intelligence.py — Neural Routing Engine
+=============================================
+v2.0: Data-Driven Resolver.
+      - CONSUMES: config.targets.TARGET_ROUTING_TABLE.
+      - ENGINE: Regex pattern matching + Arabic substring intercept.
 """
+
 import re
 from state import K
-from config.targets import AUTO_SELECT_LABEL
+from config.targets import AUTO_SELECT_LABEL, TARGET_ROUTING_TABLE
 
 def evaluate_mission_complexity(user_input: str) -> dict:
-    """Heuristic scan of input to find the optimal Neural Node."""
-    length = len(user_input)
-    
-    # Check for Arabic patterns (Trigger Claude)
-    has_arabic = bool(re.search(r"[\u0600-\u06FF]", user_input))
-    
-    if length > 5000 or (has_arabic and length > 1000):
+    """
+    Scans the routing table to find the highest-scoring model match.
+    """
+    scores = {} # { 'Claude': 10, 'ChatGPT': 7 }
+    rationales = {}
+
+    for entry in TARGET_ROUTING_TABLE:
+        target = entry['target']
+        match_found = False
+        
+        # 1. Check English Patterns (Regex)
+        if any(re.search(p, user_input, re.I) for p in entry['en_patterns']):
+            match_found = True
+            
+        # 2. Check Arabic Substrings (Linguistic Intercept)
+        if not match_found and any(sub in user_input for sub in entry['ar_substrings']):
+            match_found = True
+            
+        if match_found:
+            current_score = entry['score']
+            if current_score > scores.get(target, 0):
+                scores[target] = current_score
+                rationales[target] = entry['rationale']
+
+    # Find the winner
+    if not scores:
         return {
-            "target": "Claude 3.5 Sonnet",
-            "reason": "LINGUISTIC_HIKMAH: High-fidelity Arabic / Context depth required."
+            "target": "ChatGPT", 
+            "reason": "NEUTRAL_ROUTING: No specific pattern detected. Defaulting to generalist."
         }
-    
-    if any(word in user_input.lower() for word in ["def ", "class ", "git ", "patch", "refactor"]):
-        return {
-            "target": "GPT-4o",
-            "reason": "LOGIC_DENSITY: Structural code optimization required."
-        }
-    
+
+    winner = max(scores, key=scores.get)
     return {
-        "target": "GPT-4o mini",
-        "reason": "EFFICIENCY_MODE: Rapid low-latency execution."
+        "target": winner,
+        "reason": f"PATTERN_MATCH: {rationales[winner]}"
     }
 
 def resolve_target_model(user_selection: str, user_input: str) -> tuple[str, str]:
-    """Resolves 'Auto-Select' into a real model or respects manual override."""
+    """Resolves Auto-Select label or respects manual choice."""
     if user_selection != AUTO_SELECT_LABEL:
-        return user_selection, "MANUAL_OVERRIDE: Node locked by user."
+        return user_selection, "MANUAL_OVERRIDE: Target locked by user."
     
     suggestion = evaluate_mission_complexity(user_input)
     return suggestion["target"], suggestion["reason"]
