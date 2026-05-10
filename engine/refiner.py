@@ -137,31 +137,32 @@ def _build_system_prompt(target, framework, lang, cognitive_directive, persona, 
         parts.append(CIPHER_RETRY_INJECTION.format(critique=retry_critique))
     parts.append(CIPHER_OUTPUT_CONTRACT)
     return '\n\n'.join(parts)
-
 def run_refinement_and_audit(
     user_text: str, target: str, framework: str, lang: str, 
     aesthetic_choice: str = "None", islamic_mode: bool = False, 
-    persona: Optional[Any] = None
+    persona: Optional[Any] = None,
+    skip_security: bool = False  # 🟢 ADDED: Security Bypass Flag
 ) -> Tuple[str, dict, Optional[Any]]:
     
     # 🛡️ THE OVERWATCH SHIELD (Execution Intercept)
-    _, violations = sanitize_input(user_text)
-    if violations:
-        threat_sig = " | ".join(violations)
-        hostile_asset = (
-            f"🛑 OVERWATCH PROTOCOL ACTIVATED\n"
-            f"================================\n"
-            f"[!] CONNECTION SEVERED.\n\n"
-            f"Hostile cognitive patterns detected in payload.\n"
-            f"Adversarial Signature: {threat_sig}\n\n"
-            f"Action: Execution aborted. Payload diverted to quarantine log."
-        )
-        audit_payload = {
-            "score": 0, 
-            "critique": f"SECURITY BREACH DETECTED. Vector: {threat_sig}", 
-            "precision": 0, "alignment": 0, "efficiency": 0
-        }
-        return hostile_asset, audit_payload, None
+    if not skip_security:
+        _, violations = sanitize_input(user_text)
+        if violations:
+            threat_sig = " | ".join(violations)
+            hostile_asset = (
+                f"🛑 OVERWATCH PROTOCOL ACTIVATED\n"
+                f"================================\n"
+                f"[!] CONNECTION SEVERED.\n\n"
+                f"Hostile cognitive patterns detected in payload.\n"
+                f"Adversarial Signature: {threat_sig}\n\n"
+                f"Action: Execution aborted. Payload diverted to quarantine log."
+            )
+            audit_payload = {
+                "score": 0, 
+                "critique": f"SECURITY BREACH DETECTED. Vector: {threat_sig}", 
+                "precision": 0, "alignment": 0, "efficiency": 0
+            }
+            return hostile_asset, audit_payload, None
 
     # Normal Execution Pipeline
     cognitive = ""
@@ -211,3 +212,4 @@ def run_refinement_and_audit(
         retry_critique = audit['critique']
 
     return best_refined or refined, best_audit or self_audit, pattern_data
+
