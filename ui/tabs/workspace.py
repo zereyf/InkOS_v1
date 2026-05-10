@@ -1,12 +1,9 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v32.1: Architect Edition — Complete Security & HUD Integration.
-       - MERGED: Compact Glass-HUD & Strict Form Validation.
-       - MERGED: 50-Item Circular Buffer & 8-Char Mission IDs.
-       - MERGED: Overwatch Quarantine Routing (Threat Segregation).
-       - MERGED: Expert-Only Security Override Toggle.
-       - MERGED: Archive JSON Cache Invalidation Trigger.
+v32.2: Architect Edition — Security Hard-Gating.
+       - PATCHED: Overwatch Override is now strictly hard-gated to Root Admins.
+       - RETAINED: All previous structural, UI, and performance optimizations.
 """
 
 import textwrap
@@ -250,10 +247,18 @@ def render_workspace(cfg: dict) -> None:
             intercept_html = f'<div style="margin-top:-15px; margin-bottom:15px; display:flex; align-items:center; gap:8px; opacity:0.8;"><span style="height:6px; width:6px; background:var(--gold); border-radius:50%; box-shadow: 0 0 5px var(--gold);"></span><div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">PATTERN_INTERCEPT: <span style="color:var(--text); font-weight:bold;">{p_data["pattern"].upper()}</span></div></div>'
             st.markdown(intercept_html, unsafe_allow_html=True)
 
-    # ── 🟢 SECURITY OVERRIDE (Expert Mode Only) ──
+    # ── 🟢 4.5 SECURITY OVERRIDE (Hard-Gated to Admin + Expert) ──
     override_security = False
-    if cfg.get("expert_mode"):
-        override_security = st.checkbox("⚠️ OVERRIDE OVERWATCH SHIELD (Allow Hostile Payloads)", value=False)
+    is_admin = st.session_state.get(K.IS_ADMIN, False)
+    
+    # 🟢 HARD-GATE ENFORCED: Both flags must be True
+    if cfg.get("expert_mode") and is_admin:
+        st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+        override_security = st.checkbox(
+            "⚠️ OVERRIDE OVERWATCH SHIELD (Allow Hostile Payloads)", 
+            value=False,
+            help="ROOT_ACCESS ONLY: Bypasses the Interceptor for Red-Teaming."
+        )
 
     if st.button(t("execute_btn", fallback="EXECUTE REFINEMENT"), use_container_width=True):
         st.session_state["athar_trace"] = False
