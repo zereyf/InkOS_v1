@@ -1,162 +1,38 @@
-"""
-state.py — Session State Contract
-===================================
-v20.7: Overwatch Edition.
-       ADDED: IS_ADMIN and MAINTENANCE_MODE for Root Access.
-       ADDED: GLOBAL_BROADCAST for terminal-wide directives.
-"""
-
-import uuid
-import hashlib
+import streamlit as st
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
-import streamlit as st
-
 
 class K:
-    # ── ENGINE & HISTORY ─────────────────────────────────────────────────────
     HISTORY         = "prompt_history"
-    
-    # ── IDENTITY & SECURITY ──────────────────────────────────────────────────
     USER_HASH       = "user_hash"
-    USER_PIN        = "user_pin"
-    FAILED_ATTEMPTS = "failed_attempts"
-    LOCKOUT_UNTIL   = "lockout_until"
-    SECURITY_LOG    = "security_log"
-    TIMESTAMPS      = "call_timestamps"
-
-    # ── 🟢 OVERWATCH (BOSS MODE) ────────────────────────────────────────────
-    IS_ADMIN         = "is_admin"
-    MAINTENANCE_MODE = "maintenance_mode"
-    GLOBAL_BROADCAST = "global_broadcast"  # 🟢 ADDED
-    
-    # ── HUD METRICS ─────────────────────────────────────────────────
-    LAST_RESULT     = "last_result"
-    LAST_AUDIT      = "last_audit"
-    LAST_INPUT      = "last_input"
-    LAST_PATTERN    = "last_pattern"
-    LAST_SAVED      = "last_saved"      
-    AUTO_TARGET     = "auto_target"      
-    AUTO_REASON     = "auto_reason"      
-    ATHAR_TRACE     = "athar_trace"     
-    
-    # ── FORGE & VAULT ────────────────────────────────────────────────────────
+    IS_ADMIN        = "is_admin"
     ACTIVE_PERSONA  = "active_persona"
-    PERSONA_LIST    = "persona_list"
-    VAULT_SEARCH    = "vault_search"
-    VAULT_STATS     = "vault_stats"
-    
-    # ── ADVANCED DNA KEYS (The AmeerInk Trifecta) ───────────────────────────
-    INK_DNA         = "ink_dna"          
-    INTEL_DNA       = "intel_dna"        
-    HIKMAH_DNA      = "hikmah_dna"       
+    HIKMAH_STYLE    = "sb_hikmah_style"
+    AESTHETIC_CHOICE= "sb_aesthetic"
+    INK_DNA         = "ink_dna"
+    INTEL_DNA       = "intel_dna"
+    HIKMAH_DNA      = "hikmah_dna"
+    TIMESTAMPS      = "call_timestamps"
+    LAST_SAVED      = "last_saved"
 
-    # ── APP CONFIG ───────────────────────────────────────────────────────────
-    UI_LANG         = "ui_lang"          
-    APP_CONFIG      = "app_config"
-    BOOT_COMPLETE   = "boot_complete"
-
-
-_DEFAULTS: dict = {
-    K.HISTORY:         [],
-    K.USER_HASH:       None,
-    K.USER_PIN:        None,
-    K.FAILED_ATTEMPTS: 0,
-    K.LOCKOUT_UNTIL:   None,
-    K.SECURITY_LOG:    [],
-    K.TIMESTAMPS:      [],
-
-    # ── 🟢 ADMIN DEFAULTS ──
-    K.IS_ADMIN:         False,
-    K.MAINTENANCE_MODE: False,
-    K.GLOBAL_BROADCAST: None,  # 🟢 ADDED
-    
-    K.LAST_RESULT:     None,
-    K.LAST_AUDIT:      {},              
-    K.LAST_INPUT:      "",
-    K.LAST_PATTERN:    {},              
-    K.LAST_SAVED:      "Never",
-    K.AUTO_TARGET:     "ChatGPT",        
-    K.AUTO_REASON:     "Awaiting Uplink...", 
-    K.ATHAR_TRACE:     False,           
-    
-    K.ACTIVE_PERSONA:  None,
-    K.PERSONA_LIST:    [],
-    K.VAULT_SEARCH:    "",
-    K.VAULT_STATS:     {},
-    
-    K.UI_LANG:         "en",
-    K.APP_CONFIG:      None,
-    K.BOOT_COMPLETE:   False,
-
-    # 🧪 DNA INITIALIZATION (AmeerInk Defaults)
-    K.INK_DNA: (
-        "ROLE: Creative Director. AESTHETIC: Chiaroscuro lighting, tech-noir minimalist vibes. "
-        "COLOR: Obsidian and Gold. STYLE: High-contrast digital photography, 8k resolution. "
-        "IDENTITY: AmeerInk Brand (حبر وفكرة)."
-    ),
-    K.INTEL_DNA: (
-        "ROLE: Tech Observer. FOCUS: AI trends, Cybersecurity, and Tech News. "
-        "METHOD: Forensic analysis of tech shifts and authoritative insights. "
-        "TONE: Critical, sharp, and highly analytical."
-    ),
-    K.HIKMAH_DNA: (
-        "ROLE: Academic Scholar. FOCUS: Arabic Linguistics (Balagha, Nahw) & Islamic Ethics. "
-        "METHOD: High-fidelity pedagogical clarity with evidence-based logic. "
-        "TONE: Reverent, objective, and deeply scholarly."
-    ),
+_DEFAULTS = {
+    K.HISTORY: [], K.USER_HASH: None, K.IS_ADMIN: False,
+    K.ACTIVE_PERSONA: None, K.HIKMAH_STYLE: "None", K.AESTHETIC_CHOICE: "Default",
+    K.INK_DNA: "AmeerInk: Obsidian/Gold, Tech-Noir.",
+    K.INTEL_DNA: "Tech Observer: AI/Cybersecurity focus.",
+    K.HIKMAH_DNA: "Scholar: Arabic Linguistics/Ethics.",
+    K.TIMESTAMPS: [], K.LAST_SAVED: "Never"
 }
 
-
-def init_session_state() -> None:
-    """Idempotent initialization of the Neural Core."""
+def init_session_state():
     for key, default in _DEFAULTS.items():
         if key not in st.session_state:
             st.session_state[key] = deepcopy(default)
 
-
-def reset_session() -> None:
-    """Nuclear reset: flushes processing state but preserves DNA, Identity, and Admin status."""
-    preserved = {
-        K.USER_HASH:       st.session_state.get(K.USER_HASH),
-        K.USER_PIN:        st.session_state.get(K.USER_PIN),
-        K.IS_ADMIN:        st.session_state.get(K.IS_ADMIN),    
-        K.INK_DNA:         st.session_state.get(K.INK_DNA),
-        K.INTEL_DNA:       st.session_state.get(K.INTEL_DNA),
-        K.HIKMAH_DNA:      st.session_state.get(K.HIKMAH_DNA),
-        K.PERSONA_LIST:    st.session_state.get(K.PERSONA_LIST, []),
-        K.UI_LANG:         st.session_state.get(K.UI_LANG, "en"),
-        K.LAST_SAVED:      st.session_state.get(K.LAST_SAVED, "Never"),
-    }
-    
+def reset_session():
+    # Preserve Identity and Behavioral DNA
+    preserved = {k: st.session_state.get(k) for k in [K.USER_HASH, K.IS_ADMIN, K.HIKMAH_STYLE, K.AESTHETIC_CHOICE, K.INK_DNA, K.INTEL_DNA, K.HIKMAH_DNA]}
     st.session_state.clear()
     init_session_state()
-    
-    for key, value in preserved.items():
-        if value is not None:
-            st.session_state[key] = value
-
-
-def get_remaining_calls(window_seconds: int = 60, max_calls: int = 10) -> int:
-    """Forensic rate limiting calculator."""
-    now = datetime.now(timezone.utc)
-    timestamps = st.session_state.get(K.TIMESTAMPS) or []
-    valid_timestamps = [
-        t for t in timestamps
-        if t > now - timedelta(seconds=window_seconds)
-    ]
-    st.session_state[K.TIMESTAMPS] = valid_timestamps
-    return max(0, max_calls - len(valid_timestamps))
-
-
-def record_api_call() -> None:
-    """Log secure uplink action."""
-    if K.TIMESTAMPS not in st.session_state:
-        st.session_state[K.TIMESTAMPS] = []
-    st.session_state[K.TIMESTAMPS].append(datetime.now(timezone.utc))
-
-#shared memory 
-@st.cache_resource
-def get_global_memory() -> dict:
-    """Creates a shared memory space across ALL active users on the server."""
-    return {"broadcast": None}
+    for k, v in preserved.items():
+        if v is not None: st.session_state[k] = v
