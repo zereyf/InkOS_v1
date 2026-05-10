@@ -80,7 +80,7 @@ def render_sidebar_brand() -> None:
                     INK<span style="color: var(--gold);">OS</span>
                 </span>
             </div>
-            <div style="letter-spacing:2px; font-size:0.5rem; color:var(--gold);">حبر وفكرة // ZENITH_AUTONOMOUS v21.4</div>
+            <div style="letter-spacing:2px; font-size:0.5rem; color:var(--gold);">حبر وفكرة // MUTI_AUTONOMOUS v1.0</div>
         </div>
     """), unsafe_allow_html=True)
 
