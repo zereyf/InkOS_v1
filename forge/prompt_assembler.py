@@ -8,6 +8,7 @@ v1.3: Zenith Data-Binding Patch.
 """
 import textwrap
 from forge.persona_engine import inject_persona
+from config.prompts import CIPHER_IDENTITY
 from state import K
 
 def assemble_master_payload(user_input: str, config: dict, dna_context: dict = None) -> str:
@@ -37,11 +38,11 @@ def assemble_master_payload(user_input: str, config: dict, dna_context: dict = N
         """).strip()
 
     # 3. ASSEMBLY (Surgical Whitespace Control)
-    parts = [system_base]
+    parts = [CIPHER_IDENTITY, "[PERSONA_AND_POLICY_LAYER]", system_base]
     if dna_block:
         parts.append(dna_block)
     
     # 🟢 FIX: Renamed the header to explicitly remind the Refiner of its job
-    parts.append(f"[ MISSION TO BE PROMPT-ENGINEERED ]\n{user_input}")
+    parts.append(f"[MISSION_PAYLOAD]\n{user_input}")
     
     return "\n\n".join(parts)
