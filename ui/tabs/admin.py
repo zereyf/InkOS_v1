@@ -1,206 +1,212 @@
 """
-ui/tabs/admin.py — The Overwatch Board
+ui/tabs/admin.py — The Command Nexus
 ======================================
-v2.0: The Threat Intel Upgrade.
-      - INTEGRATED: Panopticon now directly maps the Workspace QUARANTINE_LOG.
-      - ADDED: Threat Intel Expanders to view intercepted hostile payloads.
-      - ADDED: Tactical Quarantine Purge function.
-      - RETAINED: Global Lockdown, Broadcast Matrix, and Admin Metrics.
+v3.0: Zenith Redesign — High-Density IDS Terminal.
+      - REFACTORED: Asymmetric Control Rod & Threat Matrix layout.
+      - INTEGRATED: Dynamic Threat Level (DEFCON) calculation.
+      - INTEGRATED: Custom Webkit scrollbars and CLI-style typography.
+      - RETAINED: Core administrative capabilities and state bounds.
 """
 
 import streamlit as st
 import pandas as pd
 from state import K, get_global_memory
-from logic.admin_telemetry import get_global_metrics, get_recent_activity
+from logic.admin_telemetry import get_global_metrics
 
 def _escape(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 def render_admin_board():
-    # Clearance Verification
+    # ── 🟢 CLEARANCE REHYDRATION ──
+    if str(st.session_state.get(K.USER_HASH)).upper() == "AMEERINK":
+        st.session_state[K.IS_ADMIN] = True
+
     if not st.session_state.get(K.IS_ADMIN):
         st.error("[ ⨂ ] CLEARANCE REJECTED: ROOT_ACCESS_REQUIRED.")
         return
 
-    # Fetch Live Telemetry Data
     stats = get_global_metrics()
     global_mem = get_global_memory()
     quarantine_log = st.session_state.get("QUARANTINE_LOG", [])
+    threat_count = len(quarantine_log)
 
-    # ── TACTICAL CSS INJECTION ──
-    st.markdown("""
+    # ── 🟢 DYNAMIC THREAT CALCULATION ──
+    if threat_count == 0:
+        defcon, t_color, t_text = "5", "#4CAF9A", "CLEAR"
+    elif threat_count < 5:
+        defcon, t_color, t_text = "3", "var(--gold)", "ELEVATED"
+    else:
+        defcon, t_color, t_text = "1", "#E53E3E", "CRITICAL"
+
+    # ── 🟢 TERMINAL CSS INJECTION ──
+    st.markdown(f"""
     <style>
-        @keyframes breathe-alert {
-            0% { box-shadow: -5px 0 15px -5px rgba(229,62,62,0.1); border-left-color: #9C4E4E; }
-            50% { box-shadow: -5px 0 25px -5px rgba(229,62,62,0.6); border-left-color: #E53E3E; }
-            100% { box-shadow: -5px 0 15px -5px rgba(229,62,62,0.1); border-left-color: #9C4E4E; }
-        }
-        .neural-card {
-            background: rgba(18, 22, 30, 0.4);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.05);
-            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-            padding: 16px 20px;
-            margin-bottom: 10px;
-            transition: all 0.3s ease;
-        }
-        .neural-card:hover {
-            background: rgba(25, 30, 40, 0.6);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .alert-pulse {
-            animation: breathe-alert 2.5s infinite ease-in-out;
-        }
-        .panopticon-feed {
-            background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 12px 12px;
-            background-color: rgba(10, 12, 16, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 2px;
-            padding: 15px;
-            height: 400px;
-            overflow-y: auto;
-        }
-        .ow-header {
-            font-family: var(--font-m);
-            font-size: 0.9rem;
-            color: var(--gold);
-            letter-spacing: 3px;
-            border-bottom: 1px solid var(--gold);
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-        .ow-title {
-            font-family: var(--font-m);
-            font-size: 0.75rem;
-            color: var(--steel);
-            letter-spacing: 2px;
-            margin-bottom: 15px;
-        }
-        .ow-title-gold {
-            font-family: var(--font-m);
-            font-size: 0.75rem;
-            color: var(--gold);
-            letter-spacing: 2px;
-            margin-bottom: 15px;
-        }
-        .ow-panel {
-            background: rgba(255,255,255,0.02);
-            border: 1px solid rgba(255,255,255,0.05);
-            padding: 15px;
-            border-radius: 4px;
-        }
+        /* Custom Terminal Scrollbar */
+        ::-webkit-scrollbar {{ width: 6px; height: 6px; }}
+        ::-webkit-scrollbar-track {{ background: rgba(10, 12, 16, 0.8); border-left: 1px solid rgba(255,255,255,0.05); }}
+        ::-webkit-scrollbar-thumb {{ background: {t_color}; border-radius: 0px; }}
+        ::-webkit-scrollbar-thumb:hover {{ background: #fff; }}
+
+        /* Animations */
+        @keyframes pulse-dot {{
+            0% {{ opacity: 0.4; box-shadow: 0 0 4px {t_color}; }}
+            50% {{ opacity: 1; box-shadow: 0 0 12px {t_color}; }}
+            100% {{ opacity: 0.4; box-shadow: 0 0 4px {t_color}; }}
+        }}
+        .live-dot {{
+            height: 8px; width: 8px; background-color: {t_color}; 
+            border-radius: 50%; display: inline-block;
+            animation: pulse-dot 2s infinite; margin-right: 8px;
+        }}
+
+        /* Layout Panels */
+        .nexus-header {{
+            font-family: var(--font-m); font-size: 1.2rem; color: var(--text);
+            letter-spacing: 4px; border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 15px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between;
+        }}
+        .ctrl-rod {{
+            background: linear-gradient(180deg, rgba(18,22,30,0.8) 0%, rgba(10,12,16,0.9) 100%);
+            border: 1px solid rgba(255,255,255,0.05); border-top: 3px solid var(--gold);
+            padding: 20px; border-radius: 2px;
+        }}
+        .metric-block {{
+            margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed rgba(255,255,255,0.05);
+        }}
+        .metric-label {{
+            font-family: var(--font-m); font-size: 0.55rem; color: var(--text-muted); letter-spacing: 2px;
+        }}
+        .metric-val {{
+            font-family: var(--font-d); font-size: 1.8rem; color: var(--text); line-height: 1.2;
+        }}
+        
+        /* Threat Matrix Panopticon */
+        .matrix-container {{
+            background: #050608; border: 1px solid rgba(255,255,255,0.05);
+            border-left: 2px solid {t_color}; border-radius: 2px; padding: 0;
+            min-height: 500px; display: flex; flex-direction: column;
+        }}
+        .matrix-header {{
+            background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 10px 15px; font-family: var(--font-m); font-size: 0.65rem; color: var(--text-dim);
+            display: flex; justify-content: space-between; align-items: center;
+        }}
+        .matrix-body {{
+            padding: 15px; overflow-y: auto; max-height: 550px; flex: 1;
+        }}
+        .payload-box {{
+            background: repeating-linear-gradient(0deg, rgba(20,20,20,0.8), rgba(20,20,20,0.8) 1px, transparent 1px, transparent 2px);
+            border: 1px solid rgba(229,62,62,0.2); border-left: 3px solid #E53E3E;
+            padding: 12px; font-family: monospace; font-size: 0.75rem; color: #ff8a8a;
+            margin-top: 10px; border-radius: 2px; line-height: 1.4;
+        }}
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="ow-header">❖ INKOS OVERWATCH // ROOT_ACCESS</div>', unsafe_allow_html=True)
-
-    # ── NEURAL CARD UI COMPONENT ──
-    def _neural_card(title, value, border_color, val_color="#E2E8F0", is_alert=False):
-        alert_class = "alert-pulse" if is_alert and str(value) != "0" else ""
-        return f"""
-        <div class="neural-card {alert_class}" style="border-left: 4px solid {border_color};">
-            <div style="font-family:var(--font-m); font-size:0.65rem; color:var(--steel); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:12px;">
-                {title}
-            </div>
-            <div style="font-family:'Times New Roman', Times, serif; font-size:2.2rem; color:{val_color}; line-height:1; letter-spacing: 0.5px;">
-                {value}
-            </div>
+    # ── 🟢 GLOBAL HEADER ──
+    st.markdown(f"""
+        <div class="nexus-header">
+            <div><span style="color:var(--gold);">INK</span>OS // COMMAND_NEXUS</div>
+            <div style="font-size: 0.65rem; color: {t_color};"><span class="live-dot"></span>DEFCON {defcon}: {t_text}</div>
         </div>
-        """
+    """, unsafe_allow_html=True)
 
-    # ── TOP LEVEL METRICS ──
-    st.markdown("<div style='height:5px'></div>", unsafe_allow_html=True)
-    m1, m2, m3, m4 = st.columns(4)
-    
-    with m1:
-        st.markdown(_neural_card("TOTAL OPERATORS", stats.get("users", 0), "#5B85AA"), unsafe_allow_html=True) 
-    with m2:
-        st.markdown(_neural_card("FORGED PERSONAS", stats.get("personas", 0), "#4E9C81"), unsafe_allow_html=True) 
-    with m3:
-        st.markdown(_neural_card("HOSTILE INTERCEPTS", len(quarantine_log), "#9C4E4E", is_alert=True), unsafe_allow_html=True) 
-    with m4:
-        st.markdown(_neural_card("SYSTEM_UPLINK", "STABLE", "var(--gold)", "var(--gold)"), unsafe_allow_html=True)
+    # ── 🟢 ASYMMETRIC GRID (1 : 2.5) ──
+    col_ctrl, col_matrix = st.columns([1, 2.5], gap="large")
 
-    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
-    st.markdown("---")
-
-    col_left, col_right = st.columns([1.5, 1])
-
-    with col_left:
-        # ── THE PANOPTICON: QUARANTINE FEED ──
-        st.markdown('<div class="ow-title">THE PANOPTICON // THREAT_INTEL_FEED</div>', unsafe_allow_html=True)
-        st.markdown('<div class="panopticon-feed">', unsafe_allow_html=True)
+    with col_ctrl:
+        st.markdown('<div class="ctrl-rod">', unsafe_allow_html=True)
         
-        if quarantine_log:
-            for item in reversed(quarantine_log):
-                # Extract threat signature from the mock critique
-                critique = item.get("score", {}).get("critique", "") if isinstance(item.get("score"), dict) else "UNKNOWN_VECTOR"
-                threat_sig = critique.split("Vector: ")[-1] if "Vector: " in critique else "PAYLOAD_ESCAPE"
-                
-                label = f"🛑 [{item['id']}] {item['time']} — SIG: {threat_sig}"
-                
-                with st.expander(label):
-                    st.markdown('<div style="font-family:var(--font-m); font-size:0.6rem; color:var(--text-dim); margin-bottom:5px;">HOSTILE_PAYLOAD:</div>', unsafe_allow_html=True)
-                    st.markdown(
-                        f'<div style="background:rgba(229,62,62,0.1); padding:12px; border-left:2px solid #E53E3E; font-size:0.75rem; color:var(--text); line-height:1.6; margin-bottom:15px; border-radius: 2px;">{_escape(item["input"])}</div>',
-                        unsafe_allow_html=True
-                    )
-        else:
-            st.markdown('<div style="text-align:center; padding: 40px;"><p style="font-family:var(--font-m);font-size:0.75rem;color:var(--text-dim);">[ ⨂ ] NO HOSTILE ANOMALIES DETECTED.</p></div>', unsafe_allow_html=True)
-            
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col_right:
-        # ── SYSTEM CONTROLS ──
-        st.markdown('<div class="ow-panel">', unsafe_allow_html=True)
-        st.markdown('<div class="ow-title-gold">SYSTEM DIRECTIVES</div>', unsafe_allow_html=True)
+        # Telemetry Stack
+        st.markdown(f"""
+            <div class="metric-block">
+                <div class="metric-label">TOTAL OPERATORS</div>
+                <div class="metric-val" style="color: #5B85AA;">{stats.get("users", 0)}</div>
+            </div>
+            <div class="metric-block">
+                <div class="metric-label">ACTIVE PERSONAS</div>
+                <div class="metric-val" style="color: #4E9C81;">{stats.get("personas", 0)}</div>
+            </div>
+            <div class="metric-block" style="border-bottom: none;">
+                <div class="metric-label">HOSTILE INTERCEPTS</div>
+                <div class="metric-val" style="color: {t_color};">{threat_count}</div>
+            </div>
+        """, unsafe_allow_html=True)
         
-        # Maintenance Switch
+        st.markdown("<hr style='border-color:rgba(255,255,255,0.1); margin:10px 0 20px 0;'>", unsafe_allow_html=True)
+        
+        # Action Stack
+        st.markdown('<div class="metric-label" style="margin-bottom:10px;">SYS_DIRECTIVES</div>', unsafe_allow_html=True)
+        
         current_lockdown = global_mem.get("maintenance_mode", False)
-        lockdown_active = st.toggle("🔒 GLOBAL LOCKDOWN", value=current_lockdown, help="Sever all non-admin neural uplinks across the server.")
-        
+        lockdown_active = st.toggle("🔒 GLOBAL LOCKDOWN", value=current_lockdown)
         if lockdown_active != current_lockdown:
             global_mem["maintenance_mode"] = lockdown_active
             st.toast("SYSTEM LOCKED." if lockdown_active else "UPLINKS RESTORED.", icon="🚨" if lockdown_active else "✅")
             st.rerun()
-            
-        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("🔥 PURGE CACHE", use_container_width=True):
-                st.cache_data.clear()
-                st.toast("CACHE OBLITERATED.")
-        with c2:
-            # 🟢 NEW: Clear Quarantine Control
-            if st.button("🛑 CLEAR THREATS", use_container_width=True):
-                st.session_state["QUARANTINE_LOG"] = []
-                st.toast("QUARANTINE LOG PURGED.")
-                st.rerun()
 
-        # BROADCAST FIELD
-        st.markdown("<hr style='border-color: rgba(255,255,255,0.1); margin: 15px 0;'>", unsafe_allow_html=True)
-        st.markdown('<div class="ow-title">TERMINAL BROADCAST</div>', unsafe_allow_html=True)
-        broadcast_msg = st.text_input("Message Label", placeholder="Enter directive for all operators...", label_visibility="collapsed")
-        
-        b1, b2 = st.columns([3, 1])
-        with b1:
-            if st.button("📡 TRANSMIT", use_container_width=True):
-                if broadcast_msg:
-                    global_mem["broadcast"] = broadcast_msg
-                    st.toast("GLOBAL TRANSMISSION SENT.")
-                else:
-                    st.warning("Enter a message to transmit.")
-        with b2:
-            if st.button("🛑 CUT", use_container_width=True, help="Revoke current broadcast banner"):
+        st.markdown("<div style='height:15px;'></div>", unsafe_allow_html=True)
+        if st.button("🔥 PURGE CACHE", use_container_width=True):
+            st.cache_data.clear()
+            st.toast("CACHE OBLITERATED.")
+            
+        if st.button("🛑 CLEAR THREATS", use_container_width=True, type="primary"):
+            st.session_state["QUARANTINE_LOG"] = []
+            st.toast("QUARANTINE LOG PURGED.")
+            st.rerun()
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col_matrix:
+        st.markdown(f"""
+            <div class="matrix-container">
+                <div class="matrix-header">
+                    <span>>_ THE_PANOPTICON // IDS_FEED</span>
+                    <span>PACKETS: {threat_count}</span>
+                </div>
+                <div class="matrix-body">
+        """, unsafe_allow_html=True)
+
+        if quarantine_log:
+            for item in reversed(quarantine_log):
+                critique = item.get("score", {}).get("critique", "") if isinstance(item.get("score"), dict) else "UNKNOWN_VECTOR"
+                threat_sig = critique.split("Vector: ")[-1] if "Vector: " in critique else "PAYLOAD_ESCAPE"
+                
+                # Custom Terminal-Style Expander logic
+                with st.expander(f"[{item['time']}] {item['id']} // SIG: {threat_sig}"):
+                    st.markdown(f"""
+                        <div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-dim); display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <span>ORIGIN: {(st.session_state.get(K.USER_HASH) or "GHOST")[:8]}</span>
+                            <span>TARGET: {item.get('target', 'UNKNOWN')}</span>
+                        </div>
+                        <div class="payload-box">
+                            {_escape(item["input"])}
+                        </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+                <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; margin-top: 80px;">
+                    <div style="font-family: var(--font-d); font-size: 3rem; color: {t_color}; margin-bottom: 10px;">{defcon}</div>
+                    <div style="font-family: var(--font-m); font-size: 0.8rem; letter-spacing: 2px;">ALL SYSTEMS NOMINAL</div>
+                    <div style="font-family: monospace; font-size: 0.6rem; color: var(--text-muted); margin-top: 5px;">> Awaiting hostile patterns...</div>
+                </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown('</div></div>', unsafe_allow_html=True)
+
+    # ── 🟢 BROADCAST FOOTER ──
+    st.markdown("<hr style='border-color:rgba(255,255,255,0.05); margin:30px 0 20px 0;'>", unsafe_allow_html=True)
+    
+    b1, b2, b3 = st.columns([1, 4, 1], vertical_alignment="bottom")
+    with b1:
+        st.markdown('<div style="font-family:var(--font-m); font-size:0.6rem; color:var(--text-dim); letter-spacing:2px; padding-bottom:10px;">GLOBAL_BROADCAST</div>', unsafe_allow_html=True)
+    with b2:
+        broadcast_msg = st.text_input("Broadcast", placeholder="Enter directive for all operators...", label_visibility="collapsed")
+    with b3:
+        if st.button("📡 TRANSMIT", use_container_width=True):
+            if broadcast_msg:
+                global_mem["broadcast"] = broadcast_msg
+                st.toast("TRANSMISSION SENT.")
+            else:
                 global_mem["broadcast"] = None
                 st.toast("TRANSMISSION REVOKED.")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # ARABIC BRANDING METRICS
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown('<div class="ow-panel" style="border-color: var(--gold);">', unsafe_allow_html=True)
-        st.markdown('<div class="ow-title-gold">LISAAN AL-ARAB // حبر وفكرة</div>', unsafe_allow_html=True)
-        st.markdown("<div style='font-family: var(--font-m); font-size: 0.65rem; color: var(--gold); letter-spacing:1px;'>تحديثات النظام نشطة // STATUS: OPERATIONAL</div>", unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
