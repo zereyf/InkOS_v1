@@ -1,10 +1,11 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v31.7: Mission Logging Protocol — Tactical Flight Recorder.
-       - INTEGRATED: Automatic Intel Packet construction for Archive v7.0.
-       - RETAINED: Terminal Typography & Thermal HUD.
-       - RETAINED: DNA Injection Engine & Ghost Uplink warnings.
+v31.8: Forensic Telemetry Update — Performance Tracking.
+       - ADDED: High-precision Latency Trace for AI handshake.
+       - ADDED: Semantic Density Analysis (Chars per Word).
+       - INTEGRATED: Enhanced Intel Packet with telemetry metrics.
+       - RETAINED: All UI Typography, HUD, and Ghost logic.
 """
 
 import textwrap
@@ -254,6 +255,9 @@ def render_workspace(cfg: dict) -> None:
             ui_text.markdown("`< 80% >` **[CORE]** Compiling refinement matrix. Executing handshake...")
             prog_bar.progress(80)
             
+            # ── 🟢 TELEMETRY START ──
+            start_time = time.perf_counter()
+            
             # API CALL
             result, audit, _ = run_refinement_and_audit(
                 final_text, resolved_target, cfg["framework"], 
@@ -261,6 +265,12 @@ def render_workspace(cfg: dict) -> None:
                 cfg["islamic_mode"], cfg.get("active_persona")
             )
             
+            # ── 🟢 TELEMETRY END ──
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            words = result.split()
+            word_count = len(words)
+            density_score = round(len(result) / word_count, 2) if word_count > 0 else 0
+
             # Phase 4: Resolution
             ui_text.markdown(f"`< 100% >` **[SECURE]** Asset refraction complete. Closing uplink.")
             prog_bar.progress(100)
@@ -281,7 +291,11 @@ def render_workspace(cfg: dict) -> None:
                 "input": cleaned,
                 "output": result,
                 "score": audit.get("score", 0),
-                "islamic": cfg["islamic_mode"]
+                "islamic": cfg["islamic_mode"],
+                # ── NEW FORENSIC METRICS ──
+                "latency": f"{latency_ms}ms",
+                "density": density_score,
+                "word_count": word_count
             }
 
             if K.HISTORY not in st.session_state:
