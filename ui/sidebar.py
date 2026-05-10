@@ -1,10 +1,9 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v14.0: Architect Edition — Idempotent IAM & State Hardening.
-       - PATCHED: K.IS_ADMIN now re-evaluates on every render (survives refresh).
-       - PATCHED: Rehydration selectboxes stripped of conflicting index kwargs.
-       - RETAINED: All wordmarks, uplink logic, and stealth intercept.
+v14.1: Architect Edition — Syntax & Indentation Patch.
+       - FIXED: Indentation alignment for _enforce_admin_clearance.
+       - FIXED: Restored missing docstring delimiters.
 """
 
 import streamlit as st
@@ -46,8 +45,8 @@ def _load_user_personas(user_hash: str) -> list:
     except Exception:
         return []
 
-  def _enforce_admin_clearance() -> None:
-    
+def _enforce_admin_clearance() -> None:
+    """
     Idempotent IAM loop: Environment-Driven Security.
     Strictly evaluates admin status based on external secrets.
     """
