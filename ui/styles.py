@@ -10,7 +10,9 @@ STYLES: str = """
 [data-theme="light"] { --bg:#f6f8fc; --bg-elev:#ffffff; --card:#ffffff; --text:#101524; --muted:#5e6879; --border:#d7deea; --accent:#3f6fff; }
 html, body, [class*="css"] { font-family: Inter, Geist, system-ui, -apple-system, sans-serif !important; }
 .stApp{ background:var(--bg)!important; color:var(--text)!important; }
-#MainMenu, footer, header[data-testid="stHeader"]{ visibility:hidden; }
+#MainMenu, footer{ visibility:hidden; }
+header[data-testid="stHeader"]{ background:transparent; }
+header[data-testid="stHeader"] [data-testid="collapsedControl"]{ visibility:visible; display:block; }
 .block-container{ padding:1rem .8rem 2rem!important; max-width:1280px; }
 @media (max-width: 900px){ .block-container{padding: .8rem .6rem 1.5rem!important;} }
 
