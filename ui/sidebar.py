@@ -1,9 +1,10 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v13.10: Command Deck Purge — Premium Matrix Refactor.
-       - REFACTORED: Extracted Wordmark & Uplink into render_sidebar_brand().
-       - SECURED: Stealth Master Intercept for IS_ADMIN status.
+v13.11: Neural Rehydration Sync.
+       - UPDATED: Target, Framework, and Aesthetic Selectboxes now support 
+                  State Rehydration via the Archive.
+       - RETAINED: All wordmarks, uplink logic, and stealth intercept.
 """
 
 import streamlit as st
@@ -154,12 +155,20 @@ def render_sidebar() -> SidebarConfig:
 
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ── LOGIC CONFIGURATION ──
+    # ── LOGIC CONFIGURATION (WITH REHYDRATION) ──
     st.markdown(f'<div class="vc-header" style="margin-top:20px; font-size:0.65rem;">[ {t("logic_config", fallback="LOGIC_CONFIGURATION").upper()} ]</div>', unsafe_allow_html=True)
+    
+    # 🟢 Neural Rehydration: Target Model
     target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
-    target_model = st.selectbox("Target Model", options=target_options, key="sb_target")
+    cur_target = st.session_state.get("sb_target", AUTO_SELECT_LABEL)
+    t_idx = target_options.index(cur_target) if cur_target in target_options else 0
+    target_model = st.selectbox("Target Model", options=target_options, index=t_idx, key="sb_target")
 
-    framework = st.selectbox(t("logic_framework", fallback="Framework"), LOGIC_FRAMEWORKS, key="sb_framework")
+    # 🟢 Neural Rehydration: Framework
+    cur_fw = st.session_state.get("sb_framework", LOGIC_FRAMEWORKS[0])
+    fw_idx = LOGIC_FRAMEWORKS.index(cur_fw) if cur_fw in LOGIC_FRAMEWORKS else 0
+    framework = st.selectbox(t("logic_framework", fallback="Framework"), options=LOGIC_FRAMEWORKS, index=fw_idx, key="sb_framework")
+
     source_lang = st.radio("Input Language", ["English", "Arabic (العربية)"], key="sb_lang")
 
     st.markdown("<hr>", unsafe_allow_html=True)
@@ -214,7 +223,12 @@ def render_sidebar() -> SidebarConfig:
 
     # ── SYSTEM TOGGLES ──
     st.markdown("<hr style='margin-top:5px;'>", unsafe_allow_html=True)
-    aesthetic_choice = st.selectbox(t("aesthetic_preset", fallback="Aesthetic"), options=list(AESTHETIC_PRESETS.keys()), key="sb_aesthetic")
+    
+    # 🟢 Neural Rehydration: Aesthetic
+    aest_options = list(AESTHETIC_PRESETS.keys())
+    cur_aest = st.session_state.get("sb_aesthetic", aest_options[0])
+    a_idx = aest_options.index(cur_aest) if cur_aest in aest_options else 0
+    aesthetic_choice = st.selectbox(t("aesthetic_preset", fallback="Aesthetic"), options=aest_options, index=a_idx, key="sb_aesthetic")
     
     islamic_mode = st.checkbox("Islamic Mode", value=False, key="sb_islamic")
     expert_mode = st.checkbox("Expert Diagnostics", value=False, key="sb_expert")
