@@ -1,9 +1,9 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v13.11: Neural Rehydration Sync.
-       - UPDATED: Target, Framework, and Aesthetic Selectboxes now support 
-                  State Rehydration via the Archive.
+v14.0: Architect Edition — Idempotent IAM & State Hardening.
+       - PATCHED: K.IS_ADMIN now re-evaluates on every render (survives refresh).
+       - PATCHED: Rehydration selectboxes stripped of conflicting index kwargs.
        - RETAINED: All wordmarks, uplink logic, and stealth intercept.
 """
 
@@ -46,6 +46,26 @@ def _load_user_personas(user_hash: str) -> list:
     except Exception:
         return []
 
+def _enforce_admin_clearance() -> None:
+    """Idempotent IAM loop: Ensures admin state survives browser refreshes."""
+    uid = st.session_state.get(K.USER_HASH)
+    if not uid or "GUEST_" in str(uid).upper():
+        st.session_state[K.IS_ADMIN] = False
+        return
+
+    try:
+        # Fallback to empty string if secrets are missing
+        master_secret = st.secrets.get("MASTER_IDS", "")
+        master_list = [x.strip().upper() for x in master_secret.split(",") if x.strip()]
+        
+        # Hardcoded root fallback just in case secrets.toml is misconfigured
+        if "AMEERINK" not in master_list:
+            master_list.append("AMEERINK")
+            
+        st.session_state[K.IS_ADMIN] = (str(uid).upper() in master_list)
+    except Exception:
+        st.session_state[K.IS_ADMIN] = (str(uid).upper() == "AMEERINK")
+
 def render_language_switcher() -> None:
     current = get_lang()
     cols = st.columns(len(LANGUAGES))
@@ -65,7 +85,6 @@ def render_language_switcher() -> None:
 # ── 1. TOP MATRIX: BRAND & UPLINK ────────────────────────────────────────────
 
 def render_sidebar_brand() -> None:
-    """Renders the top logo and neural uplink status above the navigation."""
     current_sid = st.session_state.get(K.USER_HASH)
     is_guest = not current_sid or "GUEST_" in str(current_sid).upper()
 
@@ -106,7 +125,9 @@ def render_sidebar_brand() -> None:
 # ── 2. BOTTOM MATRIX: IDENTITY & CONTROLS ─────────────────────────────────────
 
 def render_sidebar() -> SidebarConfig:
-    """Renders the identity controls and tool configurations below the navigation tabs."""
+    # 🟢 FIRE IDEMPOTENT AUTH LOOP
+    _enforce_admin_clearance()
+
     current_sid = st.session_state.get(K.USER_HASH)
     is_guest = not current_sid or "GUEST_" in str(current_sid).upper()
     sess_ref = str(current_sid)[:8] if current_sid else "GHOST_ID"
@@ -129,19 +150,13 @@ def render_sidebar() -> SidebarConfig:
                 with st.spinner("Uplinking..."):
                     success, error_msg = authenticate_terminal(new_sid.strip(), new_pin.strip(), is_new=is_new_user)
                 if success:
-                    latch_id = new_sid.strip()
-                    st.session_state[K.USER_HASH] = latch_id
+                    st.session_state[K.USER_HASH] = new_sid.strip()
+                    _enforce_admin_clearance() # Re-check immediately after latch
                     
-                    master_secret = st.secrets.get("MASTER_IDS", "")
-                    master_list = [x.strip().upper() for x in master_secret.split(",")]
-                    
-                    if latch_id.upper() in master_list and latch_id.upper() != "":
-                        st.session_state[K.IS_ADMIN] = True
+                    if st.session_state.get(K.IS_ADMIN):
                         st.toast("[◈] OVERWATCH ACCESS GRANTED", icon="👁️")
-                    else:
-                        st.session_state[K.IS_ADMIN] = False
 
-                    st.query_params["sid"] = latch_id
+                    st.query_params["sid"] = new_sid.strip()
                     st.rerun()
                 else:
                     st.error(f"[!] {error_msg}")
@@ -158,16 +173,13 @@ def render_sidebar() -> SidebarConfig:
     # ── LOGIC CONFIGURATION (WITH REHYDRATION) ──
     st.markdown(f'<div class="vc-header" style="margin-top:20px; font-size:0.65rem;">[ {t("logic_config", fallback="LOGIC_CONFIGURATION").upper()} ]</div>', unsafe_allow_html=True)
     
-    # 🟢 Neural Rehydration: Target Model
+    # 🟢 Safe State Injection (Prevents Streamlit ValueWarnings)
     target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
-    cur_target = st.session_state.get("sb_target", AUTO_SELECT_LABEL)
-    t_idx = target_options.index(cur_target) if cur_target in target_options else 0
-    target_model = st.selectbox("Target Model", options=target_options, index=t_idx, key="sb_target")
+    if "sb_target" not in st.session_state: st.session_state["sb_target"] = AUTO_SELECT_LABEL
+    target_model = st.selectbox("Target Model", options=target_options, key="sb_target")
 
-    # 🟢 Neural Rehydration: Framework
-    cur_fw = st.session_state.get("sb_framework", LOGIC_FRAMEWORKS[0])
-    fw_idx = LOGIC_FRAMEWORKS.index(cur_fw) if cur_fw in LOGIC_FRAMEWORKS else 0
-    framework = st.selectbox(t("logic_framework", fallback="Framework"), options=LOGIC_FRAMEWORKS, index=fw_idx, key="sb_framework")
+    if "sb_framework" not in st.session_state: st.session_state["sb_framework"] = LOGIC_FRAMEWORKS[0]
+    framework = st.selectbox(t("logic_framework", fallback="Framework"), options=LOGIC_FRAMEWORKS, key="sb_framework")
 
     source_lang = st.radio("Input Language", ["English", "Arabic (العربية)"], key="sb_lang")
 
@@ -224,11 +236,9 @@ def render_sidebar() -> SidebarConfig:
     # ── SYSTEM TOGGLES ──
     st.markdown("<hr style='margin-top:5px;'>", unsafe_allow_html=True)
     
-    # 🟢 Neural Rehydration: Aesthetic
     aest_options = list(AESTHETIC_PRESETS.keys())
-    cur_aest = st.session_state.get("sb_aesthetic", aest_options[0])
-    a_idx = aest_options.index(cur_aest) if cur_aest in aest_options else 0
-    aesthetic_choice = st.selectbox(t("aesthetic_preset", fallback="Aesthetic"), options=aest_options, index=a_idx, key="sb_aesthetic")
+    if "sb_aesthetic" not in st.session_state: st.session_state["sb_aesthetic"] = aest_options[0]
+    aesthetic_choice = st.selectbox(t("aesthetic_preset", fallback="Aesthetic"), options=aest_options, key="sb_aesthetic")
     
     islamic_mode = st.checkbox("Islamic Mode", value=False, key="sb_islamic")
     expert_mode = st.checkbox("Expert Diagnostics", value=False, key="sb_expert")
