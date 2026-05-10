@@ -1,17 +1,16 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v31.6: Final Launch Protocol — Terminal Typography Enforced.
-       - FIXED: Manual Target selection now overrides the Auto-Router.
-       - Eliminated HTML Leaks (Atomic String Concatenation).
-       - Stabilized Thermal HUD (Zero-Lag Cognitive Metrics).
-       - INJECTED: InkOS Standard (8B) Launch Telemetry.
-       - PURGED: Standard Emojis removed for UI consistency.
+v31.7: Mission Logging Protocol — Tactical Flight Recorder.
+       - INTEGRATED: Automatic Intel Packet construction for Archive v7.0.
+       - RETAINED: Terminal Typography & Thermal HUD.
+       - RETAINED: DNA Injection Engine & Ghost Uplink warnings.
 """
 
 import textwrap
 import time
 import streamlit as st
+import uuid
 from datetime import datetime, timezone
 from typing import Tuple
 
@@ -77,7 +76,6 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
     
     st.markdown(score_html, unsafe_allow_html=True)
     if expert_mode:
-        # 🟢 PURGED: Replaced tool emoji with ❖
         with st.expander("❖ NEURAL UPLINK DIAGNOSTICS"):
             st.json(safe_audit)
 
@@ -99,7 +97,6 @@ def render_workspace(cfg: dict) -> None:
     current_global_target = cfg.get("target_model")
     is_misaligned = p_target != "All" and p_target != current_global_target and current_global_target != AUTO_SELECT_LABEL
     
-    # 🟢 PURGED: Replaced ⚠️ with [!]
     misalignment_badge = f"&nbsp;<span style='background:rgba(229,62,62,0.15); color:#FF4B4B; border:1px solid #FF4B4B; padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>[!] MISMATCH</span>" if is_misaligned else ""
 
     expert_badge = f"&nbsp;<span style='background:rgba(229,62,62,0.1); color:var(--danger); border:1px solid rgba(229,62,62,0.3); padding:2px 6px; border-radius:2px; margin-left:8px; font-size:0.45rem; letter-spacing:1px; flex-shrink:0;'>EXPERT</span>" if cfg.get("expert_mode") else ""
@@ -165,7 +162,6 @@ def render_workspace(cfg: dict) -> None:
         col_cta, _ = st.columns([1, 2])
         with col_cta:
             if st.button("[ INITIATE LATCH ]", key="btn_latch_ghost", use_container_width=True):
-                # 🟢 PURGED: Replaced 📡 with Text Typography
                 st.toast("> AWAITING CREDENTIALS.")
         st.markdown("<div style='height:15px;'></div>", unsafe_allow_html=True)
 
@@ -194,7 +190,6 @@ def render_workspace(cfg: dict) -> None:
                             curr_val = st.session_state.get("ta_input_widget", "")
                             st.session_state["ta_input_widget"] = f"{curr_val} {transcription.text}".strip()
                             st.session_state["last_audio_hash"] = current_audio_hash
-                            # 🟢 PURGED: Replaced 🎙️ with Text Typography
                             st.toast("> AUDIO_IN TRANSCRIBED.")
                             st.rerun()
                     except Exception as e:
@@ -239,7 +234,7 @@ def render_workspace(cfg: dict) -> None:
             # Phase 2: Routing & DNA
             final_text, detected = _apply_dna_triggers(cleaned)
             
-            # 🟢 THE FIX: Cipher Lock Override
+            # Cipher Lock Override
             target_model = cfg.get("target_model", AUTO_SELECT_LABEL)
             if target_model == AUTO_SELECT_LABEL:
                 resolved_target, resolved_reason = route_to_target(final_text)
@@ -274,15 +269,32 @@ def render_workspace(cfg: dict) -> None:
             ui_text.empty()
             prog_bar.empty()
             
-            # State Saving
+            # ── 🟢 THE TACTICAL FLIGHT RECORDER (Automatic Mission Log) ──
+            mission_id = f"INK-{uuid.uuid4().hex[:4].upper()}"
+            intel_packet = {
+                "id": mission_id,
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "target": resolved_target,
+                "framework": cfg["framework"],
+                "aesthetic": cfg["aesthetic_choice"],
+                "pattern": detected[0] if detected else "None",
+                "input": cleaned,
+                "output": result,
+                "score": audit.get("score", 0),
+                "islamic": cfg["islamic_mode"]
+            }
+
+            if K.HISTORY not in st.session_state:
+                st.session_state[K.HISTORY] = []
+            
+            st.session_state[K.HISTORY].append(intel_packet)
+
+            # State Saving (For Local HUD Display)
             st.session_state[K.LAST_RESULT] = result
             st.session_state[K.LAST_AUDIT] = audit
             st.session_state[K.LAST_INPUT] = cleaned
-            st.session_state[K.HISTORY].append({
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "intent": cleaned, "target": resolved_target,
-                "score": audit.get("score", 0), "asset": result
-            })
+            
+            st.toast(f"[◈] MISSION LOGGED: {mission_id}", icon="💾")
             st.rerun()
 
     # ── 5. OUTPUT LAYER ───────────────────────────────────────────────────────
@@ -315,7 +327,6 @@ def render_workspace(cfg: dict) -> None:
                         )
                         if not err:
                             st.session_state[K.LAST_SAVED] = datetime.now().strftime("%H:%M")
-                            # 🟢 PURGED: Replaced simple text with bracket iconography
                             st.toast("[◈] NEURAL VAULT SECURED.")
                             st.rerun()
                         else: st.error(f"[!] Vault Lock Failed: {err}")
