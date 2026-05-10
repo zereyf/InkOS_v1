@@ -1,9 +1,9 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v21.3: Zenith Autonomous Edition — Absolute Alignment.
-       - FIXED: All Indentation/Whitespace anomalies cleared.
-       - FIXED: Restored 'is_new' toggle for authenticate_terminal signature.
+v21.4: Zenith Autonomous Edition — Reactivity Patch.
+       - FIXED: Decoupled Persona Selectbox for instant Forge reactivity.
+       - FIXED: Force-cleared query params on Logout for security.
        - STABLE: Proactive Intelligence HUD (Auto-Switch feedback).
 """
 
@@ -18,7 +18,6 @@ from vault.supabase_client import SUPABASE_MISSING
 from vault.vault_engine import authenticate_terminal, check_id_availability, rehydrate_session
 from i18n.translations import t
 
-# ── 🟢 ENGINE INTEGRATIONS ──
 from forge.rhetoric_engine import HIKMAH_PROFILES
 
 class SidebarConfig(TypedDict):
@@ -30,10 +29,7 @@ class SidebarConfig(TypedDict):
     active_persona:   Optional[dict]
     expert_mode:      bool
 
-# ── HELPER COMPONENTS ────────────────────────────────────────────────────────
-
 def render_proactive_hud():
-    """Displays the current Autonomous Routing decision and reasoning."""
     if st.session_state.get("sb_target") != AUTO_SELECT_LABEL:
         return
 
@@ -48,14 +44,6 @@ def render_proactive_hud():
         </div>
     """, unsafe_allow_html=True)
 
-def _load_user_personas(user_hash: str) -> list:
-    if SUPABASE_MISSING: return []
-    try:
-        from forge.persona_store import list_personas
-        personas, _ = list_personas(user_hash, target_filter="All")
-        return personas or []
-    except Exception: return []
-
 def _enforce_admin_clearance() -> None:
     uid = st.session_state.get(K.USER_HASH)
     if not uid or "GUEST_" in str(uid).upper():
@@ -66,8 +54,6 @@ def _enforce_admin_clearance() -> None:
         master_list = [x.strip().upper() for x in master_secret.split(",") if x.strip()]
         st.session_state[K.IS_ADMIN] = (str(uid).upper() in master_list)
     except Exception: st.session_state[K.IS_ADMIN] = False
-
-# ── 1. TOP MATRIX: BRAND & UPLINK ────────────────────────────────────────────
 
 def render_sidebar_brand() -> None:
     current_sid = st.session_state.get(K.USER_HASH)
@@ -94,11 +80,9 @@ def render_sidebar_brand() -> None:
                     INK<span style="color: var(--gold);">OS</span>
                 </span>
             </div>
-            <div style="letter-spacing:2px; font-size:0.5rem; color:var(--gold);">حبر وفكرة // ZENITH_AUTONOMOUS v21.3</div>
+            <div style="letter-spacing:2px; font-size:0.5rem; color:var(--gold);">حبر وفكرة // ZENITH_AUTONOMOUS v21.4</div>
         </div>
     """), unsafe_allow_html=True)
-
-# ── 2. BOTTOM MATRIX: IDENTITY & CONTROLS ─────────────────────────────────────
 
 def render_sidebar() -> SidebarConfig:
     _enforce_admin_clearance()
@@ -125,15 +109,12 @@ def render_sidebar() -> SidebarConfig:
                 
                 if success:
                     st.session_state[K.USER_HASH] = new_sid.strip()
-                    
-                    # 🧩 NEURAL REHYDRATION
                     user_data = rehydrate_session(new_sid.strip())
                     dna = user_data.get("dna", {})
-                    st.session_state[K.INK_DNA] = dna.get("ink", st.session_state[K.INK_DNA])
-                    st.session_state[K.INTEL_DNA] = dna.get("intel", st.session_state[K.INTEL_DNA])
-                    st.session_state[K.HIKMAH_DNA] = dna.get("hikmah", st.session_state[K.HIKMAH_DNA])
+                    st.session_state[K.INK_DNA] = dna.get("ink") or st.session_state[K.INK_DNA]
+                    st.session_state[K.INTEL_DNA] = dna.get("intel") or st.session_state[K.INTEL_DNA]
+                    st.session_state[K.HIKMAH_DNA] = dna.get("hikmah") or st.session_state[K.HIKMAH_DNA]
                     st.session_state[K.PERSONA_LIST] = user_data.get("personas", [])
-                    
                     st.query_params["sid"] = new_sid.strip()
                     st.rerun()
                 else:
@@ -142,15 +123,12 @@ def render_sidebar() -> SidebarConfig:
         st.markdown('<div style="background:rgba(201,168,76,0.05); border:1px solid rgba(201,168,76,0.2); padding:10px; border-radius:3px; margin-bottom:10px; font-size:0.55rem; color:var(--gold); display:flex; align-items:center; gap:8px;">[◈] IDENTITY SECURED</div>', unsafe_allow_html=True)
         if st.button("Terminate Latch", use_container_width=True):
             st.session_state[K.USER_HASH] = None 
-            st.query_params.clear()
+            st.query_params.clear() # 🟢 FIXED: Secure Logout clears URL parameters
             st.rerun()
 
     st.markdown("<hr>", unsafe_allow_html=True)
-
-    # ── 🟢 PROACTIVE HUD ──
     render_proactive_hud()
 
-    # ── LOGIC CONFIGURATION ──
     st.markdown(f'<div class="vc-header" style="font-size:0.65rem;">[ {t("logic_config", fallback="LOGIC_CONFIGURATION").upper()} ]</div>', unsafe_allow_html=True)
     
     target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
@@ -160,16 +138,30 @@ def render_sidebar() -> SidebarConfig:
 
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ── PERSONA SELECTOR ──
+    # ── 🟢 REACTIVE PERSONA SELECTOR ──
     st.markdown(f'<div class="vc-header" style="font-size:0.65rem;">[ {t("active_persona", fallback="ACTIVE_PERSONA").upper()} ]</div>', unsafe_allow_html=True)
     user_personas = st.session_state.get(K.PERSONA_LIST, [])
     options_map = {'None': None}
+    
     for name, p in STARTER_PERSONAS.items(): 
         if name != 'None': options_map[f'{name} [S]'] = p
-    for p in user_personas: options_map[f"{p['name']} [C]"] = p
+    for p in user_personas: 
+        options_map[f"{p['name']} [C]"] = p
     
     options_list = list(options_map.keys())
-    selected_key = st.selectbox('Persona Select', options=options_list, key='sb_persona_global_widget', label_visibility='collapsed')
+    
+    # Resolve the correct index to sync with the Forge tab
+    active_p_state = st.session_state.get(K.ACTIVE_PERSONA)
+    current_index = 0
+    if active_p_state:
+        target_name = active_p_state.get("name")
+        for i, opt_key in enumerate(options_list):
+            if options_map[opt_key] and options_map[opt_key].get("name") == target_name:
+                current_index = i
+                break
+                
+    # No 'key' parameter here so it can accept programmatic index changes
+    selected_key = st.selectbox('Persona Select', options=options_list, index=current_index, label_visibility='collapsed')
     active_p = options_map[selected_key]
     st.session_state[K.ACTIVE_PERSONA] = active_p
 
@@ -194,7 +186,6 @@ def render_sidebar() -> SidebarConfig:
     
     expert_mode = st.checkbox("Expert Diagnostics", key="sb_expert")
 
-    # ── METRICS ──
     m1, m2, m3 = st.columns(3)
     with m1: st.metric("RUNS", len(st.session_state.get(K.HISTORY, [])))
     with m2: st.metric("CALLS", get_remaining_calls())
