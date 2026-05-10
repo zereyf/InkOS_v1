@@ -1,11 +1,9 @@
 """
 ui/tabs/forge.py — Persona Forge Tab
 ======================================
-v19.0: Zenith Edition — Behavior Locking & Rhetoric Sync.
-       - UPDATED: Forge Construct now supports Hikmah Styles and Aesthetics.
-       - UPDATED: save_persona call aligned with v6.0 Persistence signature.
-       - UPDATED: Preview payload now renders the full composite instruction set.
+v19.1: Zenith Edition — Two-Way Binding Patch.
        - FIXED: Synchronized rehydration of Sidebar settings on 'Engage'.
+       - FIXED: Bulletproof label matching for programmatic widget control.
 """
 
 import streamlit as st
@@ -42,16 +40,19 @@ def toggle_persona_callback(persona_data: dict, is_currently_active: bool):
         p_name = persona_data.get("name", "Unknown")
         st.query_params["p"] = p_name
         
-        # 🟢 BEHAVIORAL REHYDRATION: Sync Sidebar widgets with Persona specs
-        # This ensures the LLM receives the correct rhetoric for the chosen persona.
+        # 🟢 BEHAVIORAL REHYDRATION
         if "style" in persona_data:
             st.session_state["sb_hikmah_style"] = persona_data["style"]
         if "aesthetic" in persona_data:
             st.session_state["sb_aesthetic"] = persona_data["aesthetic"]
 
-        # Sidebar UI Label Suffixing
-        is_starter = any(p_name == v.get('name') for v in STARTER_PERSONAS.values() if v)
-        target_label = f"{p_name} [S]" if is_starter else f"{p_name} [C]"
+        # 🟢 BULLETPROOF LABEL MATCHING
+        # Guarantees the label matches the sidebar options exactly for Two-Way Binding
+        target_label = f"{p_name} [C]"
+        for k, v in STARTER_PERSONAS.items():
+            if v and v.get("name") == p_name:
+                target_label = f"{k} [S]"
+                break
         
         st.session_state[MASTER_KEY] = target_label
         st.toast(f"🎭 LATCHED: {p_name}")
@@ -70,7 +71,6 @@ def _render_persona_card(persona: dict, is_active: bool, user_hash: str, is_star
     target = persona.get("target", "All")
     pid = persona.get("id", name)
     
-    # Extract Behavioral DNA (with legacy fallbacks)
     h_style = persona.get("style", "None")
     a_style = persona.get("aesthetic", "Default")
 
@@ -98,6 +98,8 @@ def _render_persona_card(persona: dict, is_active: bool, user_hash: str, is_star
             if not is_starter:
                 if st.session_state.get(f"confirm_del_{pid}"):
                     if st.button("CONFIRM", key=f"real_del_{pid}", type="primary", use_container_width=True):
+                        # 🟢 SAFE DELETION: Detach identity before wiping from DB
+                        if is_active: toggle_persona_callback(persona, True)
                         ok, _ = delete_persona(user_hash, pid)
                         if ok: st.rerun()
                 elif st.button("🗑️", key=f"del_{pid}", use_container_width=True):
@@ -106,7 +108,6 @@ def _render_persona_card(persona: dict, is_active: bool, user_hash: str, is_star
 
         if st.session_state.get(f"show_preview_{pid}"):
             st.markdown('<div style="font-family:var(--font-m); font-size:0.5rem; color:var(--steel); letter-spacing:2px; margin-top:15px; margin-bottom:5px;">[ COMPOSITE_NEURAL_PAYLOAD ]</div>', unsafe_allow_html=True)
-            # 🟢 UPDATED: Preview now reflects the persona's specifically locked rhetoric style
             st.code(inject_persona(persona, "Claude", hikmah_style=h_style), language="xml")
 
 
@@ -123,13 +124,11 @@ def render_forge() -> None:
 
     with tab_browse:
         st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
-        # Starter constructs (Immutable)
         for label, p in STARTER_PERSONAS.items():
             if label != "None" and p: 
                 _render_persona_card(p, (active_short_name == p.get("name")), user_hash, is_starter=True)
         
         st.markdown("---")
-        # Custom constructs (Database driven)
         user_personas, _ = list_personas(user_hash, target_filter="All")
         for p in user_personas: 
             _render_persona_card(p, (active_short_name == p.get("name")), user_hash)
@@ -141,16 +140,13 @@ def render_forge() -> None:
         f_target = st.selectbox("Alignment", ["All"] + list(TARGET_GUIDES.keys()), key="f_p_target")
         
         c1, c2 = st.columns(2)
-        with c1:
-            f_hikmah = st.selectbox("Hikmah Style (Rhetoric)", options=list(HIKMAH_PROFILES.keys()), key="f_p_hikmah")
-        with c2:
-            f_aest = st.selectbox("Aesthetic Preset (Visual)", options=list(AESTHETIC_PRESETS.keys()), key="f_p_aest")
+        with c1: f_hikmah = st.selectbox("Hikmah Style (Rhetoric)", options=list(HIKMAH_PROFILES.keys()), key="f_p_hikmah")
+        with c2: f_aest = st.selectbox("Aesthetic Preset (Visual)", options=list(AESTHETIC_PRESETS.keys()), key="f_p_aest")
             
         f_role = st.text_area("Core Directive", height=120, key="f_p_role", help="Define the expert's behavior and knowledge boundaries.")
         
         if st.button("COMPILE & SECURE CONSTRUCT", use_container_width=True):
             if f_name and f_role:
-                # 🟢 v6.0 ALIGNMENT: user, name, role, constraints, hikmah_style, aesthetic, target, tags
                 saved, err = save_persona(user_hash, f_name, f_role, "", f_hikmah, f_aest, f_target, "")
                 if not err:
                     st.success(f"Construct Secured: {f_name}")
@@ -161,9 +157,9 @@ def render_forge() -> None:
     with tab_dna:
         st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:2px; margin-bottom:15px;">[ ATHAR_DNA_SEQUENCING ]</div>', unsafe_allow_html=True)
         
-        d_ink = st.text_area("Visual DNA (/ink)", value=st.session_state.get(K.INK_DNA, ""), height=80, placeholder="Define the visual aesthetic soul...")
-        d_intel = st.text_area("Strategic DNA (/intel)", value=st.session_state.get(K.INTEL_DNA, ""), height=80, placeholder="Define the strategic operational parameters...")
-        d_hikmah = st.text_area("Philosophical DNA (/hikmah)", value=st.session_state.get(K.HIKMAH_DNA, ""), height=80, placeholder="Define the ethical and linguistic boundaries...")
+        d_ink = st.text_area("Visual DNA (/ink)", value=st.session_state.get(K.INK_DNA, ""), height=80)
+        d_intel = st.text_area("Strategic DNA (/intel)", value=st.session_state.get(K.INTEL_DNA, ""), height=80)
+        d_hikmah = st.text_area("Philosophical DNA (/hikmah)", value=st.session_state.get(K.HIKMAH_DNA, ""), height=80)
 
         if st.button("💾 LOCK DNA SEQUENCES", use_container_width=True):
             st.session_state[K.INK_DNA] = d_ink
