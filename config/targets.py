@@ -1,6 +1,6 @@
 from types import MappingProxyType
 
-AUTO_SELECT_LABEL = "✦ AUTO_SELECT"
+AUTO_SELECT_LABEL = "✦ AUTO-SELECT"
 
 TARGET_SELECTION_GUIDE = "Auto-routes based on detected intent. Select manually to override."
 
