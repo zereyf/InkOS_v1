@@ -31,7 +31,7 @@ _RAW_PATTERNS: List[str] = [
     r"dan\s+mode",
 
     # System/Architecture Extraction
-    r"system\s+prompt",
+    r"(?:show|reveal|print|display|extract|leak|dump)\s+(?:the\s+)?system\s+prompt",
     r"what\s+(is|are)\s+your\s+(initial|system|hidden)\s+(prompt|instructions)",
     r"repeat\s+(the\s+)?(above|everything|instructions|text)",
     r"output\s+your",
