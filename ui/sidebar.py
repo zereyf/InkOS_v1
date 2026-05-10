@@ -46,8 +46,8 @@ def _load_user_personas(user_hash: str) -> list:
     except Exception:
         return []
 
-def def _enforce_admin_clearance() -> None:
-    """
+  def _enforce_admin_clearance() -> None:
+    
     Idempotent IAM loop: Environment-Driven Security.
     Strictly evaluates admin status based on external secrets.
     """
