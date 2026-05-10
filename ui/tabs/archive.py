@@ -19,11 +19,14 @@ def _escape(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _handle_rehydrate(target, framework, aesthetic, mission_id):
+def _handle_rehydrate(target, framework, aesthetic, mission_id, output_text, input_text):
     st.session_state["sb_target"] = target
     st.session_state["sb_framework"] = framework
     st.session_state["sb_aesthetic"] = aesthetic
     st.session_state["rehydrate_msg"] = f"SYSTEM REHYDRATED: {mission_id}"
+    st.session_state["ta_input_widget"] = input_text
+    st.session_state[K.LAST_RESULT] = output_text
+    st.session_state[K.LAST_INPUT] = input_text
 
 
 def render_archive() -> None:
@@ -119,7 +122,7 @@ def render_archive() -> None:
                 key=f"rehy_{item['id']}", 
                 use_container_width=True,
                 on_click=_handle_rehydrate,
-                args=(item.get("target"), item.get("framework"), item.get("aesthetic"), item['id'])
+                args=(item.get("target"), item.get("framework"), item.get("aesthetic"), item['id'], item.get('output',''), item.get('input',''))
             )
 
             # Telemetry Grid
