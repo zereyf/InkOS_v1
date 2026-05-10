@@ -1,13 +1,12 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v32.0: Architect Edition — Structural Hardening & HUD Refactor.
-       - REFACTORED: Compact Glass-HUD for High-Density Mobile view.
-       - HARDENED: 50-item Circular Buffer prevents state memory leaks.
-       - HARDENED: Mission IDs expanded to 8-character entropy.
-       - PATCHED: Strict UTC+1 (WAT) timezone sync for all logs.
-       - PATCHED: Form Validation on Vault Saves (Title/Tags required).
-       - ISOLATED: Telemetry extraction decoupled from UI render loop.
+v32.1: Architect Edition — Complete Security & HUD Integration.
+       - MERGED: Compact Glass-HUD & Strict Form Validation.
+       - MERGED: 50-Item Circular Buffer & 8-Char Mission IDs.
+       - MERGED: Overwatch Quarantine Routing (Threat Segregation).
+       - MERGED: Expert-Only Security Override Toggle.
+       - MERGED: Archive JSON Cache Invalidation Trigger.
 """
 
 import textwrap
@@ -35,7 +34,6 @@ MAX_HISTORY_ITEMS = 50
 # ── 🟢 BEHAVIORAL & FORENSIC ADAPTER ──────────────────────────────────────────
 
 def _detect_tone(text: str) -> str:
-    """Scans for stylistic markers to determine the mission psychology."""
     tones = {
         "FORENSIC": ["analysis", "audit", "technical", "vulnerability", "precision", "forensic", "breach"],
         "POETIC": ["symphony", "dance", "ethereal", "glow", "rhythm", "aesthetic", "shadow", "chiaroscuro"],
@@ -49,7 +47,6 @@ def _detect_tone(text: str) -> str:
     return "NEUTRAL"
 
 def _extract_telemetry(result: str, start_time: float) -> Dict[str, Any]:
-    """Isolates telemetry calculation from the main UI thread."""
     latency_ms = int((time.perf_counter() - start_time) * 1000)
     words = result.split()
     word_count = len(words)
@@ -79,7 +76,6 @@ def _apply_dna_triggers(text: str) -> Tuple[str, list]:
 # ── 🟢 UI COMPONENTS ──────────────────────────────────────────────────────────
 
 def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
-    """Renders a High-Density, Bounded Thermal HUD."""
     safe_audit = audit or {}
     score = int(safe_audit.get("score", 0))
     precision = int(safe_audit.get("precision", 0))
@@ -88,7 +84,6 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
     thermal_status = "STABLE" if score > 80 else "CRITICAL" if score < 40 else "FLUCTUATING"
     target = st.session_state.get(K.AUTO_TARGET, "Unknown")
     
-    # Logic for Dynamic Status Color
     if score >= 90: status_color = "#4CAF9A"
     elif score >= 80: status_color = "var(--gold)"
     else: status_color = "#E53E3E"
@@ -97,7 +92,6 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
 
     score_html = f"""
     <div style="background: rgba(10,12,16,0.6); border: 1px solid rgba(255,255,255,0.05); border-left: 3px solid {status_color}; border-radius: 4px; padding: 15px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 12px;">
-        
         <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
             <div>
                 <div style="font-family: var(--font-m); font-size: 0.5rem; color: var(--text-muted); letter-spacing: 2px;">OVERALL FIDELITY</div>
@@ -108,7 +102,6 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
                 <div style="font-family: var(--font-m); font-size: 0.55rem; color: {status_color}; font-weight: bold; letter-spacing: 1px;">{thermal_status}</div>
             </div>
         </div>
-
         <div style="display: flex; gap: 15px; align-items: center;">
             <div style="flex: 1;">
                 <div style="display: flex; justify-content: space-between; font-family: var(--font-m); font-size: 0.5rem; color: var(--text-muted); margin-bottom: 4px;">
@@ -127,13 +120,11 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
                 </div>
             </div>
         </div>
-
         <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(201,168,76,0.1); border-radius: 2px; padding: 8px 10px; height: 75px; overflow-y: auto; font-family: var(--font-m); font-size: 0.6rem; color: var(--text-dim); line-height: 1.5;">
             <span style="color:var(--gold);">> UPLINK_SIG:</span> INKOS_STANDARD // ZENITH<br>
             <span style="color:var(--gold);">> CIPHER_LOCK:</span> {target.upper()}<br>
             <span style="color:var(--text-muted);">> DIAGNOSTIC:</span> {safe_audit.get("critique", "No anomalies detected.")}
         </div>
-        
     </div>
     """
     st.markdown(score_html, unsafe_allow_html=True)
@@ -144,7 +135,6 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
 # ── 🟢 MAIN RENDERER ──────────────────────────────────────────────────────────
 
 def render_workspace(cfg: dict) -> None:
-    # ── 1. HEADER & LIVE METRICS ──
     source_lang = cfg.get("source_lang", "English")
     raw_text = st.session_state.get("ta_input_widget") or ""
     cognitive_load = len(raw_text)
@@ -177,7 +167,6 @@ def render_workspace(cfg: dict) -> None:
     ).replace("\n", "")
     st.markdown(header_html, unsafe_allow_html=True)
 
-    # ── 2. DNA ARMORY & GHOST WARNING ──
     current_uid = st.session_state.get(K.USER_HASH)
     is_guest = not current_uid or "GUEST_" in str(current_uid).upper()
 
@@ -217,7 +206,6 @@ def render_workspace(cfg: dict) -> None:
                 st.toast("> AWAITING CREDENTIALS.")
         st.markdown("<div style='height:15px;'></div>", unsafe_allow_html=True)
 
-    # ── 3. INPUT AREA & VOICE UPLINK ──
     if "ta_input_widget" not in st.session_state:
         st.session_state["ta_input_widget"] = ""
 
@@ -256,12 +244,16 @@ def render_workspace(cfg: dict) -> None:
         )
         st.session_state["ta_input"] = intent_val
 
-    # ── 4. 📡 LIVE LINGUISTIC INTERCEPT ──
     if intent_val and source_lang == "Arabic (العربية)":
         p_data = detect_arabic_pattern(intent_val)
         if p_data:
             intercept_html = f'<div style="margin-top:-15px; margin-bottom:15px; display:flex; align-items:center; gap:8px; opacity:0.8;"><span style="height:6px; width:6px; background:var(--gold); border-radius:50%; box-shadow: 0 0 5px var(--gold);"></span><div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">PATTERN_INTERCEPT: <span style="color:var(--text); font-weight:bold;">{p_data["pattern"].upper()}</span></div></div>'
             st.markdown(intercept_html, unsafe_allow_html=True)
+
+    # ── 🟢 SECURITY OVERRIDE (Expert Mode Only) ──
+    override_security = False
+    if cfg.get("expert_mode"):
+        override_security = st.checkbox("⚠️ OVERRIDE OVERWATCH SHIELD (Allow Hostile Payloads)", value=False)
 
     if st.button(t("execute_btn", fallback="EXECUTE REFINEMENT"), use_container_width=True):
         st.session_state["athar_trace"] = False
@@ -297,10 +289,10 @@ def render_workspace(cfg: dict) -> None:
             result, audit, _ = run_refinement_and_audit(
                 final_text, resolved_target, cfg["framework"], 
                 cfg["source_lang"], cfg["aesthetic_choice"], 
-                cfg["islamic_mode"], active_persona
+                cfg["islamic_mode"], active_persona,
+                skip_security=override_security # 🟢 PASSED SECURITY FLAG
             )
             
-            # Extract Telemetry Data cleanly
             telemetry = _extract_telemetry(result, start_time)
 
             ui_text.markdown(f"`< 100% >` **[SECURE]** Asset refraction complete. Closing uplink.")
@@ -309,13 +301,11 @@ def render_workspace(cfg: dict) -> None:
             ui_text.empty()
             prog_bar.empty()
             
-            # ── 🟢 HARDENED MISSION LOGGING ──
-            # Fix 1: Expanded UUID entropy (8 chars)
             mission_id = f"INK-{uuid.uuid4().hex[:8].upper()}"
             
             intel_packet = {
                 "id": mission_id,
-                "time": datetime.now(WAT_TZ).strftime("%H:%M:%S"), # Fix 2: Strict WAT Sync
+                "time": datetime.now(WAT_TZ).strftime("%H:%M:%S"),
                 "target": resolved_target,
                 "framework": cfg["framework"],
                 "aesthetic": cfg["aesthetic_choice"],
@@ -332,25 +322,32 @@ def render_workspace(cfg: dict) -> None:
                 "pattern": detected[0] if detected else "RAW"
             }
 
-            if K.HISTORY not in st.session_state:
-                st.session_state[K.HISTORY] = []
+            # ── 🟢 QUARANTINE ROUTING ──
+            is_breach = (audit.get("score", 0) == 0 and "SECURITY BREACH" in audit.get("critique", ""))
             
-            st.session_state[K.HISTORY].append(intel_packet)
-            
-            # Fix 3: Memory Leak Prevention (Circular Buffer limit to 50)
-            if len(st.session_state[K.HISTORY]) > MAX_HISTORY_ITEMS:
-                st.session_state[K.HISTORY].pop(0)
+            if is_breach:
+                if "QUARANTINE_LOG" not in st.session_state: st.session_state["QUARANTINE_LOG"] = []
+                st.session_state["QUARANTINE_LOG"].append(intel_packet)
+                if len(st.session_state["QUARANTINE_LOG"]) > MAX_HISTORY_ITEMS:
+                    st.session_state["QUARANTINE_LOG"].pop(0)
+                st.toast(f"[!] HOSTILE PAYLOAD QUARANTINED", icon="🛑")
+            else:
+                if K.HISTORY not in st.session_state: st.session_state[K.HISTORY] = []
+                st.session_state[K.HISTORY].append(intel_packet)
+                if len(st.session_state[K.HISTORY]) > MAX_HISTORY_ITEMS:
+                    st.session_state[K.HISTORY].pop(0)
+                
+                # Invalidate JSON cache for Archive
+                st.session_state["_archive_cache_dirty"] = True
+                st.toast(f"[◈] MISSION LOGGED: {mission_id}", icon="💾")
 
             st.session_state[K.LAST_RESULT] = result
             st.session_state[K.LAST_AUDIT] = audit
             st.session_state[K.LAST_INPUT] = cleaned
             
-            st.toast(f"[◈] MISSION LOGGED: {mission_id}", icon="💾")
             st.rerun()
 
-    # ── 5. OUTPUT LAYER ───────────────────────────────────────────────────────
     if st.session_state.get(K.LAST_RESULT):
-        # Apply the compact, mobile-friendly HUD layout
         _render_score_block(st.session_state.get(K.LAST_AUDIT) or {}, expert_mode=cfg.get("expert_mode", False))
         
         st.markdown(f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:2px; margin-bottom:4px; margin-top:5px;">[ REFINED_ASSET ]</div>', unsafe_allow_html=True)
@@ -367,7 +364,6 @@ def render_workspace(cfg: dict) -> None:
             if st.button("SECURE TO VAULT", type="primary", use_container_width=True):
                 uid = st.session_state.get(K.USER_HASH)
                 
-                # Fix 4: Strict Save Validation
                 title_val = st.session_state.get("v_t", "").strip()
                 tags_val = st.session_state.get("v_g", "").strip()
 
