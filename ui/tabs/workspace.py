@@ -1,15 +1,15 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v31.8: Forensic Telemetry Update — Performance Tracking.
-       - ADDED: High-precision Latency Trace for AI handshake.
-       - ADDED: Semantic Density Analysis (Chars per Word).
-       - INTEGRATED: Enhanced Intel Packet with telemetry metrics.
-       - RETAINED: All UI Typography, HUD, and Ghost logic.
+v31.9: Visual DNA Update — Color Signature Extraction.
+       - ADDED: Regex Color Scanner for hex-code extraction.
+       - INTEGRATED: Enhanced Intel Packet with 'palette' metadata.
+       - RETAINED: All UI Typography, Thermal HUD, and Ghost logic.
 """
 
 import textwrap
 import time
+import re  # 🟢 Added for Color Scanning
 import streamlit as st
 import uuid
 from datetime import datetime, timezone
@@ -270,6 +270,10 @@ def render_workspace(cfg: dict) -> None:
             words = result.split()
             word_count = len(words)
             density_score = round(len(result) / word_count, 2) if word_count > 0 else 0
+            
+            # ── 🟢 VISUAL DNA (Color Extraction) ──
+            found_colors = list(set(re.findall(r'#(?:[0-9a-fA-F]{3}){1,2}\b', result)))
+            palette = found_colors[:5] # Limit to top 5 for UI consistency
 
             # Phase 4: Resolution
             ui_text.markdown(f"`< 100% >` **[SECURE]** Asset refraction complete. Closing uplink.")
@@ -292,10 +296,11 @@ def render_workspace(cfg: dict) -> None:
                 "output": result,
                 "score": audit.get("score", 0),
                 "islamic": cfg["islamic_mode"],
-                # ── NEW FORENSIC METRICS ──
+                # ── FORENSIC METRICS ──
                 "latency": f"{latency_ms}ms",
                 "density": density_score,
-                "word_count": word_count
+                "word_count": word_count,
+                "palette": palette # 🟢 Added Visual DNA field
             }
 
             if K.HISTORY not in st.session_state:
