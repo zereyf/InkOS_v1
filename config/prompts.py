@@ -1,9 +1,10 @@
 """
 config/prompts.py — Core System Instructions
 ==============================================
-v11.0: Zenith-Compliant Prompt Architecture.
+v11.1: 8B Latency-Optimized Architecture.
+       - INJECTED: One-Shot Pattern Matching Template.
        - HARDENED: Strict separation between Compiler and Payload.
-       - ENFORCED: Exact XML schema required for Anthropic targets.
+       - ENFORCED: Exact schema required for Anthropic & OpenAI targets.
 """
 
 from types import MappingProxyType
@@ -24,9 +25,9 @@ CIPHER_IDENTITY: str = textwrap.dedent('''
     <constraints> Use strict bullet points for operational limits. </constraints>
     <output_format> Specify the exact structural output required. </output_format>
     
-    IF TARGET IS CHATGPT/GPT-4 (OpenAI):
+    IF TARGET IS CHATGPT/GPT-4 (OpenAI) OR GEMINI:
     You MUST start the generated prompt with "You are a [Role]."
-    Structure the rest using bold markdown headers (e.g., # SYSTEM ROLE, # TASK).
+    Structure the rest using bold markdown headers (e.g., **SYSTEM ROLE**, **TASK**).
 
     ABSOLUTE RULES:
     - NEVER explain your process.
@@ -34,15 +35,19 @@ CIPHER_IDENTITY: str = textwrap.dedent('''
     - Density is mandatory (minimum 350 characters of high-value instruction).
 ''').strip()
 
+# ── 🟢 8B ONE-SHOT TEMPLATE INJECTED HERE ──
 CIPHER_OUTPUT_CONTRACT: str = textwrap.dedent('''
     OUTPUT SEQUENCE ENFORCEMENT:
-    Step 1: Output the raw, ready-to-use system prompt (using the target-specific structure).
-    Step 2: On a new line at the absolute end of your response, output the JSON audit block.
+    You must format your entire response exactly like the ONE-SHOT TEMPLATE below. 
+    Do not add introductory words. Do not add labels like "JSON audit block:".
+
+    === ONE-SHOT TEMPLATE ===
+    [YOUR GENERATED PROMPT GOES HERE. IT MUST USE THE CORRECT TARGET-SPECIFIC FORMATTING (XML OR MARKDOWN)]
+
+    {"score": 85, "precision": 35, "alignment": 35, "efficiency": 15, "critique": "Actionable feedback here."}
+    =========================
     
-    JSON SCHEMA:
-    {"score": <0-100>, "precision": <0-40>, "alignment": <0-40>, "efficiency": <0-20>, "critique": "<one actionable sentence>"}
-    
-    CRITICAL: The JSON block MUST be the very last thing you generate. It must be OUTSIDE of any XML tags.
+    CRITICAL: The JSON block MUST be the absolute last line of your response. Do not place markdown fences (```) around the JSON.
 ''').strip()
 
 CIPHER_EVALUATOR_PROMPT: str = textwrap.dedent('''
