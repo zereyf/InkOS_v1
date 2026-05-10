@@ -133,7 +133,7 @@ def render_sidebar() -> SidebarConfig:
     
     target_options = [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys())
     target_model = st.selectbox("Target Model", options=target_options, key="sb_target")
-    framework = st.selectbox(t("logic_framework", fallback="Framework"), options=LOGIC_FRAMEWORKS, key="sb_framework")
+    framework = st.radio(t("logic_framework", fallback="Framework"), options=LOGIC_FRAMEWORKS, key="sb_framework", horizontal=True)
     source_lang = st.radio("Input Language", ["English", "Arabic (العربية)"], key="sb_lang")
 
     st.markdown("<hr>", unsafe_allow_html=True)
@@ -184,6 +184,15 @@ def render_sidebar() -> SidebarConfig:
     with m1: st.metric("RUNS", len(st.session_state.get(K.HISTORY, [])))
     with m2: st.metric("CALLS", get_remaining_calls())
     with m3: st.metric("SAVED", st.session_state.get(K.LAST_SAVED, "Never"))
+
+
+    with st.expander("History", expanded=False):
+        history = st.session_state.get(K.HISTORY, [])[:10]
+        if not history:
+            st.caption("No runs yet.")
+        for i, item in enumerate(history, start=1):
+            st.markdown(f"**{i}.** {item.get('input','')[:80]}…")
+            st.caption(f"Score: {item.get('score','-')} · {item.get('latency','-')}ms")
 
     if st.button("RESET SESSION", use_container_width=True):
         from state import reset_session
