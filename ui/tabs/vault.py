@@ -1,11 +1,9 @@
 """
 ui/tabs/vault.py — Prompt Memory Vault Tab
 ============================================
-v9.0: Zenith Edition — Forensic Retrieval & Deep Rehydration.
-      - ADDED: Deep Rehydration callback (Syncs Sidebar state).
-      - ADDED: Chronos Sort (Score/Date ordering).
-      - UPDATED: High-Density Forensic UI with Scan-line FX.
-      - FIXED: Synchronized state-dirty flags for Archive consistency.
+v9.1: Zenith Edition — Patch 1 (Toast Dispatcher).
+      - FIXED: Rehydration toast now fires correctly via render-loop listener.
+      - RETAINED: Deep Rehydration, Chronos Sort, and Forensic UI.
 """
 
 import streamlit as st
@@ -28,9 +26,9 @@ from i18n.translations import t
 
 def _score_color(score: int) -> str:
     if score >= 90: return "var(--gold)"
-    if score >= 75: return "#4CAF9A" # Hikmah Teal
-    if score >= 50: return "#7C9EBF" # Steel
-    return "#E53E3E" # Danger
+    if score >= 75: return "#4CAF9A"
+    if score >= 50: return "#7C9EBF"
+    return "#E53E3E"
 
 def _render_vault_locked() -> None:
     st.markdown(textwrap.dedent(f"""
@@ -49,22 +47,24 @@ def _render_vault_locked() -> None:
 
 def _vault_rehydrate_callback(content: str, target: str, framework: str, aesthetic: str, title: str) -> None:
     """Teleports saved mission settings back into the primary UI state."""
-    # 1. Inject Content
     st.session_state["ta_input_widget"] = content
     st.session_state[K.LAST_RESULT] = content
-    
-    # 2. Inject Sidebar Settings (Matching sidebar.py keys)
     st.session_state["sb_target"] = target
     st.session_state["sb_framework"] = framework
     st.session_state["sb_aesthetic"] = aesthetic
     
-    # 3. Notification
+    # Set the pending toast message
     st.session_state["rehydrate_msg"] = f"VAULT_REHYDRATION: {title[:20]}..."
     st.session_state["_archive_cache_dirty"] = True
 
 # ── 🟢 MAIN RENDERER ──────────────────────────────────────────────────────────
 
 def render_vault() -> None:
+    # ── 🟢 TOAST DISPATCHER (Listener) ──
+    if st.session_state.get("rehydrate_msg"):
+        st.toast(st.session_state["rehydrate_msg"], icon="⚡")
+        st.session_state["rehydrate_msg"] = None # Clear after firing
+
     st.markdown('<div class="vc-header"><span class="status-dot" style="background:var(--gold);"></span>NEURAL_MEMORY_VAULT</div>', unsafe_allow_html=True)
 
     if SUPABASE_MISSING:
@@ -76,7 +76,7 @@ def render_vault() -> None:
         _render_vault_locked()
         return
 
-    # ── 1. STATS HUD (Asymmetric Command Row) ──────────────────────────────────
+    # ── 1. STATS HUD ──
     stats, err = get_vault_stats(user_hash)
     if not err and stats.get("count", 0) > 0:
         s_color = _score_color(stats["avg_score"])
@@ -97,9 +97,7 @@ def render_vault() -> None:
             </div>
         """, unsafe_allow_html=True)
 
-    # ── 2. FORENSIC SEARCH MATRIX ──────────────────────────────────────────
-    st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-dim); letter-spacing:2px; margin-bottom:10px;">FORENSIC_QUERY_MATRIX</div>', unsafe_allow_html=True)
-    
+    # ── 2. FORENSIC SEARCH MATRIX ──
     sc1, sc2, sc3, sc4 = st.columns([2.5, 1.5, 1.5, 1.5])
     with sc1: 
         query = st.text_input("Search", placeholder="NEURAL_HASH OR DESIGNATION...", label_visibility="collapsed", key="v_search")
@@ -111,8 +109,7 @@ def render_vault() -> None:
         sort_order = st.selectbox("Chronos", ["Newest", "Oldest", "Highest Score", "Lowest Score"], label_visibility="collapsed")
 
     vault_response = search_vault(
-        user_hash=user_hash,
-        query=query,
+        user_hash=user_hash, query=query,
         tag_filter="" if tag_filter == "All Tags" else tag_filter,
         target_filter="" if target_filter == "All Targets" else target_filter
     )
@@ -123,56 +120,45 @@ def render_vault() -> None:
 
     results, _ = vault_response
 
-    # ── 🟢 CHRONOS SORT (In-Memory Processing) ──
+    # ── Chronos Sort ──
     if sort_order == "Highest Score":
         results = sorted(results, key=lambda x: x.get('score', 0), reverse=True)
     elif sort_order == "Lowest Score":
         results = sorted(results, key=lambda x: x.get('score', 0))
     elif sort_order == "Oldest":
         results = sorted(results, key=lambda x: x.get('created_at', ''))
-    else: # Default: Newest
+    else: # Newest
         results = sorted(results, key=lambda x: x.get('created_at', ''), reverse=True)
 
-    # ── 3. ASSET LISTING (ATHAR PROTOCOL) ───────────────────────────────────────
+    # ── 3. ASSET LISTING ──
     now = datetime.now(timezone.utc)
-    
     for entry in results:
         score = entry.get("score", 0)
         s_color = _score_color(score)
-        
         safe_title = html.escape(entry.get("title", "UNTITLED_CONSTRUCT")).upper()
         safe_intent = html.escape(entry.get("intent", "No original intent recorded."))
         
-        # Temporal Logic
         try:
             created_dt = datetime.fromisoformat(entry.get("created_at", now.isoformat()).replace('Z', '+00:00'))
             age_days = (now - created_dt).days
-        except:
-            age_days = 0
+        except: age_days = 0
 
-        # Scan-line Branding FX
         border_fx = f"border:1px solid rgba(255,255,255,0.05); border-left:3px solid {s_color};"
-        
         label = f"[{score}%] {safe_title} // ID:{entry['id'][:6]}"
 
         with st.expander(label):
-            
             aesthetic = entry.get("aesthetic", "Default")
             framework = entry.get("framework", "RACE")
             target = entry.get("target", "ChatGPT")
 
-            # Forensic HUD Card
             meta_html = textwrap.dedent(f"""
                 <div style="background:rgba(10,12,16,0.6); {border_fx} padding:15px; border-radius:2px; margin-bottom:12px; font-family:var(--font-m); position:relative; overflow:hidden;">
                     <div style="position:absolute; top:0; left:0; width:100%; height:100%; background: repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.01) 1px, rgba(255,255,255,0.01) 2px); pointer-events:none;"></div>
-                    
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:0.5rem; color:var(--text-dim); letter-spacing:1px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">
                         <span>UPLINK: {target.upper()}</span>
                         <span>AGE: {age_days}D</span>
                     </div>
-                    
                     <div style="font-size:0.65rem; color:var(--text); line-height:1.5; margin-bottom:12px; font-style:italic; opacity:0.8;">"{safe_intent}"</div>
-                    
                     <div style="display:flex; gap:8px;">
                         <span style="background:rgba(201,168,76,0.1); color:var(--gold); padding:2px 6px; border-radius:2px; font-size:0.5rem;">{aesthetic.upper()}</span>
                         <span style="background:rgba(255,255,255,0.05); color:var(--text-dim); padding:2px 6px; border-radius:2px; font-size:0.5rem;">{framework.upper()}</span>
@@ -181,17 +167,13 @@ def render_vault() -> None:
             """).replace("\n", "")
             
             st.markdown(meta_html, unsafe_allow_html=True)
-            
             st.code(entry["content"], language="markdown")
             
             a1, a2 = st.columns(2)
             with a1:
-                # 🟢 THE REHYDRATE BUTTON
                 st.button(
-                    "⚡ REHYDRATE STATE", 
-                    key=f"dep_{entry['id']}", 
-                    use_container_width=True,
-                    type="primary",
+                    "⚡ REHYDRATE STATE", key=f"dep_{entry['id']}", 
+                    use_container_width=True, type="primary",
                     on_click=_vault_rehydrate_callback,
                     args=(entry["content"], target, framework, aesthetic, safe_title)
                 )
@@ -200,5 +182,5 @@ def render_vault() -> None:
                     ok, _ = delete_prompt(user_hash, entry["id"])
                     if ok: 
                         st.session_state["_archive_cache_dirty"] = True
-                        st.toast("ASSET PURGED FROM NEURAL VAULT.")
+                        st.toast("ASSET PURGED.")
                         st.rerun()
