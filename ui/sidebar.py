@@ -89,9 +89,6 @@ def render_sidebar() -> SidebarConfig:
 
     current_sid = st.session_state.get(K.USER_HASH)
     is_guest = not current_sid or "GUEST_" in str(current_sid).upper()
-    sess_ref = str(current_sid)[:8] if current_sid else "GHOST_ID"
-
-    st.markdown(f'<div class="vc-header" style="font-size:0.55rem; color:var(--text-muted); margin-top:10px;">SESS_REF: {sess_ref}</div>', unsafe_allow_html=True)
 
     if is_guest:
         new_sid = st.text_input("ID", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
@@ -183,7 +180,9 @@ def render_sidebar() -> SidebarConfig:
     m1, m2, m3 = st.columns(3)
     with m1: st.metric("RUNS", len(st.session_state.get(K.HISTORY, [])))
     with m2: st.metric("CALLS", get_remaining_calls())
-    with m3: st.metric("SAVED", st.session_state.get(K.LAST_SAVED, "Never"))
+    with m3:
+        saved_val = st.session_state.get(K.LAST_SAVED, "—")
+        st.metric("SAVED", "—" if saved_val == "Never" else saved_val)
 
 
     theme = st.toggle("Light mode", value=False, key="theme_light")
