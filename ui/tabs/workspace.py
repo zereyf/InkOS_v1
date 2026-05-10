@@ -1,11 +1,10 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v33.2: Zenith Neural Edition (Null-Safe Patch).
-       - FIXED: TypeError crash caused by NoneType database returns in DNA grid.
+v33.2: Zenith Neural Edition (Bulletproof Patch).
+       - FIXED: TypeError (NoneType len) caused by NULL database values.
        - INTEGRATED: Autonomous Neural Routing (Auto-Switch logic).
        - INTEGRATED: 3-Layer Composite Assembler (Persona + Rhetoric + DNA).
-       - RESTORED: Full Groq Transcription and Supabase Vault persistence.
 """
 
 import textwrap
@@ -34,12 +33,11 @@ MAX_HISTORY_ITEMS = 50
 # ── 🟢 BEHAVIORAL & FORENSIC ADAPTERS ─────────────────────────────────────────
 
 def _get_dna_context() -> dict:
-    """Extracts the full brand DNA context from the session state safely."""
-    # 🟢 FIXED: Added 'or ""' to ensure NoneTypes from DB become empty strings
+    """Extracts the full brand DNA context, strictly casting to strings to prevent NoneType errors."""
     return {
-        K.INK_DNA: st.session_state.get(K.INK_DNA) or "",
-        K.INTEL_DNA: st.session_state.get(K.INTEL_DNA) or "",
-        K.HIKMAH_DNA: st.session_state.get(K.HIKMAH_DNA) or ""
+        K.INK_DNA: str(st.session_state.get(K.INK_DNA) or ""),
+        K.INTEL_DNA: str(st.session_state.get(K.INTEL_DNA) or ""),
+        K.HIKMAH_DNA: str(st.session_state.get(K.HIKMAH_DNA) or "")
     }
 
 def _detect_tone(text: str) -> str:
@@ -75,8 +73,7 @@ def _render_dna_status_grid():
     dna = _get_dna_context()
     
     def _dna_tile(label: str, content: str):
-        # 🟢 FIXED: Safety clamp for content length calculation
-        safe_content = content or ""
+        safe_content = str(content) if content else "" # 🟢 Bulletproof fallback
         is_custom = len(safe_content) > 130 
         b_color = "var(--gold)" if is_custom else "rgba(255,255,255,0.05)"
         t_color = "var(--gold)" if is_custom else "var(--text-dim)"
@@ -124,7 +121,7 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
 
 def render_workspace(cfg: dict) -> None:
     # ── 1. HEADER & BADGES ──
-    hikmah_style = cfg.get("hikmah_style", "None")
+    hikmah_style = str(cfg.get("hikmah_style") or "None")
     p_active = cfg.get("active_persona")
     p_name = p_active.get("name", "").upper() if p_active else ""
     
@@ -191,4 +188,52 @@ def render_workspace(cfg: dict) -> None:
             
             result, audit, _ = run_refinement_and_audit(
                 master_payload, 
-                resolved_target,
+                resolved_target, 
+                cfg["framework"],
+                cfg["source_lang"],
+                cfg["aesthetic_choice"],
+                hikmah_style=hikmah_style,
+                skip_security=st.session_state.get(K.IS_ADMIN, False) and cfg.get("expert_mode", False)
+            )
+            
+            telemetry = _extract_telemetry(result, start_time)
+            prog.progress(100)
+            status.empty()
+            prog.empty()
+
+            st.session_state[K.LAST_RESULT] = result
+            st.session_state[K.LAST_AUDIT] = audit
+            st.session_state[K.LAST_INPUT] = cleaned
+            st.rerun()
+
+    # ── 5. RESULTS RENDERING ──
+    if st.session_state.get(K.LAST_RESULT):
+        _render_score_block(st.session_state.get(K.LAST_AUDIT), cfg.get("expert_mode"))
+        st.text_area("Asset", value=st.session_state.get(K.LAST_RESULT), height=300, label_visibility="collapsed")
+        
+        st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin: 10px 0;'>", unsafe_allow_html=True)
+        
+        v1, v2, v3 = st.columns([2, 2, 1.5])
+        with v1: st.text_input("Title", key="v_t", label_visibility="collapsed", placeholder="DESIGNATION...")
+        with v2: st.text_input("Tags", key="v_g", label_visibility="collapsed", placeholder="Forensic Tags...")
+        with v3: 
+            if st.button("SECURE TO VAULT", type="primary", use_container_width=True):
+                uid = st.session_state.get(K.USER_HASH)
+                title_val = st.session_state.get("v_t", "").strip()
+                tags_val = st.session_state.get("v_g", "").strip()
+
+                if title_val and tags_val and uid and "GUEST_" not in uid.upper():
+                    from vault.vault_engine import save_prompt
+                    res, err = save_prompt(
+                        uid, title=title_val, tags=tags_val, 
+                        content=st.session_state.get(K.LAST_RESULT), 
+                        target=st.session_state.get(K.AUTO_TARGET), 
+                        framework=cfg["framework"], 
+                        score=(st.session_state.get(K.LAST_AUDIT) or {}).get("score", 0)
+                    )
+                    if not err:
+                        st.session_state[K.LAST_SAVED] = datetime.now(WAT_TZ).strftime("%H:%M:%S")
+                        st.toast("[◈] ASSET SECURED.", icon="✅")
+                    else: st.error(err)
+                else:
+                    st.toast("[!] Designation and Identity required.", icon="⚠️")
