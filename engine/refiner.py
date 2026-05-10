@@ -26,26 +26,63 @@ from security.sanitizer import sanitize_input
 _TAG_CLEANUP = re.compile(r"^(?:REFINED_PROMPT|PROMPT|OUTPUT|thinking):?\s*", flags=re.IGNORECASE | re.MULTILINE)
 _FENCE_CLEANUP = re.compile("\x60\x60\x60(?:markdown|json|text|xml)?|\x60\x60\x60", flags=re.IGNORECASE)
 
+def _find_balanced_json_object(text: str, start: int) -> Optional[str]:
+    depth = 0
+    in_string = False
+    escape = False
+
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:index + 1]
+
+    return None
+
+
 def _extract_json(text: str) -> Optional[str]:
-    match = re.search(r'\{\s*"?score"?\s*:', text)
-    if not match:
-        start = text.rfind('{')
-        if start == -1: return None
-    else:
-        start = match.start()
-    count, end_pos = 0, -1
-    for i in range(start, len(text)):
-        if text[i] == '{': count += 1
-        elif text[i] == '}': count -= 1
-        if count == 0:
-            end_pos = i + 1
-            break
-    return text[start:end_pos] if end_pos != -1 else None
+    decoder = json.JSONDecoder()
+    candidate_starts = [m.start() for m in re.finditer(r"\{", text)]
+
+    # Prefer objects that look like the audit contract, but fall back to any
+    # decodable JSON object to preserve compatibility with imperfect models.
+    candidate_starts.sort(key=lambda pos: (0 if re.match(r'\{\s*"?score"?\s*:', text[pos:]) else 1, -pos))
+
+    for start in candidate_starts:
+        balanced = _find_balanced_json_object(text, start)
+        if not balanced:
+            continue
+        try:
+            parsed, end = decoder.raw_decode(balanced)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict) and end == len(balanced):
+            return balanced
+
+    return None
 
 def _clamp_audit(raw: dict) -> dict:
+    raw = raw if isinstance(raw, dict) else {}
+
     def safe_int(val, ceiling):
-        try: return min(max(int(val), 0), ceiling)
-        except: return 0
+        try:
+            return min(max(int(val), 0), ceiling)
+        except (TypeError, ValueError):
+            return 0
     return {
         "score": safe_int(raw.get("score"), 100),
         "critique": str(raw.get("critique", "Audit complete.")).strip(),
@@ -64,7 +101,7 @@ def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
     refined = _TAG_CLEANUP.sub("", cleaned[:json_start_pos].strip()).strip()
     try:
         audit = _clamp_audit(json.loads(json_str))
-    except:
+    except json.JSONDecodeError:
         audit = {"score": 0, "critique": "CRITICAL FAULT: Generated JSON was malformed and could not be parsed."}
     return refined, audit
 
@@ -74,6 +111,7 @@ def _validate_structure(refined: str, target: str) -> Tuple[bool, str]:
     if len(text) < 100: return False, "Output density insufficient. Prompt is too short."
     
     # Target-specific structure validation
+    target = str(target or "")
     if 'Claude' in target:
         if not re.search(r'<(?:role|task|constraints|output_format)>', text, re.IGNORECASE):
             return False, 'Claude requires XML-structured blocks (<role>, <task>, etc.).'
@@ -163,7 +201,7 @@ def run_refinement_and_audit(
         if not passed:
             retry_critique = f"Structural Failure: {reason}"
             # Save the highest scoring failed attempt just in case
-            if not best_audit or self_audit.get('score', 0) > best_audit.get('score', 0):
+            if self_audit and (not best_audit or self_audit.get('score', 0) > best_audit.get('score', 0)):
                 best_refined, best_audit = refined, self_audit
             continue
 
@@ -177,7 +215,7 @@ def run_refinement_and_audit(
                 best_refined, best_audit = refined, audit
         else:
             retry_critique = self_audit.get('critique', 'Score below threshold.')
-            if not best_audit or self_audit.get('score', 0) > best_audit.get('score', 0):
+            if self_audit and (not best_audit or self_audit.get('score', 0) > best_audit.get('score', 0)):
                 best_refined, best_audit = refined, self_audit
 
     # 🟢 FIXED: Final fallback guarantees a critique is passed to the UI
