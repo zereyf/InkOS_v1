@@ -9,6 +9,7 @@ v33.3: Zenith Neural Edition (Markdown Patch).
 
 import time
 import re
+import uuid
 import os
 import streamlit as st
 from datetime import datetime, timezone, timedelta
@@ -67,41 +68,44 @@ def _extract_telemetry(result: str, start_time: float) -> Dict[str, Any]:
 # ── 🟢 UI COMPONENTS (FLATTENED TO PREVENT MARKDOWN BLEED) ────────────────────
 
 def _render_dna_status_grid():
-    """Compact status chips for brand DNA."""
+    """Renders the high-fidelity DNA synchronization HUD."""
     dna = _get_dna_context()
-    labels = [("INK", dna[K.INK_DNA]), ("INTEL", dna[K.INTEL_DNA]), ("HIKMAH", dna[K.HIKMAH_DNA])]
-    chips = []
-    for label, content in labels:
-        active = len(str(content or "")) > 130
-        chips.append(f"<span class='pill'>{label}: {'Custom' if active else 'Default'}</span>")
-    st.markdown("<div class='premium-caption'>DNA Profiles " + " ".join(chips) + "</div>", unsafe_allow_html=True)
+    
+    def _dna_tile(label: str, content: str):
+        safe_content = str(content) if content else "" 
+        is_custom = len(safe_content) > 130 
+        b_color = "var(--gold)" if is_custom else "rgba(255,255,255,0.05)"
+        t_color = "var(--gold)" if is_custom else "var(--text-dim)"
+        status = "LOCKED" if is_custom else "DEFAULT"
+        # Flattened HTML to prevent <pre> code blocks
+        return f'<div style="flex:1; border:1px solid {b_color}; border-radius:2px; padding:10px; text-align:center; background:rgba(0,0,0,0.2);"><div style="font-family:var(--font-m); font-size:0.5rem; color:{t_color}; letter-spacing:1.5px; margin-bottom:4px;">DNA: /{label}</div><div style="font-family:var(--font-m); font-size:0.6rem; color:{b_color}; font-weight:bold; letter-spacing:1px;">{status}</div></div>'
 
+    grid_html = f'<div style="display:flex; gap:10px; margin-bottom:20px;">{_dna_tile("INK", dna[K.INK_DNA])}{_dna_tile("INTEL", dna[K.INTEL_DNA])}{_dna_tile("HIKMAH", dna[K.HIKMAH_DNA])}</div>'
+    st.markdown(grid_html, unsafe_allow_html=True)
 
 def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
     safe_audit = audit or {}
     score = int(safe_audit.get("score", 0))
-    score_label = "Excellent" if score >= 90 else "Strong" if score >= 80 else "Needs work"
-    dot_color = "var(--ok)" if score >= 90 else "var(--warn)" if score >= 80 else "#ef4444"
-    st.markdown(
-        f"<div class='premium-card'><div class='score'><span class='score-dot' style='background:{dot_color}'></span>"
-        f"<strong>Prompt Quality: {score_label}</strong><span class='premium-caption'>{score}% confidence</span></div>"
-        f"<div class='premium-caption'>{safe_audit.get('critique', 'No critique available.')}</div></div>",
-        unsafe_allow_html=True,
+    status_color = "#4CAF9A" if score >= 90 else "var(--gold)" if score >= 80 else "#E53E3E"
+    
+    # Flattened HTML to prevent <pre> code blocks
+    score_html = (
+        f'<div style="background: rgba(10,12,16,0.6); border-left: 3px solid {status_color}; border-radius: 4px; padding: 15px; margin-bottom: 10px;">'
+        f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:10px;">'
+        f'<div><div style="font-family: var(--font-m); font-size: 0.5rem; color: var(--text-muted); letter-spacing: 2px;">OVERALL FIDELITY</div>'
+        f'<div style="font-family: var(--font-d); font-size: 2.4rem; color: {status_color}; line-height: 1;">{score}<span style="font-size: 1rem;">%</span></div></div>'
+        f'<div style="text-align: right; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 2px;">'
+        f'<div style="font-family: var(--font-m); font-size: 0.4rem; color: var(--text-dim); letter-spacing: 1px;">NODE_ID</div>'
+        f'<div style="font-family: var(--font-m); font-size: 0.55rem; color: var(--gold);">{st.session_state.get(K.AUTO_TARGET, "Unknown").upper()}</div>'
+        f'</div></div>'
+        f'<div style="font-family: var(--font-m); font-size: 0.6rem; color: var(--text-dim); line-height: 1.5; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">'
+        f'<span style="color:var(--gold);">> DIAGNOSTIC:</span> {safe_audit.get("critique", "No anomalies detected.")}'
+        f'</div></div>'
     )
+    st.markdown(score_html, unsafe_allow_html=True)
     if expert_mode:
-        with st.expander("Diagnostics"):
-            st.json(safe_audit)
+        with st.expander("❖ NEURAL UPLINK DIAGNOSTICS"): st.json(safe_audit)
 
-
-def _highlight_diff(source: str, result: str) -> str:
-    words = set(source.lower().split())
-    marked = []
-    for token in result.split():
-        if token.lower().strip('.,!?;:') not in words:
-            marked.append(f"<mark>{token}</mark>")
-        else:
-            marked.append(token)
-    return " ".join(marked)
 # ── 🟢 MAIN RENDERER ──────────────────────────────────────────────────────────
 
 def render_workspace(cfg: dict) -> None:
@@ -110,14 +114,21 @@ def render_workspace(cfg: dict) -> None:
     p_active = cfg.get("active_persona")
     p_name = p_active.get("name", "").upper() if p_active else ""
     
-    h_badge = f"<span class='pill'>{hikmah_style.upper()}</span>" if hikmah_style != "None" else ""
-    p_badge = f"<span class='pill'>{p_name[:12]}</span>" if p_name else ""
-    st.markdown(
-        f"<section class='premium-card'><div class='premium-header'><div><div class='premium-title'>{t('tab_workspace', fallback='Workspace')}</div>"
-        f"<div class='premium-caption'>Focused refinement workspace built for clarity and speed. {h_badge} {p_badge}</div></div>"
-        f"<div class='premium-caption'>Session {str(st.session_state.get(K.USER_HASH, 'GHOST'))[:8]}</div></div>",
-        unsafe_allow_html=True,
+    h_badge = f'<span style="background:rgba(76,175,154,0.1); color:#4CAF9A; border:1px solid #4CAF9A; padding:2px 6px; border-radius:2px; font-size:0.45rem;">{hikmah_style.upper()}</span>' if hikmah_style != "None" else ""
+    p_badge = f'<span style="background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.3); padding:2px 6px; border-radius:2px; font-size:0.45rem;">{p_name[:12]}</span>' if p_name else ""
+    
+    # Flattened HTML to prevent <pre> code blocks
+    header_html = (
+        f'<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:10px; margin-bottom:15px;">'
+        f'<div class="vc-header" style="margin:0; display:flex; align-items:center; gap:10px;">'
+        f'<span class="status-dot"></span>{t("tab_workspace", fallback="WORKSPACE")} {h_badge} {p_badge}'
+        f'</div>'
+        f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-dim); letter-spacing:1px;">A.I.Z.E.N. // REF: {str(st.session_state.get(K.USER_HASH, "GHOST"))[:8]}</div>'
+        f'</div>'
     )
+    st.markdown(header_html, unsafe_allow_html=True)
+
+    # ── 2. DNA GRID ──
     _render_dna_status_grid()
 
     # ── 3. INPUT AREA ──
@@ -144,7 +155,7 @@ def render_workspace(cfg: dict) -> None:
                         st.error(f"[!] Voice Uplink Failed: {e}")
 
     with v_col2:
-        intent_val = st.text_area("Prompt", height=190, placeholder=t("workspace_placeholder"), key="ta_input_widget")
+        intent_val = st.text_area("intent", height=145, placeholder=t("workspace_placeholder"), label_visibility="collapsed", key="ta_input_widget")
 
     # ── 4. EXECUTION LOOP ──
     if st.button(t("execute_btn", fallback="EXECUTE REFINEMENT"), use_container_width=True):
@@ -177,9 +188,6 @@ def render_workspace(cfg: dict) -> None:
             )
             
             telemetry = _extract_telemetry(result, start_time)
-            history = st.session_state.get(K.HISTORY, [])
-            history.insert(0, {"input": cleaned[:180], "score": (audit or {}).get("score", 0), "latency": telemetry.get("latency_ms", 0)})
-            st.session_state[K.HISTORY] = history[:MAX_HISTORY_ITEMS]
             prog.progress(100)
             status.empty()
             prog.empty()
@@ -192,20 +200,7 @@ def render_workspace(cfg: dict) -> None:
     # ── 5. RESULTS RENDERING ──
     if st.session_state.get(K.LAST_RESULT):
         _render_score_block(st.session_state.get(K.LAST_AUDIT), cfg.get("expert_mode"))
-        before, after = st.columns(2)
-        with before:
-            st.markdown("**Before**")
-            st.markdown(f"<div class='diff'>{st.session_state.get(K.LAST_INPUT, '')}</div>", unsafe_allow_html=True)
-        with after:
-            st.markdown("**After**")
-            highlighted = _highlight_diff(st.session_state.get(K.LAST_INPUT, ''), st.session_state.get(K.LAST_RESULT, ''))
-            st.markdown(f"<div class='diff'>{highlighted}</div>", unsafe_allow_html=True)
-
-        c1,c2=st.columns([1,1])
-        with c1:
-            if st.button("Copy Refined Output", use_container_width=True):
-                st.code(st.session_state.get(K.LAST_RESULT), language=None)
-                st.toast("Copied output ready.", icon="✅")
+        st.text_area("Asset", value=st.session_state.get(K.LAST_RESULT), height=300, label_visibility="collapsed")
         
         st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin: 10px 0;'>", unsafe_allow_html=True)
         
