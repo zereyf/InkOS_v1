@@ -1,29 +1,27 @@
 """
 ui/tabs/admin.py — The Overwatch Board
 ======================================
-v1.3: UI Evolution — Cyber-Noir Tactical HUD.
-      - ADDED: CSS clip-path for chamfered edges.
-      - ADDED: Glassmorphism (backdrop-filter) to metric cards.
-      - ADDED: Breathing glow animation for Security Events.
-      - ADDED: Terminal dot-matrix background for the Panopticon.
+v1.4: Tactical Synchronization — Global Lockdown Patch.
+      - UPDATED: Global Lockdown toggle now writes to shared server memory.
+      - RETAINED: Cyber-Noir HUD, Panopticon Feed, and Broadcast Matrix.
 """
 
 import streamlit as st
 import pandas as pd
-from state import K
+from state import K, get_global_memory
 from logic.admin_telemetry import get_global_metrics, get_recent_activity
-
-from state import K, get_global_memory # 🟢 Added get_global_memory
 
 
 def render_admin_board():
+    # Clearance Verification
     if not st.session_state.get(K.IS_ADMIN):
-        st.error("[ ⨂ ] CLEARANCE REJECTED.")
+        st.error("[ ⨂ ] CLEARANCE REJECTED: ROOT_ACCESS_REQUIRED.")
         return
 
-    # Fetch Live Data
+    # Fetch Live Telemetry Data
     stats = get_global_metrics()
     recent_logs = get_recent_activity()
+    global_mem = get_global_memory()
 
     # ── TACTICAL CSS INJECTION ──
     st.markdown("""
@@ -58,14 +56,42 @@ def render_admin_board():
             border-radius: 2px;
             padding: 15px;
         }
+        .ow-header {
+            font-family: var(--font-m);
+            font-size: 0.9rem;
+            color: var(--gold);
+            letter-spacing: 3px;
+            border-bottom: 1px solid var(--gold);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .ow-title {
+            font-family: var(--font-m);
+            font-size: 0.75rem;
+            color: var(--steel);
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+        }
+        .ow-title-gold {
+            font-family: var(--font-m);
+            font-size: 0.75rem;
+            color: var(--gold);
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+        }
+        .ow-panel {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 4px;
+        }
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="ow-header">❖ VELVETCODEX OVERWATCH // ROOT_ACCESS</div>', unsafe_allow_html=True)
+    st.markdown('<div class="ow-header">❖ INKOS OVERWATCH // ROOT_ACCESS</div>', unsafe_allow_html=True)
 
     # ── NEURAL CARD UI COMPONENT ──
     def _neural_card(title, value, border_color, val_color="#E2E8F0", is_alert=False):
-        # Trigger the breathing CSS class only if it's an alert card and value isn't 0
         alert_class = "alert-pulse" if is_alert and str(value) != "0" else ""
         return f"""
         <div class="neural-card {alert_class}" style="border-left: 4px solid {border_color};">
@@ -79,17 +105,17 @@ def render_admin_board():
         """
 
     # ── TOP LEVEL METRICS ──
-    st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:5px'></div>", unsafe_allow_html=True)
     m1, m2, m3, m4 = st.columns(4)
     
     with m1:
-        st.markdown(_neural_card("TOTAL OPERATORS", stats["users"], "#5B85AA"), unsafe_allow_html=True) 
+        st.markdown(_neural_card("TOTAL OPERATORS", stats.get("users", 0), "#5B85AA"), unsafe_allow_html=True) 
     with m2:
-        st.markdown(_neural_card("FORGED PERSONAS", stats["personas"], "#4E9C81"), unsafe_allow_html=True) 
+        st.markdown(_neural_card("FORGED PERSONAS", stats.get("personas", 0), "#4E9C81"), unsafe_allow_html=True) 
     with m3:
-        st.markdown(_neural_card("SECURITY EVENTS", stats["logs"], "#9C4E4E", is_alert=True), unsafe_allow_html=True) 
+        st.markdown(_neural_card("SECURITY EVENTS", stats.get("logs", 0), "#9C4E4E", is_alert=True), unsafe_allow_html=True) 
     with m4:
-        st.markdown(_neural_card("TEAM_REI_UPLINKS", "STABLE", "var(--gold)", "var(--gold)"), unsafe_allow_html=True)
+        st.markdown(_neural_card("SYSTEM_UPLINK", "STABLE", "var(--gold)", "var(--gold)"), unsafe_allow_html=True)
 
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
     st.markdown("---")
@@ -99,8 +125,6 @@ def render_admin_board():
     with col_left:
         # THE PANOPTICON: LIVE LOGS
         st.markdown('<div class="ow-title">THE PANOPTICON // LIVE_SECURITY_FEED</div>', unsafe_allow_html=True)
-        
-        # Wrapped the feed in our new dot-matrix background div
         st.markdown('<div class="panopticon-feed">', unsafe_allow_html=True)
         if recent_logs:
             df = pd.DataFrame(recent_logs)
@@ -114,43 +138,45 @@ def render_admin_board():
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col_right:
-        # SYSTEM CONTROLS
+        # ── SYSTEM CONTROLS ──
         st.markdown('<div class="ow-panel">', unsafe_allow_html=True)
         st.markdown('<div class="ow-title-gold">SYSTEM DIRECTIVES</div>', unsafe_allow_html=True)
         
-        # Maintenance Switch
-        is_locked = st.session_state.get(K.MAINTENANCE_MODE, False)
-        if st.toggle("🔒 GLOBAL LOCKDOWN", value=is_locked):
-            st.session_state[K.MAINTENANCE_MODE] = True
-            st.toast("SYSTEM LOCKED.", icon="🚨")
+        # Maintenance Switch (Global Memory Sync)
+        current_lockdown = global_mem.get("maintenance_mode", False)
+        lockdown_active = st.toggle("🔒 GLOBAL LOCKDOWN", value=current_lockdown, help="Sever all non-admin neural uplinks across the server.")
+        
+        if lockdown_active != current_lockdown:
+            global_mem["maintenance_mode"] = lockdown_active
+            st.toast("SYSTEM LOCKED." if lockdown_active else "UPLINKS RESTORED.", icon="🚨" if lockdown_active else "✅")
+            st.rerun()
             
         if st.button("🔥 PURGE SERVER CACHE", use_container_width=True):
             st.cache_data.clear()
             st.toast("CACHE OBLITERATED.")
 
-          # BROADCAST FIELD
+        # BROADCAST FIELD
         st.markdown("<hr style='border-color: rgba(255,255,255,0.1); margin: 15px 0;'>", unsafe_allow_html=True)
-        broadcast_msg = st.text_input("Terminal Broadcast", placeholder="Enter directive for all operators...")
-        
-        # 🟢 Grab the shared memory
-        global_mem = get_global_memory()
+        st.markdown('<div class="ow-title">TERMINAL BROADCAST</div>', unsafe_allow_html=True)
+        broadcast_msg = st.text_input("Message Label", placeholder="Enter directive for all operators...", label_visibility="collapsed")
         
         b1, b2 = st.columns([3, 1])
         with b1:
             if st.button("📡 TRANSMIT", use_container_width=True):
                 if broadcast_msg:
-                    global_mem["broadcast"] = broadcast_msg # 🟢 Writes to the whole server
+                    global_mem["broadcast"] = broadcast_msg
                     st.toast("GLOBAL TRANSMISSION SENT.")
                 else:
                     st.warning("Enter a message to transmit.")
         with b2:
-            if st.button("🛑 CUT", use_container_width=True, help="Revoke broadcast"):
+            if st.button("🛑 CUT", use_container_width=True, help="Revoke current broadcast banner"):
                 global_mem["broadcast"] = None
                 st.toast("TRANSMISSION REVOKED.")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        
         # ARABIC BRANDING METRICS
+        st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('<div class="ow-panel" style="border-color: var(--gold);">', unsafe_allow_html=True)
         st.markdown('<div class="ow-title-gold">LISAAN AL-ARAB // حبر وفكرة</div>', unsafe_allow_html=True)
-        st.markdown("<div style='font-family: var(--font-a); font-size: 0.9rem; color: var(--gold);'>تحديثات النظام نشطة</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-family: var(--font-m); font-size: 0.65rem; color: var(--gold); letter-spacing:1px;'>تحديثات النظام نشطة // STATUS: OPERATIONAL</div>", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
