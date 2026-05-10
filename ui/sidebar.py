@@ -1,11 +1,10 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v21.1: Zenith Autonomous Edition — Alignment Patch.
-       - FIXED: Indentation Error in LATCH_IDENTITY block.
-       - FIXED: Rehydration logic integrated into the Login flow.
+v21.3: Zenith Autonomous Edition — Absolute Alignment.
+       - FIXED: All Indentation/Whitespace anomalies cleared.
+       - FIXED: Restored 'is_new' toggle for authenticate_terminal signature.
        - STABLE: Proactive Intelligence HUD (Auto-Switch feedback).
-       - RETAINED: Tactical Wordmarks and InkOS Branding.
 """
 
 import streamlit as st
@@ -95,7 +94,7 @@ def render_sidebar_brand() -> None:
                     INK<span style="color: var(--gold);">OS</span>
                 </span>
             </div>
-            <div style="letter-spacing:2px; font-size:0.5rem; color:var(--gold);">حبر وفكرة // ZENITH_AUTONOMOUS v21.1</div>
+            <div style="letter-spacing:2px; font-size:0.5rem; color:var(--gold);">حبر وفكرة // ZENITH_AUTONOMOUS v21.3</div>
         </div>
     """), unsafe_allow_html=True)
 
@@ -110,17 +109,14 @@ def render_sidebar() -> SidebarConfig:
 
     st.markdown(f'<div class="vc-header" style="font-size:0.55rem; color:var(--text-muted); margin-top:10px;">SESS_REF: {sess_ref}</div>', unsafe_allow_html=True)
 
-   if is_guest:
+    if is_guest:
         new_sid = st.text_input("ID", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
         new_pin = st.text_input("PIN", placeholder="PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
-        
-        # 🟢 RESTORED: Registration Toggle (Required for the Engine)
         is_new_user = st.toggle("Register New Identity?", value=False, key="is_new_user_toggle")
         
         if st.button("LATCH IDENTITY", use_container_width=True, key="btn_latch_sid"):
             if new_sid.strip() and new_pin.strip():
                 with st.spinner("Uplinking..."):
-                    # 🟢 FIXED: Passed is_new_user to match the engine signature
                     success, error_msg = authenticate_terminal(
                         new_sid.strip(), 
                         new_pin.strip(), 
