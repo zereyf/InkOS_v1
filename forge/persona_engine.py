@@ -1,45 +1,51 @@
 """
-forge/persona_engine.py — Persona Logic Controller
+forge/persona_engine.py — Composite Persona Logic
 ====================================================
-v9.3: Type-Agnostic Build.
-      - Handles both dict (Session State) and str (Legacy/Direct) inputs.
-      - Synchronized with Refiner v9.4.3.
+v10.0: Zenith Edition — Rhetoric Integration.
+      - ADDED: Hikmah Rhetoric Protocol support.
+      - REFACTORED: Composite assembly (Aizen + Specialist + Rhetoric).
+      - UPDATED: surgical injection for multi-layer instruction sets.
 """
 
 from typing import Optional, Any
 import textwrap
-# 🟢 Importing the Data from the Vault
 from config.personas import AIZEN_IDENTITY, STARTER_PERSONAS
+# 🟢 Import the Rhetoric Factory
+from forge.rhetoric_engine import get_hikmah_directive
 
-def inject_persona(persona_input: Optional[Any], target: str) -> str:
+def inject_persona(persona_input: Optional[Any], target: str, hikmah_style: str = "None") -> str:
     """
-    Surgical Injection Engine.
-    Resolves the persona input into a formatted block for the target model.
+    Composite Injection Engine.
+    Combines Core Identity, Specialist Persona, and Rhetorical Style.
     """
     p_data = None
 
-    # 1. RESOLUTION PHASE: Dict vs String
+    # 1. RESOLUTION PHASE: Persona Data
     if isinstance(persona_input, dict):
-        # Direct dictionary passed (Common in current Workspace)
         p_data = persona_input
     elif isinstance(persona_input, str):
-        # String name passed (Common in Legacy or API calls)
         p_data = STARTER_PERSONAS.get(persona_input)
     
-    # 2. FALLBACK PHASE: If no valid data found, return Master Identity
+    # Fallback to defaults if no persona is active
     if not p_data:
-        return AIZEN_IDENTITY
+        p_data = {"name": "Generalist", "role": "Analytical Assistant", "anti_pattern": "Generic fluff.", "tone": "Direct."}
+
+    # 2. RHETORIC EXTRACTION
+    # Only fetches the block if style != "None"
+    rhetoric_directive = get_hikmah_directive(hikmah_style)
 
     # 3. EXTRACTION PHASE
     name = p_data.get("name", "Expert")
     role = p_data.get("role", "")
-    anti = p_data.get("anti_pattern", "Avoid generic responses.")
-    tone = p_data.get("tone", "Professional and analytical.")
+    anti = p_data.get("anti_pattern", "")
+    tone = p_data.get("tone", "")
 
     # 4. ASSEMBLY PHASE: Target-Specific Formatting
     if target == "Claude":
+        # Anthropic responds best to XML for clear boundary separation
         return textwrap.dedent(f"""
             {AIZEN_IDENTITY}
+            
             <active_specialist>
               <name>{name}</name>
               <role>{role}</role>
@@ -48,23 +54,28 @@ def inject_persona(persona_input: Optional[Any], target: str) -> str:
               </constraints>
               <tonal_anchor>{tone}</tonal_anchor>
             </active_specialist>
+            {rhetoric_directive}
         """).strip()
 
     elif target == "ChatGPT":
+        # OpenAI responds best to bulleted system overrides
         return textwrap.dedent(f"""
             {AIZEN_IDENTITY}
-            SYSTEM OVERRIDE — ADOPT EXPERT LAYER: {name}
+            
+            [SYSTEM_OVERRIDE]: ADOPT EXPERT LAYER
+            - NAME: {name}
             - ROLE: {role}
-            - AVOID: {anti}
-            - TONE: {tone}
+            - CONSTRAINT_AVOID: {anti}
+            - TONAL_GUIDE: {tone}
+            {rhetoric_directive}
         """).strip()
 
     elif target == "Manus AI":
-        return f"[AIZEN_CORE]\n[AGENT_PERSONA]: {role}\n[TONE]: {tone}\n[NEVER]: {anti}"
+        return f"[AIZEN_CORE]\n[PERSONA]: {role}\n[TONE]: {tone}\n[NEVER]: {anti}\n{rhetoric_directive}"
 
     else:
-        # Default for Image Models or General Fallback
-        return f"{AIZEN_IDENTITY}\nPERSONA: {role} | TONE: {tone}"
+        # Default fallback
+        return f"{AIZEN_IDENTITY}\nPERSONA: {role}\nTONE: {tone}\n{rhetoric_directive}"
 
 def get_persona_display_name(persona_data: Optional[dict]) -> str:
     """Helper for UI badges."""
