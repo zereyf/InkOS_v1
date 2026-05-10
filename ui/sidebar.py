@@ -185,6 +185,18 @@ def render_sidebar() -> SidebarConfig:
     with m2: st.metric("CALLS", get_remaining_calls())
     with m3: st.metric("SAVED", st.session_state.get(K.LAST_SAVED, "Never"))
 
+
+    theme = st.toggle("Light mode", value=False, key="theme_light")
+    st.markdown(f"<script>document.documentElement.setAttribute('data-theme', '{'light' if theme else 'dark'}');</script>", unsafe_allow_html=True)
+
+    with st.expander("History", expanded=False):
+        history = st.session_state.get(K.HISTORY, [])
+        if not history:
+            st.caption("No history yet")
+        else:
+            for item in list(history)[-10:][::-1]:
+                st.caption(f"{item.get('ts','')} · {item.get('input','')[:64]}")
+
     if st.button("RESET SESSION", use_container_width=True):
         from state import reset_session
         reset_session()
