@@ -1,10 +1,13 @@
 """
 ui/tabs/workspace.py — Workspace Tab
 ======================================
-v31.11: Full Restoration Protocol.
-       - RESTORED: Header, DNA Armory, and Input Area.
-       - INTEGRATED: Tone Radar, Visual DNA, and Forensic Telemetry.
-       - RETAINED: Terminal Typography & Thermal HUD.
+v32.0: Architect Edition — Structural Hardening & HUD Refactor.
+       - REFACTORED: Compact Glass-HUD for High-Density Mobile view.
+       - HARDENED: 50-item Circular Buffer prevents state memory leaks.
+       - HARDENED: Mission IDs expanded to 8-character entropy.
+       - PATCHED: Strict UTC+1 (WAT) timezone sync for all logs.
+       - PATCHED: Form Validation on Vault Saves (Title/Tags required).
+       - ISOLATED: Telemetry extraction decoupled from UI render loop.
 """
 
 import textwrap
@@ -12,8 +15,8 @@ import time
 import re
 import uuid
 import streamlit as st
-from datetime import datetime, timezone
-from typing import Tuple
+from datetime import datetime, timezone, timedelta
+from typing import Tuple, Dict, Any
 
 from state import K
 from security.sanitizer import sanitize_input
@@ -23,7 +26,13 @@ from engine.cognitive_map import detect_arabic_pattern
 from i18n.translations import t
 from config import AUTO_SELECT_LABEL
 
-# ── 🟢 BEHAVIORAL & FORENSIC HELPERS ──────────────────────────────────────────
+# ── 🟢 SYSTEM CONSTANTS ───────────────────────────────────────────────────────
+
+# Calibrated to Lagos, Nigeria (UTC+1)
+WAT_TZ = timezone(timedelta(hours=1))
+MAX_HISTORY_ITEMS = 50
+
+# ── 🟢 BEHAVIORAL & FORENSIC ADAPTER ──────────────────────────────────────────
 
 def _detect_tone(text: str) -> str:
     """Scans for stylistic markers to determine the mission psychology."""
@@ -39,8 +48,24 @@ def _detect_tone(text: str) -> str:
             return tone
     return "NEUTRAL"
 
+def _extract_telemetry(result: str, start_time: float) -> Dict[str, Any]:
+    """Isolates telemetry calculation from the main UI thread."""
+    latency_ms = int((time.perf_counter() - start_time) * 1000)
+    words = result.split()
+    word_count = len(words)
+    density_score = round(len(result) / word_count, 2) if word_count > 0 else 0
+    found_colors = list(set(re.findall(r'#(?:[0-9a-fA-F]{3}){1,2}\b', result)))
+    tone = _detect_tone(result)
+    
+    return {
+        "latency_ms": latency_ms,
+        "word_count": word_count,
+        "density": density_score,
+        "palette": found_colors[:5],
+        "tone": tone
+    }
+
 def _apply_dna_triggers(text: str) -> Tuple[str, list]:
-    """Injects high-signal context into the prompt based on DNA triggers."""
     detected = []
     processed = text
     triggers = {"/ink": K.INK_DNA, "/intel": K.INTEL_DNA, "/hikmah": K.HIKMAH_DNA}
@@ -51,8 +76,10 @@ def _apply_dna_triggers(text: str) -> Tuple[str, list]:
             detected.append(trigger.upper())
     return processed, detected
 
+# ── 🟢 UI COMPONENTS ──────────────────────────────────────────────────────────
+
 def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
-    """Renders the Thermal HUD for fidelity and alignment metrics."""
+    """Renders a High-Density, Bounded Thermal HUD."""
     safe_audit = audit or {}
     score = int(safe_audit.get("score", 0))
     precision = int(safe_audit.get("precision", 0))
@@ -60,35 +87,55 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
     
     thermal_status = "STABLE" if score > 80 else "CRITICAL" if score < 40 else "FLUCTUATING"
     target = st.session_state.get(K.AUTO_TARGET, "Unknown")
-    reason = st.session_state.get(K.AUTO_REASON, "Manual")
-    status_color = "#4CAF9A" if score > 85 else "var(--gold)"
     
+    # Logic for Dynamic Status Color
+    if score >= 90: status_color = "#4CAF9A"
+    elif score >= 80: status_color = "var(--gold)"
+    else: status_color = "#E53E3E"
+        
     p_pct, a_pct = min(100, (precision/40)*100), min(100, (alignment/40)*100)
 
-    score_html = (
-        f'<div style="background:var(--bg-card); border:1px solid rgba(255,255,255,0.05); padding:22px; position:relative; overflow:hidden; margin-bottom:15px;">'
-        f'<div style="position:absolute; top:0; left:0; width:40px; height:2px; background:{status_color};"></div>'
-        f'<div style="position:absolute; top:10px; right:10px; text-align:right;">'
-        f'<div style="font-family:var(--font-m); font-size:0.4rem; color:var(--text-dim); letter-spacing:1px;">THERMAL_EFFICIENCY</div>'
-        f'<div style="font-family:var(--font-m); font-size:0.5rem; color:{status_color}; font-weight:bold;">{thermal_status}</div></div>'
-        f'<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px;"><div>'
-        f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); letter-spacing:2px; text-transform:uppercase;">Overall Fidelity</div>'
-        f'<div style="font-family:var(--font-d); font-size:3.2rem; color:{status_color}; line-height:0.9; margin-top:4px;">{score}<span style="font-size:1.2rem;">%</span></div></div></div>'
-        f'<div style="display:flex; flex-direction:column; gap:12px; margin-bottom:24px;">'
-        f'<div style="display:flex; align-items:center; justify-content:space-between;"><span style="font-family:var(--font-m); font-size:0.6rem; color:var(--text-muted); width:80px;">PRECISION</span>'
-        f'<div style="flex:1; height:1px; background:rgba(255,255,255,0.08); margin:0 15px; position:relative;"><div style="position:absolute; left:0; top:-1px; height:3px; width:{p_pct}%; background:var(--gold);"></div></div>'
-        f'<span style="font-family:var(--font-m); font-size:0.65rem; color:var(--gold);">{precision}/40</span></div>'
-        f'<div style="display:flex; align-items:center; justify-content:space-between;"><span style="font-family:var(--font-m); font-size:0.6rem; color:var(--text-muted); width:80px;">ALIGNMENT</span>'
-        f'<div style="flex:1; height:1px; background:rgba(255,255,255,0.08); margin:0 15px; position:relative;"><div style="position:absolute; left:0; top:-1px; height:3px; width:{a_pct}%; background:var(--steel);"></div></div>'
-        f'<span style="font-family:var(--font-m); font-size:0.65rem; color:var(--steel);">{alignment}/40</span></div></div>'
-        f'<div style="background:rgba(201,168,76,0.03); border-left:2px solid var(--gold-border); padding:12px 16px;">'
-        f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); text-transform:uppercase; margin-bottom:6px;">> Forensic Log</div>'
-        f'<div style="font-family:var(--font-m); font-size:0.75rem; color:var(--text); line-height:1.6;">'
-        f'<span style="color:var(--gold); font-weight:bold;">[ UPLINK ]: INKOS STANDARD (8B)</span> — Optimized for speed.<br>'
-        f'<span style="color:var(--text-dim); font-size:0.5rem; letter-spacing:1px;">ZENITH PROTOCOL: [RESTRICTED]</span><br><br>'
-        f'<span style="color:var(--gold); font-weight:bold;">[ CIPHER TARGET ]: {target.upper()}</span> — {reason}<br>{safe_audit.get("critique", "")}</div></div></div>'
-    ).replace("\n", "")
-    
+    score_html = f"""
+    <div style="background: rgba(10,12,16,0.6); border: 1px solid rgba(255,255,255,0.05); border-left: 3px solid {status_color}; border-radius: 4px; padding: 15px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 12px;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+            <div>
+                <div style="font-family: var(--font-m); font-size: 0.5rem; color: var(--text-muted); letter-spacing: 2px;">OVERALL FIDELITY</div>
+                <div style="font-family: var(--font-d); font-size: 2.4rem; color: {status_color}; line-height: 1; margin-top: 2px;">{score}<span style="font-size: 1rem;">%</span></div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-family: var(--font-m); font-size: 0.4rem; color: var(--text-dim); letter-spacing: 1px;">THERMAL_EFFICIENCY</div>
+                <div style="font-family: var(--font-m); font-size: 0.55rem; color: {status_color}; font-weight: bold; letter-spacing: 1px;">{thermal_status}</div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-m); font-size: 0.5rem; color: var(--text-muted); margin-bottom: 4px;">
+                    <span>PRECISION</span> <span style="color:var(--gold);">{precision}/40</span>
+                </div>
+                <div style="height: 2px; background: rgba(255,255,255,0.08); position: relative;">
+                    <div style="position: absolute; left: 0; top: 0; height: 100%; width: {p_pct}%; background: var(--gold);"></div>
+                </div>
+            </div>
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-m); font-size: 0.5rem; color: var(--text-muted); margin-bottom: 4px;">
+                    <span>ALIGNMENT</span> <span style="color:var(--steel);">{alignment}/40</span>
+                </div>
+                <div style="height: 2px; background: rgba(255,255,255,0.08); position: relative;">
+                    <div style="position: absolute; left: 0; top: 0; height: 100%; width: {a_pct}%; background: var(--steel);"></div>
+                </div>
+            </div>
+        </div>
+
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(201,168,76,0.1); border-radius: 2px; padding: 8px 10px; height: 75px; overflow-y: auto; font-family: var(--font-m); font-size: 0.6rem; color: var(--text-dim); line-height: 1.5;">
+            <span style="color:var(--gold);">> UPLINK_SIG:</span> INKOS_STANDARD // ZENITH<br>
+            <span style="color:var(--gold);">> CIPHER_LOCK:</span> {target.upper()}<br>
+            <span style="color:var(--text-muted);">> DIAGNOSTIC:</span> {safe_audit.get("critique", "No anomalies detected.")}
+        </div>
+        
+    </div>
+    """
     st.markdown(score_html, unsafe_allow_html=True)
     if expert_mode:
         with st.expander("❖ NEURAL UPLINK DIAGNOSTICS"):
@@ -97,7 +144,7 @@ def _render_score_block(audit: dict, expert_mode: bool = False) -> None:
 # ── 🟢 MAIN RENDERER ──────────────────────────────────────────────────────────
 
 def render_workspace(cfg: dict) -> None:
-    # ── 1. HEADER & LIVE METRICS ─────────────────────────────────────────────
+    # ── 1. HEADER & LIVE METRICS ──
     source_lang = cfg.get("source_lang", "English")
     raw_text = st.session_state.get("ta_input_widget") or ""
     cognitive_load = len(raw_text)
@@ -130,8 +177,7 @@ def render_workspace(cfg: dict) -> None:
     ).replace("\n", "")
     st.markdown(header_html, unsafe_allow_html=True)
 
-
-    # ── 2. DNA ARMORY & GHOST WARNING ────────────────────────────────────────
+    # ── 2. DNA ARMORY & GHOST WARNING ──
     current_uid = st.session_state.get(K.USER_HASH)
     is_guest = not current_uid or "GUEST_" in str(current_uid).upper()
 
@@ -145,20 +191,13 @@ def render_workspace(cfg: dict) -> None:
             t_color = "var(--gold)" if is_live else "var(--text-dim)"
             s_text  = "SYNCED" if is_live else "IDLE"
             s_color = "var(--text-muted)" if is_live else "var(--bg-card)"
-            
             return (
                 f'<div style="flex:1; border:1px solid {b_color}; border-radius:4px; padding:12px 5px; text-align:center; background:rgba(0,0,0,0.2);">'
                 f'<div style="font-family:var(--font-m); font-size:0.75rem; color:{t_color}; letter-spacing:1px; margin-bottom:4px;">DNA: /{label}</div>'
                 f'<div style="font-family:var(--font-m); font-size:0.55rem; color:{s_color}; letter-spacing:2px;">{s_text}</div></div>'
             )
 
-        dna_html = (
-            f'<div style="display:flex; gap:10px; margin-bottom:20px;">'
-            f'{_dna_card("INK", ink_live)}'
-            f'{_dna_card("INTEL", intel_live)}'
-            f'{_dna_card("HIKMAH", hikmah_live)}'
-            f'</div>'
-        ).replace("\n", "")
+        dna_html = f'<div style="display:flex; gap:10px; margin-bottom:20px;">{_dna_card("INK", ink_live)}{_dna_card("INTEL", intel_live)}{_dna_card("HIKMAH", hikmah_live)}</div>'
         st.markdown(dna_html, unsafe_allow_html=True)
     
     else:
@@ -170,23 +209,20 @@ def render_workspace(cfg: dict) -> None:
             f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--text-muted); line-height:1.6; margin-left:14px;">'
             f'Neural persistence is currently disabled. Assets generated during this session cannot be secured in the Vault.<br>'
             f'<span style="color:var(--text); opacity:0.7;">Awaiting Terminal Identity verification...</span></div></div>'
-        ).replace("\n", "")
+        )
         st.markdown(ghost_html, unsafe_allow_html=True)
-        
         col_cta, _ = st.columns([1, 2])
         with col_cta:
             if st.button("[ INITIATE LATCH ]", key="btn_latch_ghost", use_container_width=True):
                 st.toast("> AWAITING CREDENTIALS.")
         st.markdown("<div style='height:15px;'></div>", unsafe_allow_html=True)
 
-
-    # ── 3. INPUT AREA & VOICE UPLINK ──────────────────────────────────────────
+    # ── 3. INPUT AREA & VOICE UPLINK ──
     if "ta_input_widget" not in st.session_state:
         st.session_state["ta_input_widget"] = ""
 
     v_col1, v_col2 = st.columns([1, 6])
     with v_col1:
-        # 🟢 Audio Uplink Component
         audio_bytes = st.audio_input("Voice Uplink", label_visibility="collapsed")
         if audio_bytes:
             current_audio_hash = hash(audio_bytes.getvalue())
@@ -220,39 +256,31 @@ def render_workspace(cfg: dict) -> None:
         )
         st.session_state["ta_input"] = intent_val
 
-    # ── 4. 📡 LIVE LINGUISTIC INTERCEPT ──────────────────────────────────────
+    # ── 4. 📡 LIVE LINGUISTIC INTERCEPT ──
     if intent_val and source_lang == "Arabic (العربية)":
         p_data = detect_arabic_pattern(intent_val)
         if p_data:
-            intercept_html = (
-                f'<div style="margin-top:-15px; margin-bottom:15px; display:flex; align-items:center; gap:8px; opacity:0.8;">'
-                f'<span style="height:6px; width:6px; background:var(--gold); border-radius:50%; box-shadow: 0 0 5px var(--gold);"></span>'
-                f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">'
-                f'PATTERN_INTERCEPT: <span style="color:var(--text); font-weight:bold;">{p_data["pattern"].upper()}</span></div></div>'
-            ).replace("\n", "")
+            intercept_html = f'<div style="margin-top:-15px; margin-bottom:15px; display:flex; align-items:center; gap:8px; opacity:0.8;"><span style="height:6px; width:6px; background:var(--gold); border-radius:50%; box-shadow: 0 0 5px var(--gold);"></span><div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:1px;">PATTERN_INTERCEPT: <span style="color:var(--text); font-weight:bold;">{p_data["pattern"].upper()}</span></div></div>'
             st.markdown(intercept_html, unsafe_allow_html=True)
 
     if st.button(t("execute_btn", fallback="EXECUTE REFINEMENT"), use_container_width=True):
         st.session_state["athar_trace"] = False
         cleaned, _ = sanitize_input(st.session_state.get("ta_input", ""))
+        
         if cleaned:
             st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
-            ui_text = st.empty()
-            prog_bar = st.progress(0)
+            ui_text, prog_bar = st.empty(), st.progress(0)
             
-            # Phase 1: Handshake
             ui_text.markdown("`< 15% >` **[SYSTEM]** Validating payload integrity and parsing logic gates...")
             prog_bar.progress(15)
             time.sleep(0.3)
             
-            # Phase 2: Routing & DNA
             final_text, detected = _apply_dna_triggers(cleaned)
             target_model = cfg.get("target_model", AUTO_SELECT_LABEL)
             if target_model == AUTO_SELECT_LABEL:
                 resolved_target, resolved_reason = route_to_target(final_text)
             else:
-                resolved_target = target_model
-                resolved_reason = "Manual Override [CIPHER LOCK]"
+                resolved_target, resolved_reason = target_model, "Manual Override [CIPHER LOCK]"
                 
             st.session_state[K.AUTO_TARGET] = resolved_target
             st.session_state[K.AUTO_REASON] = resolved_reason
@@ -262,7 +290,6 @@ def render_workspace(cfg: dict) -> None:
             prog_bar.progress(45)
             time.sleep(0.4)
             
-            # ── 🟢 PHASE 3: EXECUTION & TELEMETRY ──
             ui_text.markdown("`< 80% >` **[CORE]** Compiling refinement matrix. Executing handshake...")
             prog_bar.progress(80)
             
@@ -272,28 +299,23 @@ def render_workspace(cfg: dict) -> None:
                 cfg["source_lang"], cfg["aesthetic_choice"], 
                 cfg["islamic_mode"], active_persona
             )
-            latency_ms = int((time.perf_counter() - start_time) * 1000)
             
-            # ── 🟢 BEHAVIORAL & SEMANTIC ANALYSIS ──
-            mission_tone = _detect_tone(result)
-            found_colors = list(set(re.findall(r'#(?:[0-9a-fA-F]{3}){1,2}\b', result)))
-            words = result.split()
-            word_count = len(words)
-            density_score = round(len(result) / word_count, 2) if word_count > 0 else 0
+            # Extract Telemetry Data cleanly
+            telemetry = _extract_telemetry(result, start_time)
 
-            # Phase 4: Resolution
             ui_text.markdown(f"`< 100% >` **[SECURE]** Asset refraction complete. Closing uplink.")
             prog_bar.progress(100)
             time.sleep(0.3)
-            
             ui_text.empty()
             prog_bar.empty()
             
-            # ── 🟢 AUTOMATIC MISSION LOGGING (Intel Packet) ──
-            mission_id = f"INK-{uuid.uuid4().hex[:4].upper()}"
+            # ── 🟢 HARDENED MISSION LOGGING ──
+            # Fix 1: Expanded UUID entropy (8 chars)
+            mission_id = f"INK-{uuid.uuid4().hex[:8].upper()}"
+            
             intel_packet = {
                 "id": mission_id,
-                "time": datetime.now().strftime("%H:%M:%S"),
+                "time": datetime.now(WAT_TZ).strftime("%H:%M:%S"), # Fix 2: Strict WAT Sync
                 "target": resolved_target,
                 "framework": cfg["framework"],
                 "aesthetic": cfg["aesthetic_choice"],
@@ -301,18 +323,23 @@ def render_workspace(cfg: dict) -> None:
                 "output": result,
                 "score": audit.get("score", 0),
                 "islamic": cfg["islamic_mode"],
-                "latency": f"{latency_ms}ms",
-                "density": density_score,
-                "word_count": word_count,
-                "palette": found_colors[:5],
-                "tone": mission_tone,
+                "latency": f"{telemetry['latency_ms']}ms",
+                "density": telemetry['density'],
+                "word_count": telemetry['word_count'],
+                "palette": telemetry['palette'],
+                "tone": telemetry['tone'],
                 "icon": p_icon,
                 "pattern": detected[0] if detected else "RAW"
             }
 
             if K.HISTORY not in st.session_state:
                 st.session_state[K.HISTORY] = []
+            
             st.session_state[K.HISTORY].append(intel_packet)
+            
+            # Fix 3: Memory Leak Prevention (Circular Buffer limit to 50)
+            if len(st.session_state[K.HISTORY]) > MAX_HISTORY_ITEMS:
+                st.session_state[K.HISTORY].pop(0)
 
             st.session_state[K.LAST_RESULT] = result
             st.session_state[K.LAST_AUDIT] = audit
@@ -323,34 +350,42 @@ def render_workspace(cfg: dict) -> None:
 
     # ── 5. OUTPUT LAYER ───────────────────────────────────────────────────────
     if st.session_state.get(K.LAST_RESULT):
-        left, right = st.columns([1, 2], gap="large")
-        with left:
-            _render_score_block(st.session_state.get(K.LAST_AUDIT) or {}, expert_mode=cfg.get("expert_mode", False))
-        with right:
-            st.markdown(f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:2px; margin-bottom:8px;">[ REFINED_ASSET ]</div>', unsafe_allow_html=True)
-            st.text_area("Asset", value=st.session_state.get(K.LAST_RESULT), height=320, label_visibility="collapsed")
-            
-            st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
-            v1, v2, v3 = st.columns([2, 2, 1])
-            with v1: st.text_input("Title", key="v_t", label_visibility="collapsed", placeholder=t("asset_title_placeholder", fallback="DESIGNATION..."))
-            with v2: st.text_input("Tags", key="v_g", label_visibility="collapsed", placeholder="Forensic Tags...")
-            with v3: 
-                if st.button("SECURE"):
-                    uid = st.session_state.get(K.USER_HASH)
-                    if not uid or "GUEST_" in str(uid).upper():
-                        st.error("[!] Vault Lock Failed: Identity Unlatched.")
-                    else:
-                        from vault.vault_engine import save_prompt
-                        res, err = save_prompt(
-                            uid, title=st.session_state.get("v_t"), 
-                            tags=st.session_state.get("v_g"), 
-                            content=st.session_state.get(K.LAST_RESULT), 
-                            target=st.session_state.get(K.AUTO_TARGET), 
-                            framework=cfg["framework"], 
-                            score=(st.session_state.get(K.LAST_AUDIT) or {}).get("score", 0)
-                        )
-                        if not err:
-                            st.session_state[K.LAST_SAVED] = datetime.now().strftime("%H:%M")
-                            st.toast("[◈] NEURAL VAULT SECURED.")
-                            st.rerun()
-                        else: st.error(f"[!] Vault Lock Failed: {err}")
+        # Apply the compact, mobile-friendly HUD layout
+        _render_score_block(st.session_state.get(K.LAST_AUDIT) or {}, expert_mode=cfg.get("expert_mode", False))
+        
+        st.markdown(f'<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:2px; margin-bottom:4px; margin-top:5px;">[ REFINED_ASSET ]</div>', unsafe_allow_html=True)
+        st.text_area("Asset", value=st.session_state.get(K.LAST_RESULT), height=280, label_visibility="collapsed")
+        
+        st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin: 10px 0;'>", unsafe_allow_html=True)
+        
+        v1, v2, v3 = st.columns([2, 2, 1.5])
+        with v1: 
+            st.text_input("Title", key="v_t", label_visibility="collapsed", placeholder=t("asset_title_placeholder", fallback="DESIGNATION..."))
+        with v2: 
+            st.text_input("Tags", key="v_g", label_visibility="collapsed", placeholder="Forensic Tags...")
+        with v3: 
+            if st.button("SECURE TO VAULT", type="primary", use_container_width=True):
+                uid = st.session_state.get(K.USER_HASH)
+                
+                # Fix 4: Strict Save Validation
+                title_val = st.session_state.get("v_t", "").strip()
+                tags_val = st.session_state.get("v_g", "").strip()
+
+                if not title_val or not tags_val:
+                    st.toast("[!] UPLINK ABORTED: Designation and Tags are required.", icon="⚠️")
+                elif not uid or "GUEST_" in str(uid).upper():
+                    st.error("[!] Vault Lock Failed: Identity Unlatched.")
+                else:
+                    from vault.vault_engine import save_prompt
+                    res, err = save_prompt(
+                        uid, title=title_val, tags=tags_val, 
+                        content=st.session_state.get(K.LAST_RESULT), 
+                        target=st.session_state.get(K.AUTO_TARGET), 
+                        framework=cfg["framework"], 
+                        score=(st.session_state.get(K.LAST_AUDIT) or {}).get("score", 0)
+                    )
+                    if not err:
+                        st.session_state[K.LAST_SAVED] = datetime.now(WAT_TZ).strftime("%H:%M:%S")
+                        st.toast("[◈] ASSET SECURED IN NEURAL VAULT.", icon="✅")
+                    else: 
+                        st.error(f"[!] Vault Lock Failed: {err}")
