@@ -34,6 +34,7 @@ class K:
     TIMESTAMPS      = "call_timestamps"
     AESTHETIC_CHOICE = "sb_aesthetic"
     HIKMAH_STYLE     = "sb_hikmah_style"
+    SHOW_PROFILE     = "show_profile"
 
 _DEFAULTS = {
     K.HISTORY: [], K.SECURITY_LOG: [], K.USER_HASH: None, K.IS_ADMIN: False,
@@ -43,7 +44,8 @@ _DEFAULTS = {
     K.LAST_RESULT: None,
     K.LAST_AUDIT: {}, K.LAST_SAVED: "Never", K.UI_LANG: "en",
     K.AUTO_TARGET: "ChatGPT", K.AUTO_REASON: "Awaiting Uplink...",
-    K.TIMESTAMPS: [], K.AESTHETIC_CHOICE: "Default", K.HIKMAH_STYLE: "None"
+    K.TIMESTAMPS: [], K.AESTHETIC_CHOICE: "Default", K.HIKMAH_STYLE: "None",
+    K.SHOW_PROFILE: False
 }
 
 # ── 🟢 RESTORED: GLOBAL MEMORY ──
