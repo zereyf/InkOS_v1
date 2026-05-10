@@ -1,9 +1,8 @@
 """
 state.py — Hardened Session Contract
 ====================================
-v21.6: Initialization Integrity Patch.
-       - RESTORED: get_global_memory() for app.py maintenance checks.
-       - FIXED: KeyError protection on all global accessors.
+v21.7: State Variable Restoration Patch.
+       - RESTORED: K.LAST_INPUT to prevent AttributeError in workspace.py.
 """
 
 import streamlit as st
@@ -25,6 +24,7 @@ class K:
     ACTIVE_PERSONA  = "active_persona"
 
     # UI & HUD
+    LAST_INPUT      = "last_input"  # 🟢 RESTORED HERE
     LAST_RESULT     = "last_result"
     LAST_AUDIT      = "last_audit"
     LAST_SAVED      = "last_saved"
@@ -38,7 +38,9 @@ class K:
 _DEFAULTS = {
     K.HISTORY: [], K.SECURITY_LOG: [], K.USER_HASH: None, K.IS_ADMIN: False,
     K.INK_DNA: "Default", K.INTEL_DNA: "Default", K.HIKMAH_DNA: "Default",
-    K.PERSONA_LIST: [], K.ACTIVE_PERSONA: None, K.LAST_RESULT: None,
+    K.PERSONA_LIST: [], K.ACTIVE_PERSONA: None, 
+    K.LAST_INPUT: "", # 🟢 ADDED TO DEFAULTS
+    K.LAST_RESULT: None,
     K.LAST_AUDIT: {}, K.LAST_SAVED: "Never", K.UI_LANG: "en",
     K.AUTO_TARGET: "ChatGPT", K.AUTO_REASON: "Awaiting Uplink...",
     K.TIMESTAMPS: [], K.AESTHETIC_CHOICE: "Default", K.HIKMAH_STYLE: "None"
