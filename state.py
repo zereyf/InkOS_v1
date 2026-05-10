@@ -1,9 +1,9 @@
 """
 state.py — Hardened Session Contract
 ====================================
-v21.5: Zenith Stabilization Build.
+v21.6: Initialization Integrity Patch.
+       - RESTORED: get_global_memory() for app.py maintenance checks.
        - FIXED: KeyError protection on all global accessors.
-       - ADDED: State Integrity Check to prevent 'Ghost' logouts.
 """
 
 import streamlit as st
@@ -43,6 +43,15 @@ _DEFAULTS = {
     K.AUTO_TARGET: "ChatGPT", K.AUTO_REASON: "Awaiting Uplink...",
     K.TIMESTAMPS: [], K.AESTHETIC_CHOICE: "Default", K.HIKMAH_STYLE: "None"
 }
+
+# ── 🟢 RESTORED: GLOBAL MEMORY ──
+@st.cache_resource
+def get_global_memory() -> dict:
+    """Maintains system-wide state across all user sessions (e.g., Maintenance Mode)."""
+    return {
+        "broadcast": None,
+        "maintenance_mode": False
+    }
 
 def init_session_state():
     """Hardened initialization to prevent 'KeyError' during hot-reloading."""
