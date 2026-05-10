@@ -1,9 +1,11 @@
 """
 ui/tabs/admin.py — The Overwatch Board
 ======================================
-v1.4: Tactical Synchronization — Global Lockdown Patch.
-      - UPDATED: Global Lockdown toggle now writes to shared server memory.
-      - RETAINED: Cyber-Noir HUD, Panopticon Feed, and Broadcast Matrix.
+v2.0: The Threat Intel Upgrade.
+      - INTEGRATED: Panopticon now directly maps the Workspace QUARANTINE_LOG.
+      - ADDED: Threat Intel Expanders to view intercepted hostile payloads.
+      - ADDED: Tactical Quarantine Purge function.
+      - RETAINED: Global Lockdown, Broadcast Matrix, and Admin Metrics.
 """
 
 import streamlit as st
@@ -11,6 +13,8 @@ import pandas as pd
 from state import K, get_global_memory
 from logic.admin_telemetry import get_global_metrics, get_recent_activity
 
+def _escape(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 def render_admin_board():
     # Clearance Verification
@@ -20,8 +24,8 @@ def render_admin_board():
 
     # Fetch Live Telemetry Data
     stats = get_global_metrics()
-    recent_logs = get_recent_activity()
     global_mem = get_global_memory()
+    quarantine_log = st.session_state.get("QUARANTINE_LOG", [])
 
     # ── TACTICAL CSS INJECTION ──
     st.markdown("""
@@ -34,7 +38,6 @@ def render_admin_board():
         .neural-card {
             background: rgba(18, 22, 30, 0.4);
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.05);
             clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
             padding: 16px 20px;
@@ -55,6 +58,8 @@ def render_admin_board():
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 2px;
             padding: 15px;
+            height: 400px;
+            overflow-y: auto;
         }
         .ow-header {
             font-family: var(--font-m);
@@ -113,7 +118,7 @@ def render_admin_board():
     with m2:
         st.markdown(_neural_card("FORGED PERSONAS", stats.get("personas", 0), "#4E9C81"), unsafe_allow_html=True) 
     with m3:
-        st.markdown(_neural_card("SECURITY EVENTS", stats.get("logs", 0), "#9C4E4E", is_alert=True), unsafe_allow_html=True) 
+        st.markdown(_neural_card("HOSTILE INTERCEPTS", len(quarantine_log), "#9C4E4E", is_alert=True), unsafe_allow_html=True) 
     with m4:
         st.markdown(_neural_card("SYSTEM_UPLINK", "STABLE", "var(--gold)", "var(--gold)"), unsafe_allow_html=True)
 
@@ -123,18 +128,27 @@ def render_admin_board():
     col_left, col_right = st.columns([1.5, 1])
 
     with col_left:
-        # THE PANOPTICON: LIVE LOGS
-        st.markdown('<div class="ow-title">THE PANOPTICON // LIVE_SECURITY_FEED</div>', unsafe_allow_html=True)
+        # ── THE PANOPTICON: QUARANTINE FEED ──
+        st.markdown('<div class="ow-title">THE PANOPTICON // THREAT_INTEL_FEED</div>', unsafe_allow_html=True)
         st.markdown('<div class="panopticon-feed">', unsafe_allow_html=True)
-        if recent_logs:
-            df = pd.DataFrame(recent_logs)
-            st.dataframe(
-                df[['created_at', 'user_hash', 'event_type', 'status']], 
-                use_container_width=True,
-                hide_index=True
-            )
+        
+        if quarantine_log:
+            for item in reversed(quarantine_log):
+                # Extract threat signature from the mock critique
+                critique = item.get("score", {}).get("critique", "") if isinstance(item.get("score"), dict) else "UNKNOWN_VECTOR"
+                threat_sig = critique.split("Vector: ")[-1] if "Vector: " in critique else "PAYLOAD_ESCAPE"
+                
+                label = f"🛑 [{item['id']}] {item['time']} — SIG: {threat_sig}"
+                
+                with st.expander(label):
+                    st.markdown('<div style="font-family:var(--font-m); font-size:0.6rem; color:var(--text-dim); margin-bottom:5px;">HOSTILE_PAYLOAD:</div>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div style="background:rgba(229,62,62,0.1); padding:12px; border-left:2px solid #E53E3E; font-size:0.75rem; color:var(--text); line-height:1.6; margin-bottom:15px; border-radius: 2px;">{_escape(item["input"])}</div>',
+                        unsafe_allow_html=True
+                    )
         else:
-            st.info("No recent security anomalies detected.")
+            st.markdown('<div style="text-align:center; padding: 40px;"><p style="font-family:var(--font-m);font-size:0.75rem;color:var(--text-dim);">[ ⨂ ] NO HOSTILE ANOMALIES DETECTED.</p></div>', unsafe_allow_html=True)
+            
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col_right:
@@ -142,7 +156,7 @@ def render_admin_board():
         st.markdown('<div class="ow-panel">', unsafe_allow_html=True)
         st.markdown('<div class="ow-title-gold">SYSTEM DIRECTIVES</div>', unsafe_allow_html=True)
         
-        # Maintenance Switch (Global Memory Sync)
+        # Maintenance Switch
         current_lockdown = global_mem.get("maintenance_mode", False)
         lockdown_active = st.toggle("🔒 GLOBAL LOCKDOWN", value=current_lockdown, help="Sever all non-admin neural uplinks across the server.")
         
@@ -151,9 +165,19 @@ def render_admin_board():
             st.toast("SYSTEM LOCKED." if lockdown_active else "UPLINKS RESTORED.", icon="🚨" if lockdown_active else "✅")
             st.rerun()
             
-        if st.button("🔥 PURGE SERVER CACHE", use_container_width=True):
-            st.cache_data.clear()
-            st.toast("CACHE OBLITERATED.")
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("🔥 PURGE CACHE", use_container_width=True):
+                st.cache_data.clear()
+                st.toast("CACHE OBLITERATED.")
+        with c2:
+            # 🟢 NEW: Clear Quarantine Control
+            if st.button("🛑 CLEAR THREATS", use_container_width=True):
+                st.session_state["QUARANTINE_LOG"] = []
+                st.toast("QUARANTINE LOG PURGED.")
+                st.rerun()
 
         # BROADCAST FIELD
         st.markdown("<hr style='border-color: rgba(255,255,255,0.1); margin: 15px 0;'>", unsafe_allow_html=True)
