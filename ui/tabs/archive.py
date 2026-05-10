@@ -1,10 +1,11 @@
 """
 ui/tabs/archive.py — The Black Box (Neural Archive)
 ===================================================
-v2026.4.25: Dossier Polish & Button Redesign.
-           - FIXED: Expander labels displaying raw HTML.
-           - ADDED: Custom CSS injection for "Cool/Tactical" buttons.
-           - RETAINED: 6-Cell Telemetry & Behavioral HUD.
+v2026.4.26: Architect Edition — Performance & Security Sync.
+           - MERGED: Custom CSS injection for tactical buttons.
+           - MERGED: 6-Cell Telemetry & Behavioral HUD.
+           - PATCHED: Thread Unblocking (JSON serialization cache).
+           - PATCHED: Overwatch Quarantine Counter in footer.
 """
 
 import json
@@ -52,6 +53,12 @@ def render_archive() -> None:
             background-color: rgba(201, 168, 76, 0.05) !important;
             border: 1px solid rgba(201, 168, 76, 0.2) !important;
             color: #C9A84C !important;
+        }
+        /* Highlight Primary Buttons */
+        div.stButton > button[kind="primary"] {
+            background-color: rgba(201, 168, 76, 0.1) !important;
+            border: 1px solid #C9A84C !important;
+            font-weight: bold !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -101,13 +108,14 @@ def render_archive() -> None:
         indicator = "🟢" if score >= 90 else "🟡" if score >= 80 else "🔴"
         p_icon = item.get("icon", "❖")
         
-        # FIXED: Plain string label (Streamlit expanders don't support HTML in titles)
+        # Plain string label
         label = f"{indicator} {p_icon} [{item['id']}] {item['time']} — {item['target']} ({score}%)"
 
         with st.expander(label, expanded=False):
             # Designed Rehydrate Button
             st.button(
                 "⚡ REHYDRATE SYSTEM STATE", 
+                type="primary",
                 key=f"rehy_{item['id']}", 
                 use_container_width=True,
                 on_click=_handle_rehydrate,
@@ -158,16 +166,37 @@ def render_archive() -> None:
 
     st.markdown("<div style='height:40px'></div>", unsafe_allow_html=True)
     
-    # Designed Export Button
+    # ── 🟢 CACHED FOOTER EXPORT (Fixes Main Thread Blocking) ──
     if "arc_export_filename" not in st.session_state:
         dl_timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         st.session_state["arc_export_filename"] = f"inkos_archive_{dl_timestamp}.json"
+        st.session_state["_archive_cache_dirty"] = True
         
-    st.download_button(
-        "📦 EXPORT FULL INTEL ARCHIVE (JSON)",
-        data=json.dumps(history, ensure_ascii=False, indent=2),
-        file_name=st.session_state["arc_export_filename"],
-        mime="application/json",
-        key="btn_export_arc",
-        use_container_width=True
-    )
+    # Only serialize the JSON if a new mission was added
+    if st.session_state.get("_archive_cache_dirty", True) or "_archive_json_cache" not in st.session_state:
+        st.session_state["_archive_json_cache"] = json.dumps(history, ensure_ascii=False, indent=2)
+        st.session_state["_archive_cache_dirty"] = False
+
+    # Layout for Export Button + Quarantine Counter
+    col_exp, col_quar = st.columns([4, 1.5])
+    with col_exp:
+        st.download_button(
+            "📦 EXPORT FULL INTEL ARCHIVE",
+            data=st.session_state["_archive_json_cache"],
+            file_name=st.session_state["arc_export_filename"],
+            mime="application/json",
+            key="btn_export_arc",
+            use_container_width=True
+        )
+    with col_quar:
+        # Visual indicator of quarantine status
+        q_count = len(st.session_state.get("QUARANTINE_LOG", []))
+        q_color = "#E53E3E" if q_count > 0 else "var(--text-dim)"
+        q_border = "rgba(229, 62, 62, 0.3)" if q_count > 0 else "rgba(255,255,255,0.05)"
+        q_bg = "rgba(229, 62, 62, 0.05)" if q_count > 0 else "transparent"
+        
+        st.markdown(f"""
+            <div style="text-align:center; padding:10px 5px; border:1px solid {q_border}; background:{q_bg}; border-radius:2px; font-family:var(--font-m); font-size:0.6rem; color:{q_color}; height: 100%; display: flex; align-items: center; justify-content: center; letter-spacing: 1px;">
+                QUARANTINE: {q_count}
+            </div>
+        """, unsafe_allow_html=True)
