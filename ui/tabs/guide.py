@@ -1,11 +1,13 @@
 """
 ui/tabs/guide.py — InkOS Documentation & Intelligence Briefing
 ===============================================================
-v22.0: The Trifecta Blueprint.
-       Documenting the new /INK, /INTEL, and /HIKMAH Macro Injectors.
+v22.1: The Premium Branding Sync.
+       - INTEGRATED: Terminal SVG Logo & Neon Wordmark.
+       - REFINED: Chiaroscuro Documentation Header.
 """
 
 import streamlit as st
+import textwrap
 from i18n.translations import t
 
 
@@ -113,26 +115,24 @@ def _arabic_pattern_row(arabic: str, paradigm: str, example: str, color: str) ->
 def render_guide() -> None:
     """Renders Tab 7 — InkOS Guide with Advanced Operations."""
 
-    # ── HERO ──────────────────────────────────────────────────────────────────
-    st.markdown("""
-    <div style="text-align:center;padding:32px 0 24px 0;">
-        <div style="font-family:var(--font-d);font-size:2.2rem;
-                    color:var(--gold);letter-spacing:0.2em;
-                    text-transform:uppercase;margin-bottom:8px;">
-            ⚡ InkOS
+    # ── 🟢 PREMIUM HERO SYNC ──────────────────────────────────────────────────
+    brand_html = textwrap.dedent(f"""
+        <div style="text-align:center; margin-bottom: 40px; padding-top: 20px;">
+            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style="width: 50px; height: 50px; fill: var(--gold); filter: drop-shadow(0px 0px 8px rgba(201, 168, 76, 0.4));">
+                    <path d="M73.4 182.6C60.9 170.1 60.9 149.8 73.4 137.3C85.9 124.8 106.2 124.8 118.7 137.3L278.7 297.3C291.2 309.8 291.2 330.1 278.7 342.6L118.7 502.6C106.2 515.1 85.9 515.1 73.4 502.6C60.9 490.1 60.9 469.8 73.4 457.3L210.7 320L73.4 182.6zM288 448L544 448C561.7 448 576 462.3 576 480C576 497.7 561.7 512 544 512L288 512C270.3 512 256 497.7 256 480C256 462.3 270.3 448 288 448z"/>
+                </svg>
+                <span style="font-family: var(--font-m); font-size: 2.2rem; color: var(--text); letter-spacing: 8px; margin-left: 20px; font-weight: bold; text-transform: uppercase;">
+                    INK<span style="color: var(--gold);">OS</span> // GUIDE
+                </span>
+            </div>
+            <div style="font-family:var(--font-m); font-size:0.7rem; color:var(--text-muted); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:8px;">
+                Cognitive Intelligence Briefing // حبر وفكرة
+            </div>
+            <hr style="border-color:rgba(255,255,255,0.05); width: 30%; margin: 20px auto;">
         </div>
-        <div style="font-family:var(--font-m);font-size:0.75rem;
-                    color:var(--text-muted);letter-spacing:0.15em;
-                    text-transform:uppercase;margin-bottom:8px;">
-            Cognitive Intelligence for Prompt Heuristics & Engineering
-        </div>
-        <div style="font-family:var(--font-a);font-size:1.1rem;
-                    color:var(--gold);direction:rtl;">
-            حبر وفكرة · Intelligence Redefined
-        </div>
-    </div>
-    <hr style="border-color:rgba(255,255,255,0.1);">
-    """, unsafe_allow_html=True)
+    """)
+    st.markdown(brand_html, unsafe_allow_html=True)
 
     # ── GUIDE TABS ─────────────────────────────────────────────────────────────
     g1, g2, g3, g4 = st.tabs([
@@ -174,7 +174,6 @@ def render_guide() -> None:
         _card("Utilizes the classical sciences of <strong>Balagha (علم البلاغة)</strong> to understand user intent. "
               "InkOS rejects literal translation, mapping rhetorical DNA directly to AI architecture.")
         st.markdown("<br>", unsafe_allow_html=True)
-        from ui.tabs.guide import _arabic_pattern_row # Helper call
         _arabic_pattern_row("التدرج", "Chain-of-Thought", "Maps gradual logic into reasoning chains.", "#90CDF4")
         _arabic_pattern_row("الإيجاز", "Compression", "Enforces maximum token efficiency.", "#6EE7B7")
         _arabic_pattern_row("التفصيل", "Elaboration", "Expands concepts into academic frameworks.", "#F6AD55")
@@ -217,3 +216,11 @@ def render_guide() -> None:
             tip   = "Use this for university-level Arabic Education tasks and Islamic research.",
             color = "#4CAF9A"
         )
+
+    # ── 🟢 FOOTER SIGNATURE ──────────────────────────────────────────────────
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown(f"""
+        <div style="text-align:center; color:var(--text-dim); font-family:var(--font-m); font-size:0.6rem; letter-spacing:2px;">
+            [ END OF INTELLIGENCE BRIEFING // INKOS v2026.4 ]
+        </div>
+    """, unsafe_allow_html=True)
