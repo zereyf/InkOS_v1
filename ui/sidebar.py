@@ -46,25 +46,32 @@ def _load_user_personas(user_hash: str) -> list:
     except Exception:
         return []
 
-def _enforce_admin_clearance() -> None:
-    """Idempotent IAM loop: Ensures admin state survives browser refreshes."""
+def def _enforce_admin_clearance() -> None:
+    """
+    Idempotent IAM loop: Environment-Driven Security.
+    Strictly evaluates admin status based on external secrets.
+    """
     uid = st.session_state.get(K.USER_HASH)
+    
+    # 1. Deny GHOSTS and GUESTS immediately
     if not uid or "GUEST_" in str(uid).upper():
         st.session_state[K.IS_ADMIN] = False
         return
 
     try:
-        # Fallback to empty string if secrets are missing
+        # 2. Retrieve the Master List from hidden environment secrets
         master_secret = st.secrets.get("MASTER_IDS", "")
+        
+        # 3. Parse and normalize the list
         master_list = [x.strip().upper() for x in master_secret.split(",") if x.strip()]
         
-        # Hardcoded root fallback just in case secrets.toml is misconfigured
-        if "AMEERINK" not in master_list:
-            master_list.append("AMEERINK")
-            
+        # 4. Final Clearance Check
         st.session_state[K.IS_ADMIN] = (str(uid).upper() in master_list)
+        
     except Exception:
-        st.session_state[K.IS_ADMIN] = (str(uid).upper() == "AMEERINK")
+        # 5. Fail-Secure: If secrets are missing/malformed, deny access.
+        st.session_state[K.IS_ADMIN] = False
+
 
 def render_language_switcher() -> None:
     current = get_lang()
