@@ -1,10 +1,9 @@
 """
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
-v9.5.0: Ninja Launch Optimization.
-      - INJECTED: Speed-Pass Logic (Bypass evaluator if self-audit >= threshold).
-      - OPTIMIZED: Reduced latency for 8B-instant deployments.
-      - STABILIZED: Maintained 3-tuple unpacking protocol.
+v9.6.0: Overwatch Shield Protocol.
+      - INJECTED: Hard security gate in `run_refinement_and_audit`.
+      - OPTIMIZED: Aborts LLM execution upon threat detection.
 """
 
 import json
@@ -13,7 +12,6 @@ import textwrap
 import time
 from typing import Optional, Tuple, Any
 
-# 🟢 Import constants and prompts from config
 from config import (
     client, MODEL_ID, TEMPERATURE, MAX_TOKENS, 
     RETRY_THRESHOLD, MAX_RETRIES, EVAL_TEMPERATURE,
@@ -26,6 +24,7 @@ from engine.router import route_to_target
 from engine.cognitive_map import detect_arabic_pattern
 from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
 from forge.persona_engine import inject_persona
+from security.sanitizer import sanitize_input  # 🟢 ADDED: Security Dependency
 
 # ── CORE PARSING & VALIDATION ENGINE ──────────────────────────────────────────
 
@@ -61,7 +60,6 @@ def _clamp_audit(raw: dict) -> dict:
     }
 
 def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
-    """Returns a 2-tuple: (refined_text, audit_dict)"""
     cleaned = _FENCE_CLEANUP.sub("", raw).strip()
     json_str = _extract_json(cleaned)
     if not json_str: 
@@ -78,8 +76,7 @@ def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
 def _validate_structure(refined: str, target: str) -> Tuple[bool, str]:
     if "[CLARIFICATION_REQUIRED]" in refined: return True, ""
     text = refined.strip()
-    # Check for basic density
-    if len(text) < 300: # Lowered slightly for 8B punchiness
+    if len(text) < 300: 
         return False, "Output density insufficient (< 300 chars)."
     if target == 'Claude':
         if not re.search(r'<(?:role|task|constraints|output_format)>', text, re.IGNORECASE):
@@ -95,7 +92,7 @@ def _call_evaluator(original_input: str, target: str, refined_prompt: str) -> di
     if not client: return {"score": 0, "critique": "Offline"}
     try:
         completion = client.chat.completions.create(
-            model=MODEL_ID, # Uses the 8B model for audits too (very fast)
+            model=MODEL_ID,
             messages=[
                 {"role": "system", "content": CIPHER_EVALUATOR_PROMPT},
                 {"role": "user",   "content": f"INPUT: {original_input}\nTARGET: {target}\nPROMPT: {refined_prompt}"},
@@ -109,7 +106,6 @@ def _call_evaluator(original_input: str, target: str, refined_prompt: str) -> di
         return {"score": 0, "critique": f"Audit Failed: {str(e)[:40]}"}
 
 def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
-    """Returns a 3-tuple: (refined_text, audit_dict, error_string)"""
     if not client: return None, None, "Client Offline"
     try:
         completion = client.chat.completions.create(
@@ -128,23 +124,17 @@ def _call_cipher(system_prompt: str, user_text: str) -> Tuple[Optional[str], Opt
 def _build_system_prompt(target, framework, lang, cognitive_directive, persona, islamic_mode, retry_critique) -> str:
     parts = [CIPHER_IDENTITY]
     parts.append(f'SESSION_CONTEXT: Target={target} | Language={lang}')
-    
     if framework in FRAMEWORK_BLUEPRINTS:
         parts.append(f'FRAMEWORK_CONSTRAINTS:\n{FRAMEWORK_BLUEPRINTS[framework]}')
-    
     if cognitive_directive:
         parts.append(f'LINGUISTIC_DIRECTIVE:\n{cognitive_directive}')
-    
     if persona:
         p_input = persona.get("name") if isinstance(persona, dict) else persona
         parts.append(f'ACTIVE_PERSONA_OVERLAY:\n{inject_persona(p_input, target)}')
-    
     if islamic_mode:
         parts.append(f'MAQASID_ETHICAL_LAYER:\n{ISLAMIC_CONTEXT_LAYER}')
-    
     if retry_critique:
         parts.append(CIPHER_RETRY_INJECTION.format(critique=retry_critique))
-        
     parts.append(CIPHER_OUTPUT_CONTRACT)
     return '\n\n'.join(parts)
 
@@ -154,6 +144,26 @@ def run_refinement_and_audit(
     persona: Optional[Any] = None
 ) -> Tuple[str, dict, Optional[Any]]:
     
+    # 🛡️ THE OVERWATCH SHIELD (Execution Intercept)
+    _, violations = sanitize_input(user_text)
+    if violations:
+        threat_sig = " | ".join(violations)
+        hostile_asset = (
+            f"🛑 OVERWATCH PROTOCOL ACTIVATED\n"
+            f"================================\n"
+            f"[!] CONNECTION SEVERED.\n\n"
+            f"Hostile cognitive patterns detected in payload.\n"
+            f"Adversarial Signature: {threat_sig}\n\n"
+            f"Action: Execution aborted. Payload diverted to quarantine log."
+        )
+        audit_payload = {
+            "score": 0, 
+            "critique": f"SECURITY BREACH DETECTED. Vector: {threat_sig}", 
+            "precision": 0, "alignment": 0, "efficiency": 0
+        }
+        return hostile_asset, audit_payload, None
+
+    # Normal Execution Pipeline
     cognitive = ""
     pattern_data = None
     
@@ -174,10 +184,8 @@ def run_refinement_and_audit(
         
         refined, self_audit, error = _call_cipher(sys_prompt, user_text)
         
-        if error: 
-            return f"System Fault: {error}", {"score":0, "critique":error}, None
-        if not refined: 
-            return "Refinement failed.", {"score":0, "critique":"Empty response."}, None
+        if error: return f"System Fault: {error}", {"score":0, "critique":error}, None
+        if not refined: return "Refinement failed.", {"score":0, "critique":"Empty response."}, None
 
         passed, reason = _validate_structure(refined, target)
         if not passed:
@@ -186,14 +194,12 @@ def run_refinement_and_audit(
                 best_refined, best_audit = refined, self_audit
             continue
 
-        # 🟢 SPEED-PASS LOGIC: If the 8B model scores high enough internally, bypass the 2nd LLM call.
         if self_audit and self_audit.get('score', 0) >= RETRY_THRESHOLD:
             return refined, self_audit, pattern_data
 
         if "[CLARIFICATION_REQUIRED]" in refined:
             return refined, {"score": 0, "critique": "Clarification needed."}, pattern_data
 
-        # Only call the external evaluator if the self-audit didn't hit the threshold
         audit = _call_evaluator(user_text, target, refined)
         
         if audit['score'] >= RETRY_THRESHOLD:
@@ -203,6 +209,5 @@ def run_refinement_and_audit(
             best_refined, best_audit = refined, audit
             
         retry_critique = audit['critique']
-        # No sleep() in Ninja mode unless we hit rate limits
 
     return best_refined or refined, best_audit or self_audit, pattern_data
