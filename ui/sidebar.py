@@ -110,20 +110,27 @@ def render_sidebar() -> SidebarConfig:
 
     st.markdown(f'<div class="vc-header" style="font-size:0.55rem; color:var(--text-muted); margin-top:10px;">SESS_REF: {sess_ref}</div>', unsafe_allow_html=True)
 
-    if is_guest:
+   if is_guest:
         new_sid = st.text_input("ID", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
         new_pin = st.text_input("PIN", placeholder="PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
         
-        # 🟢 THE FIXED LATCH BLOCK
+        # 🟢 RESTORED: Registration Toggle (Required for the Engine)
+        is_new_user = st.toggle("Register New Identity?", value=False, key="is_new_user_toggle")
+        
         if st.button("LATCH IDENTITY", use_container_width=True, key="btn_latch_sid"):
             if new_sid.strip() and new_pin.strip():
                 with st.spinner("Uplinking..."):
-                    success, error_msg = authenticate_terminal(new_sid.strip(), new_pin.strip())
+                    # 🟢 FIXED: Passed is_new_user to match the engine signature
+                    success, error_msg = authenticate_terminal(
+                        new_sid.strip(), 
+                        new_pin.strip(), 
+                        is_new=is_new_user
+                    )
                 
                 if success:
                     st.session_state[K.USER_HASH] = new_sid.strip()
                     
-                    # 🧩 NEURAL REHYDRATION: Pull DNA and Personas immediately
+                    # 🧩 NEURAL REHYDRATION
                     user_data = rehydrate_session(new_sid.strip())
                     dna = user_data.get("dna", {})
                     st.session_state[K.INK_DNA] = dna.get("ink", st.session_state[K.INK_DNA])
