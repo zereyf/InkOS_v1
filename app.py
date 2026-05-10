@@ -60,10 +60,20 @@ if "sid" in st.query_params:
 
 init_session_state()
 
-# ── 🟢 MAINTENANCE GATE ──
-if st.session_state.get(K.MAINTENANCE_MODE) and not st.session_state.get(K.IS_ADMIN):
-    st.markdown("<div style='text-align:center; padding-top:100px; color:var(--danger);'>[ ⨂ ] SYSTEM LOCKDOWN</div>", unsafe_allow_html=True)
-    st.stop()
+# # ── 🟢 MAINTENANCE MODE GATE ───────────────────────
+global_mem = get_global_memory()
+is_admin = st.session_state.get(K.IS_ADMIN, False)
+
+# Check the GLOBAL state, not the session state
+if global_mem.get("maintenance_mode") and not is_admin:
+    st.markdown("""
+        <div style="height:80vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+            <div style="font-family:var(--font-m); color:var(--danger); font-size:2rem; letter-spacing:4px;">[ ⨂ ] SYSTEM LOCKDOWN</div>
+            <div style="font-family:var(--font-m); color:var(--text-muted); font-size:0.8rem; margin-top:10px;">Maintenance protocol active. Access restricted.</div>
+        </div>
+    """, unsafe_allow_html=True)
+    st.stop() # 🛑 This is the actual wall
+
 
 # ── 🟢 PREMIUM CSS ROOT INJECTION ──
 st.markdown("""
