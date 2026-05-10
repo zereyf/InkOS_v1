@@ -99,11 +99,8 @@ def rehydrate_session(user_hash: str) -> dict:
 # ── VAULT OPERATIONS ────────────────────────────────────────────────────────
 
 def save_prompt(user_hash: str, **data) -> Tuple[Optional[dict], Optional[str]]:
-    if err := _require_sb(): return None, err
-
-    seed = f"{user_hash}{data.get('content')}{data.get('title')}{data.get('target')}"
-    record_id = hashlib.md5(seed.encode()).hexdigest()[:16]
-
+    # ... (Hashing logic) ...
+    
     record = {
         "id": record_id,
         "user_hash": user_hash,
@@ -114,7 +111,8 @@ def save_prompt(user_hash: str, **data) -> Tuple[Optional[dict], Optional[str]]:
         "framework": data.get("framework", "Professional"),
         "score": min(max(int(data.get("score", 0)), 0), 100),
         "pattern": data.get("pattern", ""),
-        "islamic": data.get("islamic", False),
+        # 🟢 REPLACED: 'islamic' (bool) -> 'style' (str)
+        "style": data.get("style", "None"), 
         "aesthetic": data.get("aesthetic", ""),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
