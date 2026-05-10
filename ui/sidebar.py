@@ -114,13 +114,26 @@ def render_sidebar() -> SidebarConfig:
     if is_guest:
         new_sid = st.text_input("ID", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
         new_pin = st.text_input("PIN", placeholder="PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
-        if st.button("LATCH IDENTITY", use_container_width=True, key="btn_latch_sid"):
-            if new_sid.strip() and new_pin.strip():
-                from vault.vault_engine import authenticate_terminal
-                success, _ = authenticate_terminal(new_sid.strip(), new_pin.strip())
-                if success: 
-                    st.session_state[K.USER_HASH] = new_sid.strip()
-                    st.rerun()
+        if if st.button("LATCH IDENTITY", use_container_width=True):
+    if new_sid.strip() and new_pin.strip():
+        success, _ = authenticate_terminal(new_sid.strip(), new_pin.strip())
+        if success: 
+            st.session_state[K.USER_HASH] = new_sid.strip()
+            
+            # 🟢 TRIGGER REHYDRATION
+            from vault.vault_engine import rehydrate_session
+            user_data = rehydrate_session(new_sid.strip())
+            
+            # Inject DNA into state
+            dna = user_data.get("dna", {})
+            if dna.get("ink"): st.session_state[K.INK_DNA] = dna["ink"]
+            if dna.get("intel"): st.session_state[K.INTEL_DNA] = dna["intel"]
+            if dna.get("hikmah"): st.session_state[K.HIKMAH_DNA] = dna["hikmah"]
+            
+            # Inject Personas into state
+            st.session_state[K.PERSONA_LIST] = user_data.get("personas", [])
+            
+            st.rerun()
     else:
         st.markdown('<div style="background:rgba(201,168,76,0.05); border:1px solid rgba(201,168,76,0.2); padding:10px; border-radius:3px; margin-bottom:10px; font-size:0.55rem; color:var(--gold); display:flex; align-items:center; gap:8px;">[◈] IDENTITY SECURED</div>', unsafe_allow_html=True)
         if st.button("Terminate Latch", use_container_width=True):
