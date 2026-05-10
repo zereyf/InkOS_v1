@@ -115,6 +115,12 @@ def _validate_structure(refined: str, target: str) -> Tuple[bool, str]:
     if 'Claude' in target:
         if not re.search(r'<(?:role|task|constraints|output_format)>', text, re.IGNORECASE):
             return False, 'Claude requires XML-structured blocks (<role>, <task>, etc.).'
+
+        required_xml_tags = ('edge_cases', 'quality_bar')
+        for tag in required_xml_tags:
+            pattern = rf'<{tag}>\s*.+?\s*</{tag}>'
+            if not re.search(pattern, text, re.IGNORECASE | re.DOTALL):
+                return False, f'Claude output must include a non-empty <{tag}>...</{tag}> block.'
     if 'GPT' in target or 'ChatGPT' in target:
         if not re.search(r'^you\s+are\s+a?\s+\w', text[:100], re.IGNORECASE):
             return False, "Prompt requires 'You are a [role]' identity opener."
