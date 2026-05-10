@@ -1,11 +1,11 @@
 """
 ui/sidebar.py — Sidebar Command Deck
 ====================================
-v21.0: Zenith Autonomous Edition.
-       - ADDED: Proactive Intelligence HUD (Auto-Switch feedback).
-       - FIXED: All keys aligned with K-constants for Neural Core sync.
-       - FIXED: Identity Lock enforced (Widgets disable when Persona is active).
-       - RETAINED: Tactical Wordmarks, Uplink logic, and Stealth IAM.
+v21.1: Zenith Autonomous Edition — Alignment Patch.
+       - FIXED: Indentation Error in LATCH_IDENTITY block.
+       - FIXED: Rehydration logic integrated into the Login flow.
+       - STABLE: Proactive Intelligence HUD (Auto-Switch feedback).
+       - RETAINED: Tactical Wordmarks and InkOS Branding.
 """
 
 import streamlit as st
@@ -16,8 +16,8 @@ from state import K, get_remaining_calls
 from config import TARGET_GUIDES, AESTHETIC_PRESETS, AUTO_SELECT_LABEL, LOGIC_FRAMEWORKS
 from config.personas import STARTER_PERSONAS
 from vault.supabase_client import SUPABASE_MISSING
-from vault.vault_engine import authenticate_terminal, check_id_availability
-from i18n.translations import t, set_lang, get_lang, LANGUAGES
+from vault.vault_engine import authenticate_terminal, check_id_availability, rehydrate_session
+from i18n.translations import t
 
 # ── 🟢 ENGINE INTEGRATIONS ──
 from forge.rhetoric_engine import HIKMAH_PROFILES
@@ -35,7 +35,6 @@ class SidebarConfig(TypedDict):
 
 def render_proactive_hud():
     """Displays the current Autonomous Routing decision and reasoning."""
-    # Only show if Auto-Select is the active mode
     if st.session_state.get("sb_target") != AUTO_SELECT_LABEL:
         return
 
@@ -96,7 +95,7 @@ def render_sidebar_brand() -> None:
                     INK<span style="color: var(--gold);">OS</span>
                 </span>
             </div>
-            <div style="letter-spacing:2px; font-size:0.5rem; color:var(--gold);">حبر وفكرة // ZENITH_AUTONOMOUS v21.0</div>
+            <div style="letter-spacing:2px; font-size:0.5rem; color:var(--gold);">حبر وفكرة // ZENITH_AUTONOMOUS v21.1</div>
         </div>
     """), unsafe_allow_html=True)
 
@@ -114,30 +113,33 @@ def render_sidebar() -> SidebarConfig:
     if is_guest:
         new_sid = st.text_input("ID", placeholder="Identity Name", key="sid_input_sidebar", label_visibility="collapsed")
         new_pin = st.text_input("PIN", placeholder="PIN", type="password", key="pin_input_sidebar", label_visibility="collapsed")
-        if st.button("LATCH IDENTITY", use_container_width=True):
-    if new_sid.strip() and new_pin.strip():
-        success, _ = authenticate_terminal(new_sid.strip(), new_pin.strip())
-        if success: 
-            st.session_state[K.USER_HASH] = new_sid.strip()
-            
-            # 🟢 TRIGGER REHYDRATION
-            from vault.vault_engine import rehydrate_session
-            user_data = rehydrate_session(new_sid.strip())
-            
-            # Inject DNA into state
-            dna = user_data.get("dna", {})
-            if dna.get("ink"): st.session_state[K.INK_DNA] = dna["ink"]
-            if dna.get("intel"): st.session_state[K.INTEL_DNA] = dna["intel"]
-            if dna.get("hikmah"): st.session_state[K.HIKMAH_DNA] = dna["hikmah"]
-            
-            # Inject Personas into state
-            st.session_state[K.PERSONA_LIST] = user_data.get("personas", [])
-            
-            st.rerun()
+        
+        # 🟢 THE FIXED LATCH BLOCK
+        if st.button("LATCH IDENTITY", use_container_width=True, key="btn_latch_sid"):
+            if new_sid.strip() and new_pin.strip():
+                with st.spinner("Uplinking..."):
+                    success, error_msg = authenticate_terminal(new_sid.strip(), new_pin.strip())
+                
+                if success:
+                    st.session_state[K.USER_HASH] = new_sid.strip()
+                    
+                    # 🧩 NEURAL REHYDRATION: Pull DNA and Personas immediately
+                    user_data = rehydrate_session(new_sid.strip())
+                    dna = user_data.get("dna", {})
+                    st.session_state[K.INK_DNA] = dna.get("ink", st.session_state[K.INK_DNA])
+                    st.session_state[K.INTEL_DNA] = dna.get("intel", st.session_state[K.INTEL_DNA])
+                    st.session_state[K.HIKMAH_DNA] = dna.get("hikmah", st.session_state[K.HIKMAH_DNA])
+                    st.session_state[K.PERSONA_LIST] = user_data.get("personas", [])
+                    
+                    st.query_params["sid"] = new_sid.strip()
+                    st.rerun()
+                else:
+                    st.error(f"[!] {error_msg}")
     else:
         st.markdown('<div style="background:rgba(201,168,76,0.05); border:1px solid rgba(201,168,76,0.2); padding:10px; border-radius:3px; margin-bottom:10px; font-size:0.55rem; color:var(--gold); display:flex; align-items:center; gap:8px;">[◈] IDENTITY SECURED</div>', unsafe_allow_html=True)
         if st.button("Terminate Latch", use_container_width=True):
             st.session_state[K.USER_HASH] = None 
+            st.query_params.clear()
             st.rerun()
 
     st.markdown("<hr>", unsafe_allow_html=True)
@@ -157,7 +159,7 @@ def render_sidebar() -> SidebarConfig:
 
     # ── PERSONA SELECTOR ──
     st.markdown(f'<div class="vc-header" style="font-size:0.65rem;">[ {t("active_persona", fallback="ACTIVE_PERSONA").upper()} ]</div>', unsafe_allow_html=True)
-    user_personas = _load_user_personas(st.session_state.get(K.USER_HASH, ''))
+    user_personas = st.session_state.get(K.PERSONA_LIST, [])
     options_map = {'None': None}
     for name, p in STARTER_PERSONAS.items(): 
         if name != 'None': options_map[f'{name} [S]'] = p
@@ -170,13 +172,11 @@ def render_sidebar() -> SidebarConfig:
 
     # ── SYSTEM TOGGLES ──
     st.markdown("<hr style='margin-top:5px;'>", unsafe_allow_html=True)
-    
-    # 🟢 IDENTITY LOCK: Disable if a Specialist Persona is active
     is_locked = active_p is not None
 
     aesthetic_choice = st.selectbox(
         t("aesthetic_preset", fallback="Aesthetic"), 
-        options=list(AEST_PRESETS.keys()), 
+        options=list(AESTHETIC_PRESETS.keys()), 
         key=K.AESTHETIC_CHOICE,
         disabled=is_locked 
     )
@@ -186,7 +186,7 @@ def render_sidebar() -> SidebarConfig:
         options=list(HIKMAH_PROFILES.keys()), 
         key=K.HIKMAH_STYLE,
         disabled=is_locked,
-        help="Linguistic behavior is locked when a Specialist is engaged."
+        help="Behavior is locked when a Specialist is engaged."
     )
     
     expert_mode = st.checkbox("Expert Diagnostics", key="sb_expert")
