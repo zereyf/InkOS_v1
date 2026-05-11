@@ -92,7 +92,15 @@ if is_admin:
 # ── 🟢 SIDEBAR RENDER ──
 with st.sidebar:
     render_sidebar_brand()
-    active_tab = st.radio("Navigation", nav_options, label_visibility="collapsed")
+    nav_map = {"⚡ WORKSPACE":"WORKSPACE","🔒 VAULT":"VAULT","⚙️ FORGE":"FORGE","🧠 COGNITIVE MAP":"COGNITIVE MAP","📁 ARCHIVE":"ARCHIVE","🛡️ SECURITY LOG":"SECURITY LOG","📖 GUIDE":"GUIDE","◈  ABOUT":"ABOUT"}
+    if is_admin: nav_map["◈ OVERWATCH"] = "◈ OVERWATCH"
+    allowed = [k for k,v in nav_map.items() if v in nav_options]
+    if "active_tab" not in st.session_state: st.session_state["active_tab"] = "WORKSPACE"
+    for label in allowed:
+        active = nav_map[label] == st.session_state["active_tab"]
+        if st.button(label, key=f"nav_{label}", use_container_width=True, type="secondary"):
+            st.session_state["active_tab"] = nav_map[label]
+    active_tab = st.session_state["active_tab"]
     cfg = render_sidebar()
 
 # ── 🟢 ROUTING ──
