@@ -26,6 +26,33 @@ STYLES = '''
   --font-ar:      'Noto Naskh Arabic', serif;
 }
 
+/* Add this directly below your existing :root block */
+
+.light-theme {
+  --bg:           #f8f9fa;
+  --surface:      #ffffff;
+  --surface-up:   #f1f3f5;
+  --surface-card: #ffffff;
+  --border:       #e5e7eb;
+  --border-gold:  #e5e7eb; /* Muted gold/border for light mode */
+  --accent:       #111827; /* Dark text/accents */
+  --accent-light: #1f2937;
+  --accent-glow:  #00000010;
+  --accent-dim:   #f3f4f6;
+  --text-1:       #111827;
+  --text-2:       #4b5563;
+  --text-3:       #9ca3af;
+  --success:      #10b981;
+  --warning:      #f59e0b;
+  --danger:       #ef4444;
+}
+
+/* Update the watermark to match light mode contrast */
+.light-theme .stApp::after {
+  color: #00000004; 
+}
+
+
 /* ── BASE ── */
 html, body, [class*="css"] {
   font-family: var(--font-sans) !important;
