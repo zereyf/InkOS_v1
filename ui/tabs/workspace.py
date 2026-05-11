@@ -1,14 +1,10 @@
 """
 ui/tabs/workspace.py — Premium Studio
 =======================================
-v4.0: Gold design system. Matches mockup.
-      - Time-based greeting
-      - Stacked before/after cards with connector
-      - Copy / Share / Re-ink action row
-      - Recent inks history list
-      - Fixed bottom input bar (pill style)
-      - Quick action pills
-      - Live pipeline animation
+v4.1: Dual Theme Identity (حبر وفكرة).
+      - ADDED: State-driven Dark/Light theme toggle.
+      - ADDED: Dynamic :root CSS variable injection.
+      - PRESERVED: All pipeline, routing, and vault logic.
 """
 from __future__ import annotations
 import re, time
@@ -154,16 +150,16 @@ def _run_pipeline(payload, cfg: dict, cleaned: str):
         steps_html = ""
         for j, (name, desc) in enumerate(PIPELINE_STEPS):
             if j < step_idx:
-                icon, color, alpha = "✓", "#4ade80", "1"
-                border = "border-left:3px solid #4ade8022;"
+                icon, color, alpha = "✓", "var(--success)", "1"
+                border = "border-left:3px solid var(--success);"
                 bg, sub = "", ""
             elif j == step_idx:
-                icon, color, alpha = "⟳", "#c9a84c", "1"
-                border = "border-left:3px solid #c9a84c;"
-                bg  = "background:#c9a84c08;"
-                sub = f"<div style='font-size:11px;color:#8a8070;margin-top:2px;'>{desc}</div>"
+                icon, color, alpha = "⟳", "var(--accent)", "1"
+                border = "border-left:3px solid var(--accent);"
+                bg  = "background:var(--accent-dim);"
+                sub = f"<div style='font-size:11px;color:var(--text-2);margin-top:2px;'>{desc}</div>"
             else:
-                icon, color, alpha = "○", "#4a4535", "0.4"
+                icon, color, alpha = "○", "var(--text-3)", "0.4"
                 border, bg, sub = "border-left:3px solid transparent;", "", ""
 
             steps_html += f"""
@@ -174,36 +170,36 @@ def _run_pipeline(payload, cfg: dict, cleaned: str):
                            text-align:center;flex-shrink:0;'>{icon}</span>
               <div>
                 <div style='font-size:13px;font-family:"JetBrains Mono",monospace;
-                            color:{"#f5f0e8" if j <= step_idx else "#4a4535"};'>{name}</div>
+                            color:{"var(--text-1)" if j <= step_idx else "var(--text-3)"};'>{name}</div>
                 {sub}
               </div>
             </div>"""
 
         pct = int((step_idx / len(PIPELINE_STEPS)) * 100)
         container.markdown(f"""
-        <div style='background:#1a1825;border:1px solid #c9a84c33;
+        <div style='background:var(--surface);border:1px solid var(--border-gold);
                     border-radius:20px;padding:28px 24px;
                     max-width:500px;margin:20px auto 140px;
-                    box-shadow:0 8px 32px #00000050;'>
+                    box-shadow:0 8px 32px rgba(0,0,0,0.3);'>
           <div style='display:flex;justify-content:space-between;
                       align-items:center;margin-bottom:20px;'>
             <span style='font-size:11px;font-family:"JetBrains Mono",monospace;
-                         color:#c9a84c;letter-spacing:.12em;'>✦ CIPHER ENGINE — REFINING</span>
-            <span style='font-size:11px;font-family:monospace;color:#8a8070;'>
+                         color:var(--accent);letter-spacing:.12em;'>✦ CIPHER ENGINE — REFINING</span>
+            <span style='font-size:11px;font-family:monospace;color:var(--text-2);'>
               {step_idx + 1}/{len(PIPELINE_STEPS)}
             </span>
           </div>
-          <div style='background:#0f0e17;border-radius:999px;height:3px;
+          <div style='background:var(--bg);border-radius:999px;height:3px;
                       margin-bottom:24px;overflow:hidden;'>
             <div style='width:{pct}%;height:3px;border-radius:999px;
-                        background:linear-gradient(90deg,#c9a84c,#e8c97a);
-                        box-shadow:0 0 8px #c9a84c50;
+                        background:linear-gradient(90deg,var(--accent),var(--accent-light));
+                        box-shadow:0 0 8px var(--accent-glow);
                         transition:width .3s ease;'></div>
           </div>
           {steps_html}
           <div style='margin-top:20px;padding-top:14px;
-                      border-top:1px solid #c9a84c15;text-align:center;
-                      font-size:12px;font-style:italic;color:#4a4535;'>
+                      border-top:1px solid var(--border-gold);text-align:center;
+                      font-size:12px;font-style:italic;color:var(--text-3);'>
             "{quote}"
           </div>
         </div>
@@ -248,7 +244,7 @@ def _render_model_picker():
     selected = st.session_state.get("selected_model_label", "✦ AUTO-SELECT")
     st.markdown("""
     <div style='font-size:10px;font-family:"JetBrains Mono",monospace;
-                color:#c9a84c;letter-spacing:.1em;margin-bottom:10px;'>
+                color:var(--accent);letter-spacing:.1em;margin-bottom:10px;'>
       SELECT TARGET MODEL
     </div>
     """, unsafe_allow_html=True)
@@ -287,7 +283,7 @@ def _render_stacked_cards():
           <div class='prompt-card-icon'>🖊</div>
           Original Prompt
         </div>
-        <span style='font-size:12px;color:#c9a84c;cursor:pointer;'>Edit ✏</span>
+        <span style='font-size:12px;color:var(--accent);cursor:pointer;'>Edit ✏</span>
       </div>
       <div class='prompt-card-text'>{raw_input}</div>
       <div class='prompt-card-meta'>{in_words} words</div>
@@ -337,7 +333,7 @@ def _render_stacked_cards():
 
     if st.session_state.pop("act_copied", False):
         st.markdown("""
-        <div style='text-align:center;font-size:12px;color:#4ade80;
+        <div style='text-align:center;font-size:12px;color:var(--success);
                     padding:6px;font-family:"JetBrains Mono",monospace;'>
           ✓ Copied to clipboard
         </div>
@@ -413,7 +409,7 @@ def _render_recent_inks():
           <div style='display:flex;flex-direction:column;
                       align-items:flex-end;gap:8px;'>
             <div class='ink-date'>{date_str}</div>
-            <div style='color:#4a4535;font-size:16px;cursor:pointer;'>⋯</div>
+            <div style='color:var(--text-3);font-size:16px;cursor:pointer;'>⋯</div>
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -448,6 +444,44 @@ def render_workspace(cfg: dict) -> None:
     </style>
     """, unsafe_allow_html=True)
 
+    # ── State Initialization: Theme ──
+    if "app_theme" not in st.session_state:
+        st.session_state["app_theme"] = "dark"
+
+    # ── Dynamic CSS Injection based on State ──
+    if st.session_state["app_theme"] == "light":
+        st.markdown("""
+        <style>
+        :root {
+          --bg:           #f8f9fa !important;
+          --surface:      #ffffff !important;
+          --surface-up:   #f1f3f5 !important;
+          --surface-card: #ffffff !important;
+          --border:       #e5e7eb !important;
+          --border-gold:  #e5e7eb !important;
+          --accent:       #111827 !important;
+          --accent-light: #1f2937 !important;
+          --accent-glow:  #00000010 !important;
+          --accent-dim:   #f3f4f6 !important;
+          --text-1:       #111827 !important;
+          --text-2:       #4b5563 !important;
+          --text-3:       #9ca3af !important;
+          --success:      #10b981 !important;
+          --warning:      #f59e0b !important;
+          --danger:       #ef4444 !important;
+        }
+        .stApp::after { color: #00000004 !important; }
+        </style>
+        """, unsafe_allow_html=True)
+
+    # ── Theme Toggle UI ──
+    c1, c2 = st.columns([10, 1])
+    with c2:
+        theme_icon = "🌙" if st.session_state["app_theme"] == "dark" else "☀️"
+        if st.button(theme_icon, key="theme_toggle", help="Toggle Theme"):
+            st.session_state["app_theme"] = "light" if st.session_state["app_theme"] == "dark" else "dark"
+            st.rerun()
+
     # ── Greeting ──
     _render_greeting()
 
@@ -455,10 +489,10 @@ def render_workspace(cfg: dict) -> None:
     if st.session_state.get("show_model_picker"):
         with st.container():
             st.markdown("""
-            <div style='background:#1a1825;border:1px solid #c9a84c33;
+            <div style='background:var(--surface);border:1px solid var(--border-gold);
                         border-radius:16px;padding:16px;
                         max-width:240px;margin-bottom:12px;
-                        box-shadow:0 8px 32px #00000060;'>
+                        box-shadow:0 8px 32px rgba(0,0,0,0.3);'>
             """, unsafe_allow_html=True)
             _render_model_picker()
             st.markdown("</div>", unsafe_allow_html=True)
@@ -491,11 +525,11 @@ def render_workspace(cfg: dict) -> None:
     <div style='position:fixed;bottom:88px;
                 left:50%;transform:translateX(-50%);
                 z-index:999;'>
-      <span style='background:#1a1825;border:1px solid #c9a84c33;
+      <span style='background:var(--surface);border:1px solid var(--border-gold);
                    border-radius:999px;padding:3px 12px;
-                   font-size:11px;color:#c9a84c;
+                   font-size:11px;color:var(--accent);
                    font-family:"JetBrains Mono",monospace;
-                   box-shadow:0 2px 12px #00000040;'>
+                   box-shadow:0 2px 12px rgba(0,0,0,0.2);'>
         ✦ {chip}
       </span>
     </div>
