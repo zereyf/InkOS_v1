@@ -1,52 +1,69 @@
 STYLES = '''
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap');
 
 /* ── TOKENS ── */
 :root {
-  --bg:           #0a0a0f;
-  --surface:      #111118;
-  --surface-up:   #16161f;
-  --border:       #ffffff0f;
-  --border-focus: #6366f1;
-  --accent:       #6366f1;
-  --accent-glow:  #6366f120;
-  --accent-hover: #4f46e5;
-  --text-1:       #f1f1f3;
-  --text-2:       #71717a;
-  --text-3:       #3f3f46;
-  --success:      #22c55e;
-  --warning:      #f59e0b;
-  --danger:       #ef4444;
+  --bg:           #0f0e17;
+  --surface:      #1a1825;
+  --surface-up:   #211f2e;
+  --surface-card: #181622;
+  --border:       #ffffff08;
+  --border-gold:  #c9a84c33;
+  --accent:       #c9a84c;
+  --accent-light: #e8c97a;
+  --accent-glow:  #c9a84c20;
+  --accent-dim:   #c9a84c11;
+  --text-1:       #f5f0e8;
+  --text-2:       #8a8070;
+  --text-3:       #4a4535;
+  --success:      #4ade80;
+  --warning:      #fbbf24;
+  --danger:       #f87171;
+  --font-serif:   'Playfair Display', Georgia, serif;
+  --font-sans:    Inter, sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+  --font-ar:      'Noto Naskh Arabic', serif;
 }
 
 /* ── BASE ── */
 html, body, [class*="css"] {
-  font-family: Inter, sans-serif !important;
+  font-family: var(--font-sans) !important;
   color: var(--text-1) !important;
+  -webkit-font-smoothing: antialiased;
 }
-.mono { font-family: "JetBrains Mono", monospace !important; }
 
 /* ── APP BACKGROUND ── */
-.stApp { background: var(--bg) !important; }
+.stApp {
+  background: var(--bg) !important;
+}
 
-/* Arabic watermark */
+/* Subtle ink-wash watermark */
+.stApp::before {
+  content: '';
+  position: fixed;
+  bottom: 0; right: 0;
+  width: 320px; height: 320px;
+  background: radial-gradient(ellipse at bottom right,
+    #c9a84c08 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
 .stApp::after {
   content: 'حبر';
   position: fixed;
-  bottom: -40px;
-  right: 20px;
-  font: 700 280px 'Noto Naskh Arabic', serif;
-  color: #6366f108;
+  bottom: -20px; right: 16px;
+  font: 700 240px var(--font-ar);
+  color: #c9a84c06;
   z-index: 0;
   pointer-events: none;
   user-select: none;
 }
 
-/* ── SIDEBAR BASE ── */
+/* ── SIDEBAR ── */
 [data-testid="stSidebar"] {
   background: var(--surface) !important;
-  border-right: 1px solid var(--border) !important;
+  border-right: 1px solid var(--border-gold) !important;
 }
 [data-testid="stSidebar"] > div {
   padding-top: 0 !important;
@@ -57,10 +74,7 @@ html, body, [class*="css"] {
   z-index: 1;
 }
 
-/* ── SIDEBAR NAV ROWS ──
-   All buttons inside sidebar become slim text rows.
-   The .nav-active wrapper div signals the active state.
-*/
+/* ── SIDEBAR NAV BUTTONS ── */
 [data-testid="stSidebar"] .stButton > button {
   background:    transparent !important;
   border:        none !important;
@@ -69,7 +83,7 @@ html, body, [class*="css"] {
   color:         var(--text-2) !important;
   font-size:     13px !important;
   font-weight:   500 !important;
-  font-family:   Inter, sans-serif !important;
+  font-family:   var(--font-sans) !important;
   text-align:    left !important;
   height:        44px !important;
   padding:       0 16px !important;
@@ -79,78 +93,68 @@ html, body, [class*="css"] {
   margin-bottom: 2px !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover {
-  background:  #ffffff08 !important;
+  background:  #c9a84c0a !important;
   color:       var(--text-1) !important;
   border-left: 3px solid var(--text-3) !important;
 }
-
-/* Active nav item — sibling button gets accent styles */
-[data-testid="stSidebar"] .nav-active + div .stButton > button,
-[data-testid="stSidebar"] .nav-active ~ div .stButton > button:first-child {
-  background:  #6366f11a !important;
+[data-testid="stSidebar"] .nav-active + div .stButton > button {
+  background:  #c9a84c12 !important;
   border-left: 3px solid var(--accent) !important;
-  color:       var(--text-1) !important;
+  color:       var(--accent-light) !important;
 }
 
-/* Logout button — distinct from nav */
-[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:has-text("Logout") {
-  background:    var(--surface-up) !important;
-  border:        1px solid var(--border) !important;
-  border-radius: 8px !important;
-  color:         var(--text-2) !important;
-  font-size:     12px !important;
-  height:        36px !important;
-  margin-top:    4px !important;
-}
-
-/* ── MAIN AREA — PRIMARY BUTTON (Refine Prompt / Send) ── */
+/* ── PRIMARY BUTTON ── */
 .stButton > button[kind="primary"] {
-  background:    var(--accent) !important;
-  color:         #ffffff !important;
+  background:    linear-gradient(135deg, #c9a84c, #a8863a) !important;
+  color:         #0f0e17 !important;
   border:        none !important;
-  border-radius: 10px !important;
+  border-radius: 12px !important;
   height:        52px !important;
-  font-size:     15px !important;
+  font-size:     14px !important;
   font-weight:   600 !important;
-  box-shadow:    none !important;
+  font-family:   var(--font-sans) !important;
+  letter-spacing: 0.02em !important;
+  box-shadow:    0 4px 20px #c9a84c30 !important;
   transition:    all 150ms ease !important;
 }
 .stButton > button[kind="primary"]:hover {
-  background:  var(--accent-hover) !important;
-  box-shadow:  0 0 20px var(--accent-glow) !important;
-  transform:   scale(1.01) !important;
+  background: linear-gradient(135deg, #e8c97a, #c9a84c) !important;
+  box-shadow: 0 6px 28px #c9a84c40 !important;
+  transform:  translateY(-1px) !important;
 }
 .stButton > button[kind="primary"]:active {
-  transform: scale(0.99) !important;
+  transform: translateY(0) scale(0.99) !important;
 }
 
-/* ── SECONDARY BUTTONS (main area only) ── */
+/* ── SECONDARY BUTTONS ── */
 .main .stButton > button,
 section[data-testid="stMain"] .stButton > button {
   background:    var(--surface-up) !important;
-  border:        1px solid var(--border) !important;
-  border-radius: 8px !important;
+  border:        1px solid var(--border-gold) !important;
+  border-radius: 10px !important;
   color:         var(--text-2) !important;
   font-size:     13px !important;
-  height:        40px !important;
+  height:        42px !important;
   transition:    all 150ms ease !important;
 }
 .main .stButton > button:hover,
 section[data-testid="stMain"] .stButton > button:hover {
-  background: #ffffff0a !important;
-  color:      var(--text-1) !important;
+  background:  #c9a84c0a !important;
+  color:       var(--accent-light) !important;
+  border-color:#c9a84c55 !important;
 }
 
 /* ── INPUTS ── */
 .stTextArea textarea,
 .stTextInput input {
-  background:  var(--surface-up) !important;
-  border:      1px solid var(--border) !important;
-  border-radius: 10px !important;
-  color:       var(--text-1) !important;
-  font-family: Inter, sans-serif !important;
-  font-size:   14px !important;
-  transition:  border-color 150ms ease !important;
+  background:    var(--surface-up) !important;
+  border:        1px solid var(--border-gold) !important;
+  border-radius: 12px !important;
+  color:         var(--text-1) !important;
+  font-family:   var(--font-sans) !important;
+  font-size:     14px !important;
+  transition:    border-color 150ms ease !important;
+  caret-color:   var(--accent) !important;
 }
 .stTextArea textarea:focus,
 .stTextInput input:focus {
@@ -166,31 +170,18 @@ section[data-testid="stMain"] .stButton > button:hover {
 /* ── SELECTBOX ── */
 .stSelectbox > div > div {
   background:    var(--surface-up) !important;
-  border:        1px solid var(--border) !important;
+  border:        1px solid var(--border-gold) !important;
   border-radius: 10px !important;
   color:         var(--text-1) !important;
 }
 
 /* ── LABELS ── */
-.stTextArea label,
-.stTextInput label,
-.stSelectbox label {
+label, .stTextArea label, .stTextInput label, .stSelectbox label {
   color:          var(--text-2) !important;
-  font-size:      12px !important;
+  font-size:      11px !important;
   font-weight:    500 !important;
-  letter-spacing: 0.04em !important;
-}
-
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar       { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #ffffff15; border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: #ffffff30; }
-
-/* ── FOCUS ── */
-*:focus-visible {
-  outline:    none !important;
-  box-shadow: 0 0 0 3px #6366f130 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
 }
 
 /* ── ALERTS ── */
@@ -198,6 +189,19 @@ section[data-testid="stMain"] .stButton > button:hover {
   border-radius: 10px !important;
   border:        none !important;
   font-size:     13px !important;
+  background:    var(--surface-up) !important;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar       { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c9a84c22; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #c9a84c44; }
+
+/* ── FOCUS ── */
+*:focus-visible {
+  outline:    none !important;
+  box-shadow: 0 0 0 3px #c9a84c25 !important;
 }
 
 /* ── HIDE STREAMLIT CHROME ── */
@@ -205,61 +209,72 @@ section[data-testid="stMain"] .stButton > button:hover {
 [data-testid="collapsedControl"] { display: flex !important; }
 .stDeployButton { display: none !important; }
 
+/* ── MAIN LAYOUT ── */
+.main .block-container {
+  padding-bottom: 160px !important;
+  padding-top:    0 !important;
+  max-width:      680px !important;
+  margin:         0 auto !important;
+}
+
 /* ── BRAND CLASSES ── */
 .uplink-bar {
-  font:            11px 'JetBrains Mono', monospace;
+  font:            11px var(--font-mono);
   color:           var(--text-3);
   display:         flex;
   justify-content: space-between;
-  border-bottom:   1px solid var(--border);
-  padding-bottom:  8px;
+  align-items:     center;
+  border-bottom:   1px solid var(--border-gold);
+  padding:         10px 0 8px;
   margin-bottom:   12px;
 }
 .dot.active   { color: var(--success); }
 .dot.inactive { color: var(--danger); }
 
 .brand-ar {
-  font:       700 28px 'Noto Naskh Arabic', serif;
-  text-align: right;
-  color:      var(--text-1);
-  line-height:1.3;
+  font:        700 26px var(--font-ar);
+  text-align:  right;
+  color:       var(--accent-light);
+  line-height: 1.3;
 }
 .brand-divider {
   height:     1px;
-  background: var(--accent);
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
   margin:     8px 0;
+  opacity:    .6;
 }
 .brand-en {
-  font:           11px 'JetBrains Mono', monospace;
-  color:          var(--text-2);
+  font:           11px var(--font-mono);
+  color:          var(--text-3);
   letter-spacing: 0.15em;
-  margin-bottom:  16px;
+  margin-bottom:  12px;
 }
 
 /* ── IDENTITY CARD ── */
 .identity-card {
   height:        48px;
-  background:    var(--surface-up);
-  border:        1px solid var(--border);
-  border-radius: 10px;
-  padding:       0 12px;
+  background:    var(--surface-card);
+  border:        1px solid var(--border-gold);
+  border-radius: 12px;
+  padding:       0 14px;
   display:       flex;
   align-items:   center;
   gap:           10px;
   margin-bottom: 4px;
 }
 .avatar {
-  width:           28px;
-  height:          28px;
+  width:           32px;
+  height:          32px;
   border-radius:   999px;
-  background:      var(--accent);
-  color:           #fff;
+  background:      linear-gradient(135deg, #c9a84c, #a8863a);
+  color:           #0f0e17;
   display:         flex;
   align-items:     center;
   justify-content: center;
-  font-size:       12px;
+  font-size:       13px;
   font-weight:     700;
   flex-shrink:     0;
+  font-family:     var(--font-sans);
 }
 .name   { font-size: 13px; font-weight: 600; color: var(--text-1); }
 .logout {
@@ -274,48 +289,45 @@ section[data-testid="stMain"] .stButton > button:hover {
 
 /* ── SIDEBAR SECTION LABELS ── */
 .sidebar-section-label {
-  font:           11px 'JetBrains Mono', monospace;
+  font:           10px var(--font-mono);
   color:          var(--text-3);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding:        0 4px;
-  margin-bottom:  6px;
-  margin-top:     4px;
+  padding:        0 2px;
+  margin:         12px 0 6px;
 }
 
 /* ── NAV SECTION ── */
 .nav-section {
-  margin:        12px 0;
-  border-top:    1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  padding:       8px 0;
+  margin:  8px 0;
+  padding: 6px 0;
+  border-top:    1px solid var(--border-gold);
+  border-bottom: 1px solid var(--border-gold);
 }
-.nav-item { display: block; }
 
 /* ── STATS CARD ── */
 .stats-card {
-  background:     var(--surface-up);
-  border:         1px solid var(--border);
+  background:     var(--surface-card);
+  border:         1px solid var(--border-gold);
   border-radius:  12px;
   padding:        14px 16px;
   display:        grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap:            8px;
   margin:         12px 0;
-  text-align:     center;
 }
 .stat-item  { text-align: center; }
 .stat-value {
-  font-size:   18px;
+  font-size:   20px;
   font-weight: 700;
-  color:       var(--text-1);
-  font-family: 'JetBrains Mono', monospace;
+  color:       var(--accent-light);
+  font-family: var(--font-serif);
   display:     block;
 }
 .stat-label {
-  font-size:      10px;
+  font-size:      9px;
   color:          var(--text-3);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   margin-top:     2px;
   display:        block;
@@ -324,13 +336,13 @@ section[data-testid="stMain"] .stButton > button:hover {
 /* ── INTELLIGENCE CARD ── */
 .intel-card {
   border-left:   2px solid var(--accent);
-  background:    var(--surface-up);
-  border-radius: 0 8px 8px 0;
+  background:    var(--surface-card);
+  border-radius: 0 10px 10px 0;
   padding:       10px 14px;
   margin:        8px 0;
 }
 .intel-title {
-  font:           11px 'JetBrains Mono', monospace;
+  font:           10px var(--font-mono);
   color:          var(--accent);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -342,87 +354,413 @@ section[data-testid="stMain"] .stButton > button:hover {
   align-items:     center;
   margin-bottom:   4px;
 }
-.intel-key {
-  font-size:      10px;
-  color:          var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.intel-key { font-size: 10px; color: var(--text-3); text-transform: uppercase; }
+.intel-val { font-size: 12px; color: var(--text-1); font-weight: 500; }
+
+/* ── WORKSPACE GREETING ── */
+.ws-greeting {
+  padding: 24px 0 20px;
 }
-.intel-val {
-  font-size:   12px;
+.ws-greeting-time {
+  font:           11px var(--font-mono);
+  color:          var(--text-3);
+  letter-spacing: .1em;
+  margin-bottom:  6px;
+}
+.ws-greeting-main {
+  font:        600 32px var(--font-serif);
   color:       var(--text-1);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+.ws-greeting-sub {
+  font-size: 14px;
+  color:     var(--text-2);
+}
+
+/* ── ORIGINAL PROMPT CARD ── */
+.prompt-card {
+  background:    var(--surface-card);
+  border:        1px solid var(--border);
+  border-radius: 16px;
+  padding:       20px;
+  margin-bottom: 0;
+}
+.prompt-card-header {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+  margin-bottom:   14px;
+}
+.prompt-card-label {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  font-size:   13px;
+  color:       var(--text-2);
   font-weight: 500;
+}
+.prompt-card-icon {
+  width:           28px;
+  height:          28px;
+  border-radius:   999px;
+  background:      var(--surface-up);
+  border:          1px solid var(--border);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       13px;
+}
+.prompt-card-text {
+  font-size:   16px;
+  color:       var(--text-1);
+  line-height: 1.6;
+  margin-bottom: 14px;
+  font-family: var(--font-sans);
+}
+.prompt-card-meta {
+  font-size: 12px;
+  color:     var(--text-3);
+}
+
+/* ── CONNECTOR ── */
+.card-connector {
+  display:         flex;
+  justify-content: center;
+  align-items:     center;
+  height:          36px;
+  position:        relative;
+  z-index:         1;
+}
+.card-connector::before {
+  content:    '';
+  position:   absolute;
+  top:        0; bottom: 0;
+  left:       50%;
+  width:      1px;
+  background: linear-gradient(to bottom, var(--border), var(--accent), var(--border));
+}
+.card-connector-dot {
+  width:           28px;
+  height:          28px;
+  border-radius:   999px;
+  background:      var(--surface-card);
+  border:          1px solid var(--border-gold);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       12px;
+  color:           var(--accent);
+  position:        relative;
+  z-index:         2;
+}
+
+/* ── REFINED INK CARD ── */
+.refined-card {
+  background:    var(--surface-card);
+  border:        1px solid var(--border-gold);
+  border-radius: 16px;
+  padding:       20px;
+  position:      relative;
+  overflow:      hidden;
+}
+.refined-card::before {
+  content:    '';
+  position:   absolute;
+  inset:      0;
+  background: linear-gradient(135deg, #c9a84c08 0%, transparent 60%);
+  pointer-events: none;
+}
+.refined-card-header {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+  margin-bottom:   14px;
+}
+.refined-card-label {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  font-size:   14px;
+  color:       var(--accent-light);
+  font-weight: 600;
+  font-family: var(--font-serif);
+}
+.refined-card-icon {
+  width:           30px;
+  height:          30px;
+  border-radius:   999px;
+  background:      var(--accent-dim);
+  border:          1px solid var(--border-gold);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       14px;
+}
+.refined-badge {
+  background:    var(--accent-dim);
+  border:        1px solid var(--border-gold);
+  border-radius: 999px;
+  padding:       4px 12px;
+  font-size:     11px;
+  color:         var(--accent-light);
+  font-family:   var(--font-mono);
+  letter-spacing:.04em;
+}
+.refined-card-text {
+  font-size:   15px;
+  color:       var(--accent-light);
+  line-height: 1.7;
+  margin-bottom: 16px;
+  font-family:   var(--font-sans);
+}
+.refined-card-divider {
+  height:     1px;
+  background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+  margin:     12px 0;
+}
+.refined-card-meta {
+  font-size: 12px;
+  color:     var(--text-3);
+}
+
+/* ── ACTION ROW ── */
+.action-row {
+  display: flex;
+  gap:     10px;
+  margin:  16px 0;
+}
+.action-btn {
+  flex:            1;
+  height:          44px;
+  background:      var(--surface-up);
+  border:          1px solid var(--border-gold);
+  border-radius:   12px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             6px;
+  font-size:       13px;
+  color:           var(--text-2);
+  cursor:          pointer;
+  transition:      all 150ms ease;
+}
+.action-btn:hover {
+  background:   var(--accent-dim);
+  color:        var(--accent-light);
+  border-color: var(--accent);
+}
+
+/* ── RECENT INKS LIST ── */
+.section-header {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+  margin:          24px 0 14px;
+}
+.section-title {
+  font:        600 20px var(--font-serif);
+  color:       var(--text-1);
+}
+.section-link {
+  font-size: 13px;
+  color:     var(--accent);
+  cursor:    pointer;
+}
+.ink-item {
+  display:       flex;
+  align-items:   flex-start;
+  gap:           14px;
+  padding:       16px;
+  background:    var(--surface-card);
+  border:        1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  transition:    all 150ms ease;
+  cursor:        pointer;
+}
+.ink-item:hover {
+  border-color: var(--border-gold);
+  background:   var(--surface-up);
+}
+.ink-thumb {
+  width:           48px;
+  height:          48px;
+  border-radius:   10px;
+  background:      var(--surface-up);
+  border:          1px solid var(--border-gold);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font:            600 18px var(--font-ar);
+  color:           var(--accent-light);
+  flex-shrink:     0;
+}
+.ink-content { flex: 1; min-width: 0; }
+.ink-title {
+  font-size:     14px;
+  font-weight:   600;
+  color:         var(--text-1);
+  margin-bottom: 4px;
+  white-space:   nowrap;
+  overflow:      hidden;
+  text-overflow: ellipsis;
+}
+.ink-preview {
+  font-size:   12px;
+  color:       var(--text-2);
+  line-height: 1.4;
+  display:     -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow:    hidden;
+}
+.ink-date {
+  font-size:  11px;
+  color:      var(--text-3);
+  white-space:nowrap;
+  flex-shrink:0;
+  font-family:var(--font-mono);
+}
+
+/* ── BOTTOM INPUT BAR ── */
+#ws-bar {
+  position:   fixed;
+  bottom:     0; left: 0; right: 0;
+  z-index:    1000;
+  background: linear-gradient(to top, #0f0e17 70%, transparent);
+  padding:    12px 16px 24px;
+}
+@media (min-width: 768px) {
+  #ws-bar { left: 260px; padding: 16px 24px 28px; }
+}
+.ws-bar-inner {
+  background:    var(--surface-up);
+  border:        1px solid var(--border-gold);
+  border-radius: 999px;
+  padding:       8px 8px 8px 20px;
+  display:       flex;
+  align-items:   center;
+  gap:           8px;
+  max-width:     640px;
+  margin:        0 auto;
+  box-shadow:    0 4px 24px #00000040;
+}
+#ws-bar .stTextArea textarea {
+  background:  transparent !important;
+  border:      none !important;
+  box-shadow:  none !important;
+  padding:     4px 0 !important;
+  font-size:   14px !important;
+  min-height:  40px !important;
+  max-height:  120px !important;
+  resize:      none !important;
+  color:       var(--text-1) !important;
+  font-family: var(--font-sans) !important;
+}
+#ws-bar .stTextArea textarea:focus {
+  border: none !important; box-shadow: none !important;
+}
+#ws-bar .stButton > button {
+  background:    transparent !important;
+  border:        none !important;
+  border-radius: 999px !important;
+  width:         36px !important;
+  height:        36px !important;
+  padding:       0 !important;
+  font-size:     16px !important;
+  color:         var(--text-2) !important;
+  transition:    all 150ms !important;
+  flex-shrink:   0 !important;
+  box-shadow:    none !important;
+}
+#ws-bar .stButton > button:hover {
+  color:      var(--accent-light) !important;
+  background: var(--accent-dim) !important;
+}
+/* Send button */
+#ws-bar [data-testid="stButton"]:last-child > button {
+  background:    linear-gradient(135deg, #c9a84c, #a8863a) !important;
+  color:         #0f0e17 !important;
+  width:         40px !important;
+  height:        40px !important;
+  font-size:     17px !important;
+}
+
+/* ── QUICK ACTION PILLS ── */
+.quick-pills {
+  display:         flex;
+  gap:             8px;
+  justify-content: center;
+  flex-wrap:       wrap;
+  margin-bottom:   24px;
+}
+div[data-testid="column"] .stButton > button {
+  background:    var(--surface-up) !important;
+  border:        1px solid var(--border-gold) !important;
+  border-radius: 999px !important;
+  color:         var(--text-2) !important;
+  font-size:     13px !important;
+  height:        38px !important;
+  padding:       0 16px !important;
+  transition:    all 150ms !important;
+  white-space:   nowrap !important;
+}
+div[data-testid="column"] .stButton > button:hover {
+  background:   var(--accent-dim) !important;
+  color:        var(--accent-light) !important;
+  border-color: var(--accent) !important;
 }
 
 /* ── EMPTY STATE ── */
-.empty-state      { text-align: center; padding: 48px 24px; }
-.empty-state .en  { font-size: 14px; color: var(--text-3); margin-bottom: 6px; }
-.empty-state .ar  {
-  font-size:   13px;
+.empty-state { text-align: center; padding: 48px 24px; }
+.empty-state .en {
+  font:        600 20px var(--font-serif);
   color:       var(--text-3);
-  font-family: 'Noto Naskh Arabic', serif;
+  margin-bottom: 8px;
+}
+.empty-state .ar {
+  font-size:   14px;
+  color:       var(--text-3);
+  font-family: var(--font-ar);
+}
+
+/* ── PIPELINE ANIMATION ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── MAINTENANCE ── */
 .maintenance-lock {
   text-align:  center;
   padding:     40px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   color:       var(--danger);
   font-size:   18px;
 }
 
-/* ── ANIMATIONS ── */
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* ── MISC ── */
+.sidebar-section-label {
+  font:           10px var(--font-mono);
+  color:          var(--text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding:        0 2px;
+  margin:         12px 0 6px;
 }
-@keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0);   }
+.nav-section {
+  margin:  8px 0;
+  padding: 6px 0;
+  border-top:    1px solid var(--border-gold);
+  border-bottom: 1px solid var(--border-gold);
 }
-
-/* ── WORKSPACE BOTTOM BAR ── */
-.main .block-container {
-  padding-bottom: 150px !important;
-  padding-top:    8px !important;
-  max-width:      720px !important;
-  margin:         0 auto !important;
-}
-
-/* ── QUICK ACTION CARDS ── */
-div[data-testid="column"] .stButton > button {
-  background:    var(--surface-up) !important;
-  border:        1px solid var(--border) !important;
-  border-radius: 14px !important;
-  color:         var(--text-2) !important;
-  font-size:     12px !important;
-  height:        auto !important;
-  padding:       12px 8px !important;
-  white-space:   normal !important;
-  line-height:   1.4 !important;
-  transition:    all 150ms ease !important;
-}
-div[data-testid="column"] .stButton > button:hover {
-  background:   #1c1c2a !important;
-  color:        var(--text-1) !important;
-  border-color: #6366f133 !important;
-}
-
-/* ── TOPBAR ── */
-.topbar {
-  display:     flex;
-  align-items: center;
-  gap:         10px;
-  margin-bottom: 20px;
-}
+.nav-item { display: block; }
+.topbar { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
 .tag {
-  font-size:     11px;
-  background:    var(--surface-up);
-  color:         var(--text-2);
-  padding:       2px 8px;
-  border-radius: 999px;
-  border:        1px solid var(--border);
+  font-size:12px; background:var(--surface-up); color:var(--text-2);
+  padding:2px 10px; border-radius:999px; border:1px solid var(--border-gold);
 }
-
 </style>
 '''
