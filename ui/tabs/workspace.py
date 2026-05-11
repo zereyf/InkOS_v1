@@ -1,9 +1,9 @@
 from __future__ import annotations
-import json, re, time, os
+import re, time
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any
+
 import streamlit as st
-from groq import Groq
 from state import K
 from security.sanitizer import sanitize_input
 from engine.refiner import run_refinement_and_audit
@@ -12,8 +12,36 @@ from forge.intelligence import resolve_target_model
 from vault.supabase_client import SUPABASE_MISSING
 from vault.vault_engine import save_prompt
 
-WAT_TZ = timezone(timedelta(hours=1))
+WAT_TZ          = timezone(timedelta(hours=1))
 LOCAL_VAULT_KEY = "local_vault_items"
+
+# ── Target models shown in + picker ──
+TARGET_MODELS = [
+    ("✦ AUTO-SELECT",  "auto"),
+    ("ChatGPT",        "chatgpt"),
+    ("Claude",         "claude"),
+    ("Gemini",         "gemini"),
+    ("Midjourney",     "midjourney"),
+    ("DALL·E",         "dalle"),
+    ("FLUX",           "flux"),
+]
+
+# ── Quick actions ──
+QUICK_ACTIONS = [
+    ("⚡", "Refine a prompt",    "Refine and improve the following prompt:\n\n"),
+    ("🎭", "Apply a persona",    "Apply a persona to this prompt. Target audience: [audience]. Tone: [tone]. Goal: [goal].\n\nPrompt:\n"),
+    ("🔒", "Secure to vault",    "Write a production-ready prompt that I can save to my vault for reuse:\n\n"),
+    ("🧠", "Build from template","Create a complete, detailed prompt for the following use case:\n\n"),
+]
+
+ROTATING_QUOTES = [
+    "A great prompt is architecture, not words.",
+    "الكلمة الصحيحة تغيّر كل شيء",
+    "Precision is the highest form of intelligence.",
+    "الوضوح قوة — clarity is power.",
+    "The best prompt anticipates the answer.",
+    "حبر وفكرة — ink and idea, refined.",
+]
 
 PIPELINE_STEPS = [
     ("Analyzing prompt structure",        "Mapping clauses, constraints, and ambiguity..."),
@@ -26,446 +54,489 @@ PIPELINE_STEPS = [
     ("Finalizing refined prompt",         "Packaging final output and telemetry..."),
 ]
 
-ROTATING_QUOTES = [
-    "A great prompt is architecture, not words.",
-    "الكلمة الصحيحة تغيّر كل شيء",
-    "Precision is the highest form of intelligence.",
-    "الوضوح قوة. الغموض ضعف.",
-    "The best prompt anticipates the answer.",
-    "حبر وفكرة — ink and idea, refined.",
-]
 
-TEMPLATES = [
-    ("Blog Post", "Write a detailed blog post about [topic] targeting [audience]. Include an engaging introduction, structured sections with headers, and a compelling conclusion."),
-    ("Email",     "Write a professional email to [recipient] about [topic]. Tone: [formal/casual]. Goal: [what you want them to do]."),
-    ("Code",      "Write [language] code that [does what]. Requirements: [list requirements]. Handle edge cases and include comments."),
-    ("Image",     "Create a [style] image of [subject]. Mood: [mood]. Lighting: [lighting]. Color palette: [colors]. Camera angle: [angle]."),
-    ("Research",  "Research and summarize [topic]. Cover: key findings, current debates, practical implications. Audience: [audience level]."),
-]
+# ────────────────────────────────────────────────
+# HELPERS
+# ────────────────────────────────────────────────
 
 def _get_dna_context() -> dict:
     return {
-        K.INK_DNA:   str(st.session_state.get(K.INK_DNA)   or ""),
-        K.INTEL_DNA: str(st.session_state.get(K.INTEL_DNA) or ""),
-        K.HIKMAH_DNA:str(st.session_state.get(K.HIKMAH_DNA)or ""),
+        K.INK_DNA:    str(st.session_state.get(K.INK_DNA)    or ""),
+        K.INTEL_DNA:  str(st.session_state.get(K.INTEL_DNA)  or ""),
+        K.HIKMAH_DNA: str(st.session_state.get(K.HIKMAH_DNA) or ""),
     }
 
-def _extract_telemetry(result: str, start_time: float) -> Dict[str, Any]:
-    latency_ms = int((time.perf_counter() - start_time) * 1000)
-    words = result.split(); word_count = len(words)
-    density = round(len(result) / word_count, 2) if word_count > 0 else 0
-    return {"latency_ms": latency_ms, "word_count": word_count, "density": density}
 
-def extract_clean_output(raw_response: str) -> str:
-    """
-    Strips ALL internal structure from the LLM response.
-    Returns only the clean, user-facing refined prompt.
-    """
-    text = str(raw_response or "")
-
-    # ── Remove PART 1 / PART 2 sections and everything before the actual prompt ──
-    text = re.sub(r"\*\*\s*PART\s*1\s*:.*?(?=\*\*\s*PART\s*2\s*:|$)", "", text, flags=re.I | re.S)
-    text = re.sub(r"\*\*\s*PART\s*2\s*:.*?(?=\*\*\s*PART\s*3\s*:|$)", "", text, flags=re.I | re.S)
-    text = re.sub(r"\*\*\s*PART\s*\d+\s*:.*?\*\*", "", text, flags=re.I | re.S)
-
-    # ── Remove target prompt headers (THE main culprit) ──
-    text = re.sub(
-        r"(?:Claude|GPT|ChatGPT|Gemini|DALL-?E|Midjourney|FLUX|OpenAI)\s*(?:Target\s*)?Prompt\s*:\s*",
-        "", text, flags=re.I
+def extract_clean_output(raw: str) -> str:
+    """Strip ALL internal structure — return only the clean user-facing prompt."""
+    t = str(raw or "")
+    # PART blocks
+    t = re.sub(r"\*\*\s*PART\s*\d+\s*:.*?(?=\*\*\s*PART\s*\d+\s*:|$)", "", t, flags=re.I | re.S)
+    # Target prompt headers
+    t = re.sub(
+        r"(?:Claude|GPT|ChatGPT|Gemini|DALL-?E|Midjourney|FLUX|OpenAI)"
+        r"\s*(?:Target\s*)?Prompt\s*:\s*",
+        "", t, flags=re.I,
     )
-
-    # ── Remove A.I.Z.E.N. identity block ──
-    text = re.sub(r"A\.I\.Z\.E\.N\..*?InkOS\.", "", text, flags=re.I | re.S)
-    text = re.sub(r"Algorithmic Intelligence Zenith.*?InkOS\.", "", text, flags=re.I | re.S)
-
-    # ── Remove XML tags and their content ──
-    for tag in ("quality-bar", "edge-cases", "constraints", "quality_bar",
-                "edge_cases", "role", "task", "visual-aesthetic",
-                "strategic-focus", "philosophical-bounds"):
-        text = re.sub(rf"<{tag}[^>]*>.*?</{tag}>", "", text, flags=re.I | re.S)
-    text = re.sub(r"<[^>]+>", "", text)  # strip any remaining tags
-
-    # ── Remove JSON blocks ──
-    text = re.sub(r"```(?:json|xml|python)?[\s\S]*?```", "", text, flags=re.I)
-    text = re.sub(r"\{\s*\"score\"[\s\S]*?\}\s*$", "", text, flags=re.I)
-    text = re.sub(r"\{[\s\S]{0,500}\"audit\"[\s\S]{0,500}\}", "", text, flags=re.I)
-
-    # ── Remove markdown headers and bold markers ──
-    text = re.sub(r"^\s*#{1,6}\s.*$", "", text, flags=re.M)
-    text = text.replace("**", "").replace("__", "")
-
-    # ── Remove common internal label prefixes ──
-    text = re.sub(
+    # AIZEN / identity blocks
+    t = re.sub(r"A\.I\.Z\.E\.N\..*?(?:InkOS\.|(?=\n\n))", "", t, flags=re.I | re.S)
+    t = re.sub(r"You are a highly advanced.*?(?:InkOS\.|(?=\n\n))", "", t, flags=re.I | re.S)
+    # XML tags
+    for tag in ("quality-bar","edge-cases","constraints","quality_bar",
+                "edge_cases","role","task","visual-aesthetic",
+                "strategic-focus","philosophical-bounds"):
+        t = re.sub(rf"<{tag}[^>]*>.*?</{tag}>", "", t, flags=re.I | re.S)
+    t = re.sub(r"<[^>]+>", "", t)
+    # Code / JSON
+    t = re.sub(r"```[\s\S]*?```", "", t)
+    t = re.sub(r"\{[^{}]{0,800}\}", "", t)
+    # Markdown
+    t = re.sub(r"^\s*#{1,6}\s.*$", "", t, flags=re.M)
+    t = t.replace("**", "").replace("__", "")
+    # Label prefixes
+    t = re.sub(
         r"^(?:System\s*Prompt|REFINED_PROMPT|PROMPT|OUTPUT|thinking|"
         r"Refined\s*Prompt|Final\s*Prompt|User\s*Prompt)\s*:\s*",
-        "", text, flags=re.I | re.M
+        "", t, flags=re.I | re.M,
     )
+    t = re.sub(r"\n{3,}", "\n\n", t)
+    return t.strip()
 
-    # ── Remove "You are a highly advanced..." AIZEN opening if it slipped through ──
-    text = re.sub(
-        r"You are a highly advanced.*?InkOS\.",
-        "", text, flags=re.I | re.S
-    )
 
-    # ── Clean up whitespace ──
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
+def _score_label(audit: dict) -> tuple:
+    score = (audit or {}).get("score", 0)
+    if score >= 80:   return "Excellent", "#22c55e"
+    elif score >= 60: return "Good",      "#f59e0b"
+    else:             return "Fair",      "#ef4444"
 
-def _analysis_report(prompt: str) -> Dict[str, Any]:
-    words = prompt.split()
-    clarity      = min(95, 35 + len(words) // 2)
-    specificity  = min(95, 20 + sum(1 for w in words if len(w) > 6) * 3)
-    context      = min(95, 15 + prompt.count("\n") * 8 + (20 if "for" in prompt.lower() else 0))
-    effectiveness= min(95, int((clarity + specificity + context) / 3) + 10)
-    notes = []
-    if len(words) < 5:  notes.append("⚠ Very short — add more context")
-    if specificity < 40: notes.append("⚠ Too vague — be more specific")
-    if context < 30:    notes.append("⚠ Missing target audience or goal")
-    return {"clarity": clarity, "specificity": specificity,
-            "context": context, "effectiveness": effectiveness, "notes": notes}
-
-def _render_analysis(prompt: str) -> None:
-    report = _analysis_report(prompt)
-    st.markdown("""
-    <div style='background:#16161f;border:1px solid #ffffff0f;border-radius:12px;
-                padding:16px 20px;margin-bottom:16px;'>
-      <div style='font-size:11px;font-family:JetBrains Mono,monospace;
-                  color:#6366f1;letter-spacing:.1em;margin-bottom:12px;'>
-        PROMPT INTELLIGENCE REPORT
-      </div>
-    """, unsafe_allow_html=True)
-
-    for label, key in [("Clarity","clarity"),("Specificity","specificity"),
-                       ("Context","context"),("Effectiveness","effectiveness")]:
-        val = report[key]
-        color = "#22c55e" if val >= 70 else "#f59e0b" if val >= 45 else "#ef4444"
-        st.markdown(f"""
-        <div style='display:flex;align-items:center;gap:10px;margin-bottom:8px;'>
-          <span style='font-size:12px;color:#71717a;width:100px;'>{label}</span>
-          <div style='flex:1;background:#0a0a0f;border-radius:999px;height:6px;'>
-            <div style='width:{val}%;background:{color};height:6px;
-                        border-radius:999px;transition:width .5s ease;'></div>
-          </div>
-          <span style='font-size:12px;font-family:monospace;color:{color};width:36px;
-                       text-align:right;'>{val}%</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-    for note in report["notes"]:
-        st.markdown(f"<div style='font-size:12px;color:#f59e0b;margin-top:4px;'>{note}</div>",
-                    unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-def _render_pipeline_animation() -> None:
-    quote_idx = int(time.time() / 4) % len(ROTATING_QUOTES)
-    quote = ROTATING_QUOTES[quote_idx]
-
-    container = st.empty()
-    steps_done = []
-
-    for i, (step_name, step_desc) in enumerate(PIPELINE_STEPS):
-        steps_html = ""
-        for j, (s, _) in enumerate(PIPELINE_STEPS):
-            if j < i:
-                state = "done"
-                icon  = "✓"
-                color = "#22c55e"
-                alpha = "1"
-            elif j == i:
-                state = "active"
-                icon  = "⟳"
-                color = "#6366f1"
-                alpha = "1"
-            else:
-                state = "pending"
-                icon  = "○"
-                color = "#3f3f46"
-                alpha = "0.5"
-
-            border = f"border-left:3px solid {color};" if j == i else "border-left:3px solid transparent;"
-            bg     = "background:#6366f108;" if j == i else ""
-            steps_html += f"""
-            <div style='display:flex;align-items:flex-start;gap:12px;padding:10px 14px;
-                        border-radius:8px;margin-bottom:4px;opacity:{alpha};
-                        {border}{bg}transition:all .2s ease;'>
-              <span style='font-size:16px;color:{color};width:20px;text-align:center;
-                           {"animation:spin 1s linear infinite;" if j==i else ""}'>{icon}</span>
-              <div>
-                <div style='font-size:13px;font-family:JetBrains Mono,monospace;
-                            color:{"#f1f1f3" if j<=i else "#3f3f46"};'>{s}</div>
-                {"<div style='font-size:11px;color:#71717a;margin-top:2px;'>" + PIPELINE_STEPS[i][1] + "</div>" if j==i else ""}
-              </div>
-            </div>
-            """
-
-        progress_pct = int((i / len(PIPELINE_STEPS)) * 100)
-
-        container.markdown(f"""
-        <style>
-        @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
-        @keyframes shimmer {{
-          0%   {{ background-position: -200% 0; }}
-          100% {{ background-position: 200% 0; }}
-        }}
-        </style>
-        <div style='background:#111118;border:1px solid #ffffff0f;border-radius:16px;
-                    padding:28px 24px;max-width:520px;margin:0 auto;'>
-
-          <div style='display:flex;justify-content:space-between;align-items:center;
-                      margin-bottom:20px;'>
-            <span style='font-size:12px;font-family:JetBrains Mono,monospace;
-                         color:#6366f1;letter-spacing:.12em;'>⚡ CIPHER ENGINE  //  EXECUTING</span>
-            <span style='font-size:12px;font-family:monospace;color:#71717a;'>{i+1}/{len(PIPELINE_STEPS)}</span>
-          </div>
-
-          <div style='background:#0a0a0f;border-radius:999px;height:4px;
-                      margin-bottom:24px;overflow:hidden;'>
-            <div style='width:{progress_pct}%;height:4px;border-radius:999px;
-                        background:linear-gradient(90deg,#6366f1,#818cf8);
-                        box-shadow:0 0 8px #6366f160;
-                        transition:width .4s ease;'></div>
-          </div>
-
-          {steps_html}
-
-          <div style='margin-top:20px;padding-top:16px;border-top:1px solid #ffffff08;
-                      text-align:center;font-size:12px;font-style:italic;color:#3f3f46;'>
-            "{quote}"
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        time.sleep(0.35)
-
-    # Final — all done
-    container.empty()
 
 def _save_local(uid: str, title: str, tags: str, cfg: dict) -> None:
-    local_items = st.session_state.get(LOCAL_VAULT_KEY, [])
-    local_items.insert(0, {
+    items = st.session_state.get(LOCAL_VAULT_KEY, [])
+    items.insert(0, {
         "id":         f"local-{int(time.time()*1000)}",
         "user_hash":  uid,
         "title":      title,
         "tags":       tags,
         "content":    st.session_state.get(K.LAST_RESULT, ""),
         "target":     st.session_state.get(K.AUTO_TARGET, "ChatGPT"),
-        "framework":  cfg["framework"],
+        "framework":  cfg.get("framework", ""),
         "score":      (st.session_state.get(K.LAST_AUDIT) or {}).get("score", 0),
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
-    st.session_state[LOCAL_VAULT_KEY] = local_items[:200]
+    st.session_state[LOCAL_VAULT_KEY] = items[:200]
 
-def _score_badge(audit: dict) -> str:
-    score = (audit or {}).get("score", 0)
-    if score >= 80:   return "🟢 Excellent", "#22c55e"
-    elif score >= 60: return "🟡 Good",      "#f59e0b"
-    else:             return "🔴 Fair",       "#ef4444"
 
-def render_workspace(cfg: dict) -> None:
-    # ── Header ──
-    st.markdown("""
-    <div style='display:flex;align-items:center;gap:10px;margin-bottom:20px;'>
-      <span style='font-size:14px;font-family:JetBrains Mono,monospace;
-                   color:#71717a;letter-spacing:.08em;'>InkOS</span>
-      <span style='font-size:11px;background:#16161f;color:#71717a;
-                   padding:2px 8px;border-radius:999px;border:1px solid #ffffff0f;
-                   font-family:monospace;'>v1</span>
-    </div>
-    """, unsafe_allow_html=True)
+# ────────────────────────────────────────────────
+# PIPELINE ANIMATION
+# ────────────────────────────────────────────────
 
-    # ── Mode Selector ──
-    mode_key = "workspace_mode"
-    if mode_key not in st.session_state:
-        st.session_state[mode_key] = "Balanced"
+def _run_pipeline(payload, cfg: dict, cleaned: str):
+    """Show live pipeline animation while running refinement."""
+    quote = ROTATING_QUOTES[int(time.time() / 4) % len(ROTATING_QUOTES)]
+    container = st.empty()
 
-    col1, col2, col3 = st.columns(3)
-    for col, mode in zip([col1, col2, col3], ["Balanced", "Precision", "Creative"]):
-        with col:
-            is_active = st.session_state[mode_key] == mode
-            btn_style = (
-                "background:#6366f1;color:#fff;border:1px solid #6366f1;"
-                if is_active else
-                "background:transparent;color:#71717a;border:1px solid #ffffff0f;"
-            )
-            if st.button(mode, key=f"mode_{mode}", use_container_width=True):
-                st.session_state[mode_key] = mode
-                st.rerun()
+    def _render(step_idx: int):
+        steps_html = ""
+        for j, (name, desc) in enumerate(PIPELINE_STEPS):
+            if j < step_idx:
+                icon, color, alpha = "✓", "#22c55e", "1"
+                border, bg, sub = "border-left:3px solid #22c55e22;", "", ""
+            elif j == step_idx:
+                icon, color, alpha = "⟳", "#6366f1", "1"
+                border = "border-left:3px solid #6366f1;"
+                bg     = "background:#6366f108;"
+                sub    = f"<div style='font-size:11px;color:#71717a;margin-top:2px;'>{desc}</div>"
+            else:
+                icon, color, alpha = "○", "#3f3f46", "0.4"
+                border, bg, sub = "border-left:3px solid transparent;", "", ""
 
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+            steps_html += f"""
+            <div style='display:flex;align-items:flex-start;gap:12px;
+                        padding:9px 14px;border-radius:0 8px 8px 0;
+                        margin-bottom:3px;opacity:{alpha};
+                        {border}{bg}'>
+              <span style='font-size:14px;color:{color};width:18px;
+                           text-align:center;flex-shrink:0;'>{icon}</span>
+              <div>
+                <div style='font-size:13px;font-family:JetBrains Mono,monospace;
+                            color:{"#f1f1f3" if j <= step_idx else "#3f3f46"};'>
+                  {name}
+                </div>{sub}
+              </div>
+            </div>"""
 
-    # ── Template Quick-fill ──
-    st.markdown("<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;'>", unsafe_allow_html=True)
-    tcols = st.columns(len(TEMPLATES))
-    for i, (label, template_text) in enumerate(TEMPLATES):
-        with tcols[i]:
-            if st.button(label, key=f"tpl_{label}", use_container_width=True):
-                st.session_state["tpl_inject"] = template_text
-                st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+        pct = int((step_idx / len(PIPELINE_STEPS)) * 100)
+        container.markdown(f"""
+        <div style='background:#111118;border:1px solid #ffffff0f;
+                    border-radius:16px;padding:24px 20px;
+                    max-width:500px;margin:0 auto 120px;'>
+          <div style='display:flex;justify-content:space-between;
+                      align-items:center;margin-bottom:16px;'>
+            <span style='font-size:11px;font-family:JetBrains Mono,monospace;
+                         color:#6366f1;letter-spacing:.1em;'>
+              ⚡ CIPHER ENGINE — EXECUTING
+            </span>
+            <span style='font-size:11px;font-family:monospace;color:#71717a;'>
+              {step_idx + 1}/{len(PIPELINE_STEPS)}
+            </span>
+          </div>
+          <div style='background:#0a0a0f;border-radius:999px;height:3px;
+                      margin-bottom:20px;overflow:hidden;'>
+            <div style='width:{pct}%;height:3px;border-radius:999px;
+                        background:linear-gradient(90deg,#6366f1,#818cf8);
+                        box-shadow:0 0 6px #6366f160;
+                        transition:width .3s ease;'></div>
+          </div>
+          {steps_html}
+          <div style='margin-top:16px;padding-top:12px;
+                      border-top:1px solid #ffffff08;text-align:center;
+                      font-size:11px;font-style:italic;color:#3f3f46;'>
+            "{quote}"
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    # ── Prompt Input ──
-    default_val = st.session_state.pop("tpl_inject", "")
-    intent_val = st.text_area(
-        "Prompt",
-        value=default_val,
-        height=190,
-        placeholder="Describe what you want to create...",
-        label_visibility="collapsed",
-        key="ta_input_widget",
+    # Animate first 6 steps visually
+    for i in range(6):
+        _render(i)
+        time.sleep(0.28)
+
+    # Step 6 — actual API call
+    _render(6)
+    result, audit, _ = run_refinement_and_audit(
+        payload,
+        resolve_target_model(cfg.get("target_model"), cleaned)[0],
+        cfg["framework"],
+        cfg["source_lang"],
+        cfg["aesthetic_choice"],
+        hikmah_style=str(cfg.get("hikmah_style") or "None"),
+        skip_security=False,
     )
 
-    char_count = len(intent_val)
-    st.markdown(
-        f"<div style='font-size:11px;color:#3f3f46;text-align:right;'>{char_count} characters</div>",
-        unsafe_allow_html=True,
-    )
+    # Step 7 — finalizing
+    _render(7)
+    time.sleep(0.20)
+    container.empty()
+    return result, audit
 
-    # ── Execute Button ──
-    execute = st.button("⚡ Refine Prompt", use_container_width=True, type="primary", key="btn_refine_prompt")
 
-    # ── Run Refinement ──
-    if execute and intent_val.strip():
-        # Show analysis report first
-        _render_analysis(intent_val)
+# ────────────────────────────────────────────────
+# CHAT HISTORY RENDERER
+# ────────────────────────────────────────────────
 
-        cleaned, violations = sanitize_input(intent_val)
-        if violations:
-            st.error("⚠ Input blocked by security policy.")
-        else:
-            # Show pipeline animation
-            _render_pipeline_animation()
+def _render_chat_history():
+    history = st.session_state.get(K.HISTORY, [])
 
-            payload = assemble_master_payload(cleaned, cfg, _get_dna_context())
-            start   = time.perf_counter()
-            result, audit, _ = run_refinement_and_audit(
-                payload,
-                resolve_target_model(cfg.get("target_model"), cleaned)[0],
-                cfg["framework"],
-                cfg["source_lang"],
-                cfg["aesthetic_choice"],
-                hikmah_style=str(cfg.get("hikmah_style") or "None"),
-                skip_security=False,
-            )
-            # ── CLEAN OUTPUT — strip all internals ──
-            result = extract_clean_output(result)
+    if not history:
+        st.markdown("""
+        <div style='display:flex;flex-direction:column;align-items:center;
+                    justify-content:center;padding:80px 24px;text-align:center;'>
+          <div style='font-size:40px;margin-bottom:16px;opacity:.12;'>⚡</div>
+          <div style='font-size:15px;color:#3f3f46;margin-bottom:6px;'>
+            Your refined prompts will appear here
+          </div>
+          <div style='font-size:13px;color:#3f3f46;
+                      font-family:Noto Naskh Arabic,serif;'>
+            ستظهر نتائجك هنا
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+        return
 
-            st.session_state[K.LAST_RESULT] = result
-            st.session_state[K.LAST_AUDIT]  = audit
-            st.session_state[K.LAST_INPUT]  = cleaned
-            st.session_state[K.HISTORY] = (
-                st.session_state.get(K.HISTORY, []) +
-                [{"input": cleaned, "output": result,
-                  "time": datetime.now(WAT_TZ).isoformat()}]
-            )[-50:]
-            _extract_telemetry(result, start)
-            st.rerun()
+    for idx, entry in enumerate(history):
+        user_msg = entry.get("input", "")
+        bot_msg  = entry.get("output", "")
+        score    = entry.get("score", 0)
 
-    elif execute and not intent_val.strip():
-        st.warning("Please enter a prompt first.")
-
-    # ── Output Section ──
-    if st.session_state.get(K.LAST_RESULT):
-        audit = st.session_state.get(K.LAST_AUDIT) or {}
-        badge_text, badge_color = _score_badge(audit)
+        # User bubble
+        st.markdown(f"""
+        <div style='display:flex;justify-content:flex-end;
+                    margin-bottom:6px;padding:0 4px;'>
+          <div style='background:#6366f1;color:#fff;
+                      border-radius:18px 18px 4px 18px;
+                      padding:12px 16px;max-width:82%;
+                      font-size:14px;line-height:1.5;
+                      word-break:break-word;'>
+            {user_msg}
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         # Score badge
-        st.markdown(f"""
-        <div style='display:flex;justify-content:flex-end;margin-bottom:8px;'>
-          <span style='background:{badge_color}22;color:{badge_color};
-                       border:1px solid {badge_color}44;border-radius:999px;
-                       padding:4px 14px;font-size:12px;font-weight:600;'>
-            {badge_text}
-          </span>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Before / After
-        raw_input = st.session_state.get(K.LAST_INPUT, "")
-        if raw_input:
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("<div style='font-size:10px;font-family:monospace;color:#3f3f46;letter-spacing:.1em;margin-bottom:6px;'>BEFORE</div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='background:#111118;border:1px solid #ffffff0f;border-radius:12px;padding:14px;font-size:13px;color:#71717a;min-height:80px;'>{raw_input}</div>", unsafe_allow_html=True)
-            with c2:
-                st.markdown("<div style='font-size:10px;font-family:monospace;color:#3f3f46;letter-spacing:.1em;margin-bottom:6px;'>AFTER</div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='background:#111118;border:1px solid #6366f144;border-radius:12px;padding:14px;font-size:13px;color:#f1f1f3;min-height:80px;'>{st.session_state.get(K.LAST_RESULT,'')}</div>", unsafe_allow_html=True)
-        else:
-            st.text_area(
-                "Refined Output",
-                value=st.session_state.get(K.LAST_RESULT, ""),
-                height=260,
-                label_visibility="visible",
-            )
-
-        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
-
-        # ── Vault Section ──
-        st.markdown("""
-        <div style='border-top:1px solid #ffffff08;padding-top:16px;margin-top:8px;'>
-          <div style='font-size:11px;font-family:monospace;color:#3f3f46;
-                      letter-spacing:.1em;margin-bottom:12px;'>SECURE TO VAULT</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        if st.session_state.get("vault_local_banner"):
-            st.info("💾 Saving locally — Vault connection unavailable")
-            st.session_state["vault_local_banner"] = False
-
-        st.text_input("Designation", placeholder="Name this prompt...", key="v_t")
-        st.text_input("Forensic Tags", placeholder="e.g. blog, marketing, ai", key="v_g")
-
-        if st.button("🔒 Secure to Vault", use_container_width=True, key="btn_secure_vault"):
-            uid       = st.session_state.get(K.USER_HASH)
-            title_val = st.session_state.get("v_t", "").strip()
-            tags_val  = st.session_state.get("v_g", "").strip()
-
-            if not title_val:
-                st.error("⚠ Please add a designation before securing.")
-            elif not uid or "GUEST_" in str(uid).upper():
-                st.error("⚠ Vault unavailable — please log in first.")
-            else:
-                if SUPABASE_MISSING:
-                    _save_local(uid, title_val, tags_val, cfg)
-                    st.session_state["vault_local_banner"]  = True
-                    st.session_state["vault_refresh_nonce"] = time.time()
-                    st.session_state["vault_saved_until"]   = time.time() + 3
-                    st.rerun()
-                else:
-                    _, err = save_prompt(
-                        uid,
-                        title=title_val,
-                        tags=tags_val,
-                        content=st.session_state.get(K.LAST_RESULT),
-                        target=st.session_state.get(K.AUTO_TARGET),
-                        framework=cfg["framework"],
-                        score=(st.session_state.get(K.LAST_AUDIT) or {}).get("score", 0),
-                    )
-                    if err:
-                        st.error("⚠ Vault unavailable — check connection.")
-                    else:
-                        st.session_state["vault_refresh_nonce"] = time.time()
-                        st.session_state["vault_saved_until"]   = time.time() + 3
-                        st.rerun()
-
-        if st.session_state.get("vault_saved_until", 0) > time.time():
-            st.markdown("""
-            <div style='background:#22c55e15;border:1px solid #22c55e44;border-radius:10px;
-                        padding:12px 16px;text-align:center;color:#22c55e;
-                        font-size:14px;font-weight:600;margin-top:8px;'>
-              ✓ Secured to Vault
+        if score:
+            label, color = _score_label({"score": score})
+            st.markdown(f"""
+            <div style='display:flex;padding:0 4px;margin-bottom:4px;'>
+              <span style='font-size:11px;color:{color};
+                           background:{color}18;border:1px solid {color}33;
+                           border-radius:999px;padding:2px 10px;'>
+                ● {label}
+              </span>
             </div>
             """, unsafe_allow_html=True)
 
-    else:
-        # ── Empty State ──
-        st.markdown("""
-        <div style='text-align:center;padding:48px 24px;'>
-          <div style='font-size:32px;margin-bottom:16px;opacity:.3;'>⚡</div>
-          <div style='font-size:14px;color:#3f3f46;margin-bottom:6px;'>
-            Your refined prompt will appear here
-          </div>
-          <div style='font-size:12px;color:#3f3f46;font-family:Noto Naskh Arabic,serif;'>
-            ستظهر نتيجتك هنا
+        # Bot bubble
+        st.markdown(f"""
+        <div style='display:flex;justify-content:flex-start;
+                    margin-bottom:4px;padding:0 4px;'>
+          <div style='background:#16161f;border:1px solid #ffffff0f;
+                      color:#f1f1f3;border-radius:18px 18px 18px 4px;
+                      padding:14px 16px;max-width:92%;
+                      font-size:14px;line-height:1.6;
+                      word-break:break-word;white-space:pre-wrap;'>
+            {bot_msg}
           </div>
         </div>
         """, unsafe_allow_html=True)
+
+        # Copy button
+        copy_key = f"copy_{idx}"
+        if st.button("⎘ Copy", key=copy_key):
+            st.session_state[f"{copy_key}_done"] = True
+        if st.session_state.get(f"{copy_key}_done"):
+            st.markdown(
+                "<div style='font-size:11px;color:#22c55e;padding:0 6px;'>"
+                "✓ Copied to clipboard</div>",
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+
+
+# ────────────────────────────────────────────────
+# MODEL PICKER
+# ────────────────────────────────────────────────
+
+def _render_model_picker():
+    selected = st.session_state.get("selected_model_label", "✦ AUTO-SELECT")
+    st.markdown("""
+    <div style='font-size:11px;font-family:JetBrains Mono,monospace;
+                color:#6366f1;letter-spacing:.08em;margin-bottom:10px;'>
+      SELECT TARGET MODEL
+    </div>
+    """, unsafe_allow_html=True)
+
+    for label, value in TARGET_MODELS:
+        is_active = selected == label
+        if st.button(
+            ("✓ " if is_active else "   ") + label,
+            key=f"mpick_{value}",
+            use_container_width=True,
+        ):
+            st.session_state["selected_model_label"] = label
+            st.session_state["selected_model_value"] = value
+            st.session_state["show_model_picker"]    = False
+            st.rerun()
+
+
+# ────────────────────────────────────────────────
+# MAIN ENTRY POINT
+# ────────────────────────────────────────────────
+
+def render_workspace(cfg: dict) -> None:
+
+    # ── Layout CSS ──
+    st.markdown("""
+    <style>
+    /* Extra bottom padding so content clears the fixed bar */
+    .main .block-container {
+        padding-bottom: 150px !important;
+        padding-top: 8px !important;
+        max-width: 720px !important;
+        margin: 0 auto !important;
+    }
+    /* Fixed bottom input bar */
+    #ws-bar {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        z-index: 1000;
+        background: linear-gradient(to top, #0a0a0f 75%, transparent);
+        padding: 12px 12px 20px;
+    }
+    @media (min-width: 768px) {
+        #ws-bar { left: 260px; padding: 16px 24px 28px; }
+    }
+    /* Input bar inner container */
+    .ws-bar-inner {
+        background: #16161f;
+        border: 1px solid #ffffff14;
+        border-radius: 16px;
+        padding: 6px 8px;
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        max-width: 680px;
+        margin: 0 auto;
+    }
+    /* Override Streamlit textarea inside bar */
+    #ws-bar .stTextArea textarea {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 8px 4px !important;
+        font-size: 14px !important;
+        min-height: 44px !important;
+        max-height: 140px !important;
+        resize: none !important;
+        color: #f1f1f3 !important;
+    }
+    #ws-bar .stTextArea textarea:focus {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    /* Plus / mic / send buttons inside bar */
+    #ws-bar .stButton > button {
+        background: transparent !important;
+        border: none !important;
+        border-radius: 999px !important;
+        width: 36px !important;
+        height: 36px !important;
+        padding: 0 !important;
+        font-size: 18px !important;
+        color: #71717a !important;
+        transition: all 150ms ease !important;
+        flex-shrink: 0 !important;
+    }
+    #ws-bar .stButton > button:hover {
+        background: #ffffff0a !important;
+        color: #f1f1f3 !important;
+    }
+    /* Send button — accent when active */
+    #ws-bar [data-testid="stButton"]:last-child > button {
+        background: #6366f1 !important;
+        color: #fff !important;
+    }
+    #ws-bar [data-testid="stButton"]:last-child > button:hover {
+        background: #4f46e5 !important;
+    }
+    /* Quick action cards */
+    .qa-row .stButton > button {
+        background: #16161f !important;
+        border: 1px solid #ffffff0f !important;
+        border-radius: 14px !important;
+        color: #71717a !important;
+        font-size: 12px !important;
+        height: auto !important;
+        padding: 12px 8px !important;
+        white-space: normal !important;
+        line-height: 1.4 !important;
+        text-align: left !important;
+        transition: all 150ms ease !important;
+    }
+    .qa-row .stButton > button:hover {
+        background: #1c1c2a !important;
+        color: #f1f1f3 !important;
+        border-color: #6366f133 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ── Chat history ──
+    _render_chat_history()
+
+    # ── Model picker overlay ──
+    if st.session_state.get("show_model_picker"):
+        with st.container():
+            st.markdown("""
+            <div style='background:#111118;border:1px solid #ffffff1a;
+                        border-radius:16px;padding:16px 12px;
+                        max-width:260px;margin-bottom:8px;
+                        box-shadow:0 8px 32px #00000060;'>
+            """, unsafe_allow_html=True)
+            _render_model_picker()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── Quick actions (only when no history) ──
+    if not st.session_state.get(K.HISTORY):
+        st.markdown("<div class='qa-row'>", unsafe_allow_html=True)
+        qa_cols = st.columns(4)
+        for i, (icon, label, starter) in enumerate(QUICK_ACTIONS):
+            with qa_cols[i]:
+                if st.button(
+                    f"{icon}  {label}",
+                    key=f"qa_{i}",
+                    use_container_width=True,
+                ):
+                    st.session_state["prefill_input"] = starter
+                    st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── Selected model chip ──
+    selected_label = st.session_state.get("selected_model_label", "✦ AUTO-SELECT")
+    st.markdown(f"""
+    <div style='display:flex;padding:0 4px;margin-bottom:4px;'>
+      <span style='background:#6366f11a;border:1px solid #6366f133;
+                   border-radius:999px;padding:2px 10px;
+                   font-size:11px;color:#6366f1;font-family:monospace;'>
+        ✦ {selected_label.replace("✦ ","")}
+      </span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Input bar ──
+    st.markdown("<div id='ws-bar'><div class='ws-bar-inner'>", unsafe_allow_html=True)
+
+    col_plus, col_input, col_mic, col_send = st.columns([1, 12, 1, 1])
+
+    with col_plus:
+        if st.button("＋", key="btn_plus", help="Select target model"):
+            st.session_state["show_model_picker"] = not st.session_state.get(
+                "show_model_picker", False
+            )
+            st.rerun()
+
+    with col_input:
+        prefill    = st.session_state.pop("prefill_input", "")
+        intent_val = st.text_area(
+            "input",
+            value=prefill,
+            height=52,
+            placeholder="Describe what you want to refine...",
+            label_visibility="collapsed",
+            key="ws_input",
+        )
+
+    with col_mic:
+        st.button("🎤", key="btn_mic", help="Voice input")
+
+    with col_send:
+        has_text = bool((intent_val or "").strip())
+        if has_text:
+            send = st.button("➤", key="btn_send", type="primary")
+        else:
+            st.markdown("<div style='width:36px;height:36px;'></div>",
+                        unsafe_allow_html=True)
+            send = False
+
+    st.markdown("</div></div>", unsafe_allow_html=True)  # close ws-bar
+
+    # ── Handle refinement ──
+    if send and intent_val and intent_val.strip():
+        cleaned, violations = sanitize_input(intent_val)
+        if violations:
+            st.error("⚠ Input blocked by security policy.")
+            return
+
+        # Override model from picker
+        run_cfg = dict(cfg)
+        model_val = st.session_state.get("selected_model_value", "auto")
+        if model_val != "auto":
+            run_cfg["target_model"] = model_val
+
+        payload       = assemble_master_payload(cleaned, run_cfg, _get_dna_context())
+        result, audit = _run_pipeline(payload, run_cfg, cleaned)
+        result        = extract_clean_output(result)
+        score         = (audit or {}).get("score", 0)
+
+        history = st.session_state.get(K.HISTORY, [])
+        history.append({
+            "input":  cleaned,
+            "output": result,
+            "score":  score,
+            "time":   datetime.now(WAT_TZ).isoformat(),
+        })
+        st.session_state[K.HISTORY]     = history[-50:]
+        st.session_state[K.LAST_RESULT] = result
+        st.session_state[K.LAST_AUDIT]  = audit
+        st.session_state[K.LAST_INPUT]  = cleaned
+        st.rerun()
