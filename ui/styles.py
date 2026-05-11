@@ -1,48 +1,15 @@
-"""Premium UI stylesheet for InkOS."""
-
-STYLES: str = """
+STYLES = '''
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
-:root {
-  --bg:#0a0a0f; --surface:#111118; --surface-raised:#16161f; --border:#ffffff0f; --focus:#6366f1;
-  --accent:#6366f1; --accent-glow:#6366f120; --text:#f1f1f3; --text-secondary:#71717a; --text-muted:#3f3f46;
-  --success:#22c55e; --warning:#f59e0b; --danger:#ef4444;
-}
-html, body, [class*="css"] { font-family: Inter, system-ui, -apple-system, sans-serif !important; }
-.stApp{ background:var(--bg)!important; color:var(--text)!important; }
-#MainMenu, footer{ visibility:hidden; }
-header[data-testid="stHeader"]{ background:transparent; }
-.block-container{ padding:20px!important; max-width:720px; margin:0 auto; animation: fadeIn .2s ease; }
-[data-testid="stSidebar"]{ background:var(--surface)!important; border-right:1px solid var(--border)!important; }
-[data-testid="stSidebar"] .block-container{max-width:unset; padding:16px!important;}
-
-.stTextArea textarea, .stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
-  background:var(--surface)!important; color:var(--text)!important; border:1px solid var(--border)!important; border-radius:10px!important;
-}
-.stTextArea textarea{ min-height:180px!important; line-height:1.6!important; font-size:14px!important; }
-.stTextArea textarea:focus, .stTextInput input:focus { border-color:var(--focus)!important; box-shadow:0 0 0 3px #6366f130!important; }
-
-.stButton > button { height:44px; border-radius:8px!important; border:1px solid var(--border)!important; background:transparent!important; color:var(--text)!important; transition:all .15s ease!important; }
-.stButton > button:hover{ transform:scale(1.01); border-color:var(--focus)!important; }
-.primary-btn button{ height:52px!important; background:var(--accent)!important; border-color:var(--accent)!important; font-weight:600; }
-.primary-btn button:hover{ box-shadow:0 0 24px var(--accent-glow); }
-
-.mono{ font-family:"JetBrains Mono", monospace!important; }
-.topbar{ display:flex;justify-content:space-between;align-items:center;margin-bottom:12px; }
-.brand{ font-size:13px;color:var(--text-secondary);font-family:"JetBrains Mono",monospace; }
-.tag{ border:1px solid var(--border);border-radius:999px;padding:2px 10px;color:var(--text-muted);font-size:11px; }
-.card{ background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 1px 3px #00000040; }
-.voice{ height:48px;border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;color:var(--text-secondary); }
-.score-pill{ display:inline-flex; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:600; }
-.score-excellent{ background:#22c55e20; color:var(--success); }
-.score-good{ background:#f59e0b20; color:var(--warning); }
-.score-fair{ background:#ef444420; color:var(--danger); }
-.diff-box{ background:var(--surface-raised); border:1px solid var(--border); border-radius:12px; padding:10px; max-height:360px; overflow:auto; font-family:"JetBrains Mono", monospace; font-size:13px; }
-.diff-add{ background:#22c55e15; color:var(--success);} .diff-del{ background:#ef444415; color:var(--danger);} 
-.sidebar-h{ font-size:11px;color:var(--text-secondary);letter-spacing:.08em;font-family:"JetBrains Mono", monospace;margin:16px 0 8px; }
-.stat-row{ display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
-.stat-card{ background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center; }
-@media (max-width: 768px){ .block-container{padding:16px!important;} }
-@keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap');
+:root{--bg:#0a0a0f;--surface:#111118;--surface-up:#16161f;--border:#ffffff0f;--border-focus:#6366f1;--accent:#6366f1;--accent-glow:#6366f120;--accent-hover:#4f46e5;--text-1:#f1f1f3;--text-2:#71717a;--text-3:#3f3f46;--success:#22c55e;--warning:#f59e0b;--danger:#ef4444;}
+html,body,[class*='css']{font-family:Inter,sans-serif!important;color:var(--text-1)} .mono{font-family:'JetBrains Mono',monospace!important}
+.stApp{background:var(--bg)!important}.stApp::after{content:'حبر';position:fixed;bottom:-40px;right:20px;font:700 280px 'Noto Naskh Arabic',serif;color:#6366f108;z-index:0;pointer-events:none}
+[data-testid='stSidebar']{background:var(--surface)!important;border-right:1px solid var(--border)!important}
+.block-container,[data-testid='stSidebar'] .block-container{position:relative;z-index:1}
+.uplink-bar{font:11px 'JetBrains Mono';color:var(--text-3);display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:8px}.dot.active{color:var(--success)}
+.brand-ar{font:28px 'Noto Naskh Arabic';text-align:right;color:var(--text-1)} .brand-divider{height:1px;background:#6366f1;margin:8px 0}.brand-en{font:11px 'JetBrains Mono';color:var(--text-2);letter-spacing:.15em}
+.identity-card{height:44px;background:var(--surface-up);border:1px solid var(--border);border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px}.avatar{width:28px;height:28px;border-radius:999px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center}.name{font-size:13px;font-weight:600}.logout{margin-left:auto;opacity:0}.identity-card:hover .logout{opacity:1;color:var(--text-2)}
+.stButton>button{border-radius:8px!important;height:44px}.stButton>button[kind='primary'],div[data-testid='stButton'] button:has(span:contains('Refine Prompt')){background:var(--accent)!important;color:#fff!important;height:52px!important;border-radius:10px!important}
+.empty-state{text-align:center;color:var(--text-2);font-size:12px;padding:24px}
 </style>
-"""
+'''

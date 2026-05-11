@@ -19,6 +19,7 @@ from vault.vault_engine import (
     get_all_tags,
 )
 from vault.supabase_client import SUPABASE_MISSING
+LOCAL_VAULT_KEY = "local_vault_items"
 from config import TARGET_GUIDES, LOGIC_FRAMEWORKS, AESTHETIC_PRESETS
 from i18n.translations import t
 
@@ -67,11 +68,20 @@ def render_vault() -> None:
 
     st.markdown('<div class="vc-header"><span class="status-dot" style="background:var(--gold);"></span>NEURAL_MEMORY_VAULT</div>', unsafe_allow_html=True)
 
-    if SUPABASE_MISSING:
-        st.error("DATABASE_OFFLINE: Credentials missing from environment.")
-        return
+    if st.session_state.get("vault_local_banner"):
+        st.warning("Saving locally — Vault connection unavailable")
 
     user_hash = st.session_state.get(K.USER_HASH, "")
+
+    if SUPABASE_MISSING:
+        local = [x for x in st.session_state.get(LOCAL_VAULT_KEY, []) if x.get("user_hash") == user_hash]
+        if not local:
+            st.info("Your refined prompt will appear here\n\nستظهر نتيجتك هنا")
+            return
+        results, search_err = local, None
+    else:
+        results, search_err = None, None
+
     if not user_hash or "GUEST_" in str(user_hash).upper():
         _render_vault_locked()
         return
@@ -108,11 +118,12 @@ def render_vault() -> None:
     with sc4:
         sort_order = st.selectbox("Chronos", ["Newest", "Oldest", "Highest Score", "Lowest Score"], label_visibility="collapsed")
 
-    results, search_err = search_vault(
-        user_hash=user_hash, query=query,
-        tag_filter="" if tag_filter == "All Tags" else tag_filter,
-        target_filter="" if target_filter == "All Targets" else target_filter
-    )
+    if results is None:
+        results, search_err = search_vault(
+            user_hash=user_hash, query=query,
+            tag_filter="" if tag_filter == "All Tags" else tag_filter,
+            target_filter="" if target_filter == "All Targets" else target_filter
+        )
 
     if search_err:
         st.error(f"VAULT_SEARCH_FAILED: {search_err}")
