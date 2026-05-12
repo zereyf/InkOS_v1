@@ -1,7 +1,8 @@
 """
-ui/sidebar.py — Premium Sidebar
-=================================
-v3.0: Dynamic username, stats card, clean section layout.
+ui/sidebar.py — InkOS Sidebar
+================================
+v4.0: Official design system. Dark/light toggle.
+      Dynamic username. Correct brand identity.
 """
 import streamlit as st
 from typing import TypedDict, Optional
@@ -13,26 +14,19 @@ from vault.supabase_client import SUPABASE_MISSING
 
 
 class SidebarConfig(TypedDict):
-    target_model:    str
-    framework:       str
-    source_lang:     str
-    hikmah_style:    str
-    aesthetic_choice:str
-    active_persona:  Optional[dict]
-    expert_mode:     bool
+    target_model:     str
+    framework:        str
+    source_lang:      str
+    hikmah_style:     str
+    aesthetic_choice: str
+    active_persona:   Optional[dict]
+    expert_mode:      bool
 
 
 def _get_display_name() -> str:
-    """
-    Returns the display name from USER_HASH.
-    USER_HASH is the ID the user typed to log in (e.g. 'Ameer', 'Yuki').
-    Falls back to 'User' if not set.
-    """
-    raw = st.session_state.get(K.USER_HASH) or ""
-    raw = str(raw).strip()
+    raw = str(st.session_state.get(K.USER_HASH) or "").strip()
     if not raw or raw.upper().startswith("GUEST_"):
         return "Guest"
-    # Capitalize first letter, rest as-is
     return raw[0].upper() + raw[1:]
 
 
@@ -43,30 +37,39 @@ def _get_avatar_letter(name: str) -> str:
 def render_sidebar_brand() -> None:
     is_active = not SUPABASE_MISSING and bool(st.session_state.get(K.USER_HASH))
     label     = "ACTIVE" if is_active else ("DB_FAULT" if SUPABASE_MISSING else "OFFLINE")
-    dot_class = "active" if is_active else "inactive"
+    dot_cls   = "active" if is_active else "inactive"
 
     st.markdown(f"""
     <div class='uplink-bar'>
       <span>NEURAL_UPLINK</span>
-      <span class='dot {dot_class}'>● {label}</span>
+      <span class='dot {dot_cls}'>● {label}</span>
     </div>
-    <div class='brand-ar'>حبر وفكرة</div>
+    <div class='brand-en'>InkOS</div>
+    <div class='brand-sub'>PREMIUM AI PROMPT REFINER</div>
     <div class='brand-divider'></div>
-    <div class='brand-en'>INKOS  //  MUTI_AUTONOMOUS v1.0</div>
+    <div class='brand-ar'>حبر وفكرة</div>
     """, unsafe_allow_html=True)
 
 
 def render_sidebar() -> SidebarConfig:
+    # ── Dark / Light toggle ──
+    dark_mode = st.session_state.get("dark_mode", True)
+    toggle_label = "☀ Light mode" if dark_mode else "🌙 Dark mode"
+    if st.button(toggle_label, key="theme_toggle", use_container_width=True):
+        st.session_state["dark_mode"] = not dark_mode
+        st.rerun()
 
-    # ── Identity Card ──
-    name   = _get_display_name()
-    letter = _get_avatar_letter(name)
-    is_logged_in = (
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+    # ── Identity card ──
+    name     = _get_display_name()
+    letter   = _get_avatar_letter(name)
+    logged_in = (
         bool(st.session_state.get(K.USER_HASH))
         and not str(st.session_state.get(K.USER_HASH, "")).upper().startswith("GUEST_")
     )
 
-    if is_logged_in:
+    if logged_in:
         st.markdown(f"""
         <div class='identity-card'>
           <div class='avatar'>{letter}</div>
@@ -74,56 +77,47 @@ def render_sidebar() -> SidebarConfig:
           <div class='logout'>↩</div>
         </div>
         """, unsafe_allow_html=True)
-
         if st.button("Logout", key="logout_btn", use_container_width=True):
             st.session_state[K.USER_HASH] = None
             st.rerun()
 
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     # ── Logic Configuration ──
-    st.markdown("""
-    <div class='sidebar-section-label'>LOGIC CONFIGURATION</div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div class='sidebar-section-label'>Logic Configuration</div>",
+                unsafe_allow_html=True)
 
     target_model = st.selectbox(
         "Target Model",
         [AUTO_SELECT_LABEL] + list(TARGET_GUIDES.keys()),
         key="sb_target",
+        label_visibility="collapsed",
     )
     framework = st.selectbox(
         "Framework",
         LOGIC_FRAMEWORKS,
         key="sb_framework",
+        label_visibility="collapsed",
     )
 
-    # Input Language as pill toggle
+    # Language pill toggle
     lang_options = ["English", "Arabic (العربية)"]
-    current_lang = st.session_state.get("sb_lang_idx", 0)
-    lang_cols    = st.columns(2)
-    for i, lang in enumerate(lang_options):
-        with lang_cols[i]:
-            is_sel = current_lang == i
-            style  = (
-                "background:#6366f1;color:#fff;border:1px solid #6366f1;"
-                if is_sel else
-                "background:transparent;color:#71717a;border:1px solid #ffffff0f;"
-            )
-            if st.button(
-                lang,
-                key=f"lang_{i}",
-                use_container_width=True,
-            ):
+    lang_idx     = st.session_state.get("sb_lang_idx", 0)
+    l1, l2       = st.columns(2)
+    for col, i, lang in zip([l1, l2], [0, 1], lang_options):
+        with col:
+            if st.button(lang, key=f"lang_{i}", use_container_width=True):
                 st.session_state["sb_lang_idx"] = i
+                # Set RTL direction
+                st.session_state["is_rtl"] = (i == 1)
                 st.rerun()
     source_lang = lang_options[st.session_state.get("sb_lang_idx", 0)]
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     # ── Active Persona ──
-    st.markdown("""
-    <div class='sidebar-section-label'>ACTIVE PERSONA</div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div class='sidebar-section-label'>Active Persona</div>",
+                unsafe_allow_html=True)
 
     user_personas = st.session_state.get(K.PERSONA_LIST, [])
     options_map   = {"None": None}
@@ -135,19 +129,18 @@ def render_sidebar() -> SidebarConfig:
 
     selected_key = st.selectbox(
         "Persona",
-        options=list(options_map.keys()),
+        list(options_map.keys()),
         key="sb_persona_global_widget",
         label_visibility="collapsed",
     )
     active_p = options_map.get(selected_key)
     st.session_state[K.ACTIVE_PERSONA] = active_p
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     # ── Aesthetic ──
-    st.markdown("""
-    <div class='sidebar-section-label'>AESTHETIC</div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div class='sidebar-section-label'>Aesthetic</div>",
+                unsafe_allow_html=True)
 
     aesthetic_choice = st.selectbox(
         "Aesthetic",
@@ -165,7 +158,7 @@ def render_sidebar() -> SidebarConfig:
     )
     expert_mode = st.checkbox("Expert Diagnostics", key="sb_expert")
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     # ── Session Stats ──
     runs_val  = len(st.session_state.get(K.HISTORY, []))
@@ -176,37 +169,37 @@ def render_sidebar() -> SidebarConfig:
     st.markdown(f"""
     <div class='stats-card'>
       <div class='stat-item'>
-        <div class='stat-value'>{runs_val}</div>
-        <div class='stat-label'>RUNS</div>
+        <span class='stat-value'>{runs_val}</span>
+        <span class='stat-label'>RUNS</span>
       </div>
       <div class='stat-item'>
-        <div class='stat-value'>{calls_val}</div>
-        <div class='stat-label'>CALLS</div>
+        <span class='stat-value'>{calls_val}</span>
+        <span class='stat-label'>CALLS</span>
       </div>
       <div class='stat-item'>
-        <div class='stat-value'>{saved_str}</div>
-        <div class='stat-label'>SAVED</div>
+        <span class='stat-value'>{saved_str}</span>
+        <span class='stat-label'>SAVED</span>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Target Intelligence Card ──
+    # ── Target Intelligence ──
     auto_target = st.session_state.get(K.AUTO_TARGET, "ChatGPT")
     auto_reason = st.session_state.get(K.AUTO_REASON, "Awaiting input...")
     st.markdown(f"""
     <div class='intel-card'>
-      <div class='intel-title'>TARGET INTELLIGENCE</div>
+      <div class='intel-title'>Target Intelligence</div>
       <div class='intel-row'>
         <span class='intel-key'>MODEL</span>
         <span class='intel-val'>{auto_target}</span>
       </div>
       <div class='intel-row'>
         <span class='intel-key'>ROUTING</span>
-        <span class='intel-val'>{auto_reason[:40]}</span>
+        <span class='intel-val'>{str(auto_reason)[:36]}</span>
       </div>
       <div class='intel-row'>
         <span class='intel-key'>STATUS</span>
-        <span class='intel-val' style='color:#22c55e;'>● Active</span>
+        <span class='intel-val' style='color:var(--success);'>● Active</span>
       </div>
     </div>
     """, unsafe_allow_html=True)
