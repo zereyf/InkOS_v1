@@ -3,8 +3,9 @@ ui/splash.py — InkOS Official Login Gateway
 =============================================
 Matches the UX/UI Purpose Design Document.
 - Centralized, non-scrollable, locked-width container.
-- Integrated SVG Feather/Circuit Logo.
-- Perfected side-by-side checkbox & link alignment.
+- Integrated Custom SVG Logo.
+- Fixed Language Toggle positioning.
+- Removed Forgot Password link.
 """
 from __future__ import annotations
 import time
@@ -16,24 +17,27 @@ from vault.supabase_client import SUPABASE_MISSING
 _SPLASH_CSS = """
 <style>
 /* ── BASE & NO-SCROLL LOCK ── */
-.stApp { background-color: #1A202C !important; overflow-y: hidden !important; }
+/* Force the app background and hide scrollbars globally */
+html, body, .stApp { 
+    background-color: #1A202C !important; 
+    overflow: hidden !important; 
+}
 header[data-testid="stHeader"] { display: none !important; }
 
 /* Lock the main container to center and prevent scrolling */
 .main .block-container {
     max-width: 420px !important; 
-    padding-top: 2rem !important;
-    padding-bottom: 0rem !important;
+    padding: 0rem 1rem !important;
     margin: 0 auto !important;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    height: 100vh;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    min-height: 100vh !important;
 }
 
-/* ── TOP RIGHT LANGUAGE TOGGLE ── */
+/* ── TOP RIGHT LANGUAGE TOGGLE (Fixed to Window) ── */
 .lang-toggle {
-    position: absolute;
+    position: fixed;
     top: 20px;
     right: 20px;
     display: flex;
@@ -46,7 +50,7 @@ header[data-testid="stHeader"] { display: none !important; }
     padding: 6px 14px;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.05);
-    z-index: 100;
+    z-index: 99999; /* Forces it above everything */
 }
 .lang-toggle span { cursor: pointer; transition: color 0.2s; }
 .lang-toggle span:hover { color: #FFFFFF; }
@@ -66,7 +70,7 @@ header[data-testid="stHeader"] { display: none !important; }
     font-weight: 700;
     color: #FFFFFF;
     line-height: 1;
-    margin-top: 5px;
+    margin-top: 15px;
 }
 .splash-logo-sub {
     font-family: 'Montserrat', sans-serif;
@@ -101,27 +105,16 @@ header[data-testid="stHeader"] { display: none !important; }
     font-weight: 500 !important;
 }
 
-/* ── CHECKBOX & FORGOT PASSWORD ALIGNMENT ── */
+/* ── CHECKBOX ALIGNMENT ── */
 [data-testid="stCheckbox"] {
     display: flex;
     align-items: center;
-    height: 100%;
+    margin-bottom: 10px;
 }
 [data-testid="stCheckbox"] label { 
     font-size: 14px !important; 
     color: #F8F9FA !important; 
     font-family: 'Montserrat', sans-serif !important;
-}
-.forgot-pass {
-    text-align: right;
-    margin-top: 10px;
-}
-.forgot-pass a {
-    font-family: 'Montserrat', sans-serif;
-    font-size: 13px;
-    color: #4299E1;
-    text-decoration: underline;
-    cursor: pointer;
 }
 
 /* ── SECONDARY BUTTON (SIGN UP) ── */
@@ -157,7 +150,7 @@ button[kind="secondary"]:hover {
 def render_splash_screen() -> None:
     st.markdown(_SPLASH_CSS, unsafe_allow_html=True)
     
-    # Language Toggle (Top Right Fixed)
+    # Language Toggle (Top Right Fixed via CSS)
     st.markdown("""
         <div class="lang-toggle">
             <span>🌐</span>
@@ -208,16 +201,10 @@ def render_splash_screen() -> None:
             pin = st.text_input("Password", type="password", placeholder="Enter your password")
             
             if is_login:
-                # Perfect alignment for Checkbox and Forgot Password
-                c1, c2 = st.columns([1, 1])
-                with c1:
-                    st.checkbox("Remember me", value=True)
-                with c2:
-                    st.markdown('<div class="forgot-pass"><a>Forgot Password?</a></div>', unsafe_allow_html=True)
+                st.checkbox("Remember me", value=True)
             else:
                 pin_confirm = st.text_input("Confirm Password", type="password", placeholder="Re-enter your password")
             
-            st.write("") # Micro-spacing before button
             btn_label = "Login" if is_login else "Sign Up"
             submit = st.form_submit_button(btn_label, type="primary", use_container_width=True)
 
