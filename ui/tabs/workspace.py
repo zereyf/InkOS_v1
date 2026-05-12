@@ -1,10 +1,8 @@
 """
 ui/tabs/workspace.py — Tech-Noir Workspace
 =============================================
-v9.0: Native Streamlit Architecture.
-      - Dropped fragile iOS HTML/CSS hacks.
-      - Uses native st.container(border=True) for perfect mobile responsiveness.
-      - Integrated "Split-Studio" terminal aesthetics.
+v9.1: Native Architecture Patch.
+      - Removed invalid 'size' argument from st.button.
 """
 import streamlit as st
 import re
@@ -118,7 +116,8 @@ def _render_studio():
     st.caption("SOURCE INTENT")
     with st.container(border=True):
         st.write(raw_input)
-        if st.button("Edit Source", size="small", use_container_width=False):
+        # BUG FIX: Removed size="small" argument
+        if st.button("Edit Source", use_container_width=False):
             st.session_state[K.LAST_RESULT] = None
             st.session_state["prefill_input"] = raw_input
             st.rerun()
@@ -129,7 +128,6 @@ def _render_studio():
         
         st.divider()
         c1, c2, c3 = st.columns(3)
-        # Using Streamlit's native buttons
         c1.button("Copy Output", use_container_width=True)
         c2.button("Share", use_container_width=True)
         if c3.button("Reset Terminal", use_container_width=True):
