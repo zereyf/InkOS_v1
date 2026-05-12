@@ -1,10 +1,11 @@
 """
 ui/tabs/workspace.py — Dual-State Workspace (Desk & Studio)
 =============================================================
-v5.4: The Brutalist Sync.
-      - Eradicated native Streamlit header (dark bar).
-      - Added Fail-safe routing to guarantee Studio transition.
-      - Applied Brutalist / Editorial styling to the Refine button.
+v5.5: The Brutalist UI & Router Patch.
+      - Restored InkOS Logo.
+      - Transformed default sidebar chevron into a Hamburger menu (☰).
+      - Applied true Brutalist styling to the Refine button.
+      - Hardened the State Router to guarantee Studio transitions.
 """
 from __future__ import annotations
 import re, time
@@ -83,14 +84,36 @@ def _format_history_entry(output_text: str, input_text: str):
 def _render_desk(cfg: dict):
     st.markdown("""
     <style>
-    /* ── NUKE STREAMLIT HEADER (Fixes Bug 1) ── */
-    header[data-testid="stHeader"] { display: none !important; }
+    /* ── HEADER & MENU ICON OVERRIDE ── */
+    header[data-testid="stHeader"] {
+        background-color: transparent !important;
+        box-shadow: none !important;
+    }
+    .stAppDeployButton { display: none !important; }
     
+    /* Transform Streamlit Chevron into a Hamburger Menu */
+    [data-testid="collapsedControl"] svg { display: none !important; }
+    [data-testid="collapsedControl"] { color: transparent !important; background: transparent !important; }
+    [data-testid="collapsedControl"]::after {
+        content: "☰" !important;
+        font-size: 26px !important;
+        color: #111827 !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 5px;
+        margin-left: 10px;
+    }
+
     /* ── BASE LIGHT THEME ── */
     .stApp { background-color: #F9F9F9 !important; }
-    .main .block-container { max-width: 600px !important; padding-top: 40px !important; padding-bottom: 100px !important; }
+    .main .block-container { max-width: 600px !important; padding-top: 0px !important; padding-bottom: 100px !important; }
     
     @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
+    
+    .desk-header { text-align: center; margin-bottom: 40px; margin-top: 10px; }
+    .desk-logo { font-family: 'Playfair Display', serif; font-size: 42px; color: #111827; line-height: 1; letter-spacing: -1px; font-weight: 600; }
+    .desk-logo-sub { font-family: 'Inter', sans-serif; font-size: 9px; color: #9CA3AF; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; margin-top: 4px; }
     
     .greet-main { font-family: 'Playfair Display', serif; font-size: 34px; color: #111827 !important; margin-bottom: 5px; }
     .greet-sub { font-family: 'Inter', sans-serif; font-size: 15px; color: #6B7280 !important; margin-bottom: 25px; }
@@ -116,26 +139,34 @@ def _render_desk(cfg: dict):
     }
     div[data-testid="stTextArea"] label { display: none !important; }
 
-    /* ── BRUTALIST ACTION BUTTON (Fixes Bug 3) ── */
-    div.desk-btn div[data-testid="stButton"] button {
+    /* ── BRUTALIST ACTION BUTTON (Completely Square) ── */
+    div.desk-btn button {
         background: transparent !important;
-        color: #111827 !important;
-        border-radius: 0px !important; /* Completely Square */
-        border: 2px solid #111827 !important; /* Thick black border */
+        background-color: transparent !important;
+        border-radius: 0px !important; /* Square Edges */
+        border: 2px solid #111827 !important; /* Thick Black Border */
         height: 54px !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+    div.desk-btn button p {
+        color: #111827 !important; /* Black Text */
+        font-family: 'Inter', sans-serif !important;
         font-size: 14px !important;
         font-weight: 700 !important;
         letter-spacing: 1.5px !important;
         text-transform: uppercase !important;
-        margin-top: 4px !important;
-        box-shadow: none !important;
-        transition: all 0.2s ease !important;
     }
-    div.desk-btn div[data-testid="stButton"] button:hover, 
-    div.desk-btn div[data-testid="stButton"] button:active {
+    /* Hover & Active States */
+    div.desk-btn button:hover, div.desk-btn button:active {
         background: #111827 !important;
-        color: #FFFFFF !important;
-        transform: scale(0.98) !important;
+        background-color: #111827 !important;
+    }
+    div.desk-btn button:hover p, div.desk-btn button:active p {
+        color: #FFFFFF !important; /* White text on hover */
     }
 
     /* ── DROPDOWN QUICK ACTIONS ── */
@@ -180,6 +211,14 @@ def _render_desk(cfg: dict):
     </style>
     """, unsafe_allow_html=True)
 
+    # ── RENDER HEADER LOGO ──
+    st.markdown("""
+        <div class="desk-header">
+            <div class="desk-logo">İnkOS</div>
+            <div class="desk-logo-sub">PREMIUM AI PROMPT REFINER</div>
+        </div>
+    """, unsafe_allow_html=True)
+
     st.markdown('<div class="greet-main">Good morning.</div>', unsafe_allow_html=True)
     st.markdown('<div class="greet-sub">Let\'s craft something exceptional.</div>', unsafe_allow_html=True)
 
@@ -196,7 +235,7 @@ def _render_desk(cfg: dict):
     intent_val = st.text_area("Draft", value=prefill, placeholder="Draft your prompt...", key="desk_input")
     
     st.markdown('<div class="desk-btn">', unsafe_allow_html=True)
-    send = st.button("Refine Prompt", key="desk_send", use_container_width=True) # Arrow removed
+    send = st.button("Refine Prompt", key="desk_send", use_container_width=True) 
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("""<div class="history-header">
@@ -206,6 +245,7 @@ def _render_desk(cfg: dict):
     
     history = st.session_state.get(K.HISTORY, [])
     if history:
+        # Strictly enforces maximum of 3 items
         for idx, entry in enumerate(reversed(history[-3:])):
             avatar, title, preview, lang_class, dir_class = _format_history_entry(entry.get("output", ""), entry.get("input", ""))
             
@@ -222,13 +262,19 @@ def _render_desk(cfg: dict):
                     </div>
                 </div>
             """, unsafe_allow_html=True)
+    else:
+         st.markdown("""
+             <div style='text-align:center; padding: 40px; color: #9CA3AF; font-size: 14px; font-family: Inter, sans-serif;'>
+                 No recent inks found.
+             </div>
+         """, unsafe_allow_html=True)
 
     if send and intent_val and intent_val.strip():
         _process_prompt(intent_val, cfg)
 
 
 # ────────────────────────────────────────────────
-# ENGINE EXECUTION (Fixes Bug 2)
+# ENGINE EXECUTION (Hardened Router)
 # ────────────────────────────────────────────────
 def _process_prompt(intent_val: str, cfg: dict):
     cleaned, violations = sanitize_input(intent_val)
@@ -240,7 +286,7 @@ def _process_prompt(intent_val: str, cfg: dict):
         run_cfg = dict(cfg)
         payload = assemble_master_payload(cleaned, run_cfg, _get_dna_context())
         
-        # FAIL-SAFE BLOCK
+        # FAIL-SAFE: Guarantees routing to Studio
         try:
             result, audit, _ = run_refinement_and_audit(
                 payload,
@@ -252,7 +298,7 @@ def _process_prompt(intent_val: str, cfg: dict):
                 skip_security=False,
             )
             result = extract_clean_output(result)
-            if not result:
+            if not result or result.strip() == "":
                 result = "Engine returned an empty response. Verify AI uplink."
         except Exception as e:
             result = f"[ UPLINK FAILED ]\n\nThe A.I.Z.E.N. core encountered an error:\n{str(e)}"
@@ -261,7 +307,7 @@ def _process_prompt(intent_val: str, cfg: dict):
         history.append({"input": cleaned, "output": result, "time": datetime.now(WAT_TZ).isoformat()})
         st.session_state[K.HISTORY] = history[-50:]
         
-        # Force the router variable
+        # Absolute force router flag
         st.session_state[K.LAST_RESULT] = result
         st.session_state[K.LAST_INPUT] = cleaned
         st.rerun()
@@ -273,7 +319,11 @@ def _process_prompt(intent_val: str, cfg: dict):
 def _render_studio(cfg: dict):
     st.markdown("""
     <style>
-    header[data-testid="stHeader"] { display: none !important; }
+    /* Ensure Header is hidden in Studio too */
+    header[data-testid="stHeader"] { background-color: transparent !important; }
+    [data-testid="collapsedControl"] svg { display: none !important; }
+    [data-testid="collapsedControl"]::after { content: "☰" !important; color: #F8F9FA !important; font-size: 26px !important; margin-top: 5px; margin-left: 10px; }
+    
     .stApp { background-color: #0B0F19 !important; color: #F8F9FA !important; }
     .main .block-container { max-width: 600px !important; padding-top: 40px !important; }
     
@@ -346,11 +396,12 @@ def _render_studio(cfg: dict):
 
 
 # ────────────────────────────────────────────────
-# MAIN RENDERER
+# MAIN RENDERER (THE ROUTER)
 # ────────────────────────────────────────────────
 def render_workspace(cfg: dict) -> None:
-    last_result = st.session_state.get(K.LAST_RESULT)
-    if last_result and str(last_result).strip() != "":
+    # Router logic: Empty result = Desk Mode. Populated result = Studio Mode.
+    last = st.session_state.get(K.LAST_RESULT)
+    if last is not None and str(last).strip() != "":
         _render_studio(cfg)
     else:
         _render_desk(cfg)
