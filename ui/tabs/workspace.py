@@ -57,62 +57,89 @@ def _word_count(text: str) -> int:
     return len(text.split()) if text.strip() else 0
 
 # ────────────────────────────────────────────────
+# ────────────────────────────────────────────────
 # STATE 1: THE DESK (LIGHT MODE IDEATION)
 # ────────────────────────────────────────────────
 def _render_desk(cfg: dict):
     st.markdown("""
     <style>
-    /* Desk Light Theme Overrides */
-    .stApp { background-color: #F8F9FA !important; color: #111827 !important; }
+    /* Base Light Theme */
+    .stApp { background-color: #F9F9F9 !important; color: #111827 !important; }
     .main .block-container { max-width: 600px !important; padding-top: 20px !important; padding-bottom: 100px !important; }
     
-    /* Header */
-    .desk-header { text-align: center; margin-bottom: 30px; }
-    .desk-logo { font-family: 'Playfair Display', serif; font-size: 38px; color: #111827; line-height: 1; letter-spacing: -1px; }
-    .desk-logo-sub { font-family: 'Inter', sans-serif; font-size: 9px; color: #9CA3AF; letter-spacing: 2px; text-transform: uppercase; }
-    
-    /* Greeting */
+    /* Typography */
     .greet-main { font-family: 'Playfair Display', serif; font-size: 34px; color: #111827; margin-bottom: 5px; }
-    .greet-sub { font-family: 'Inter', sans-serif; font-size: 16px; color: #4B5563; margin-bottom: 25px; }
-    
-    /* Input Pill Override */
-    div[data-testid="stTextArea"] textarea {
+    .greet-sub { font-family: 'Inter', sans-serif; font-size: 15px; color: #6B7280; margin-bottom: 30px; }
+
+    /* ── THE INPUT PILL (Forcing Horizontal on Mobile) ── */
+    /* This overrides Streamlit's mobile stacking rule */
+    div[data-testid="stHorizontalBlock"]:has(.input-marker) {
+        flex-wrap: nowrap !important;
         background-color: #FFFFFF !important;
-        border: 1px solid #F3F4F6 !important;
-        border-radius: 20px !important;
+        border-radius: 30px !important;
+        padding: 5px 15px !important;
         box-shadow: 0 10px 25px rgba(0,0,0,0.03) !important;
-        padding: 20px !important;
+        border: 1px solid #F3F4F6 !important;
+        align-items: center !important;
+        gap: 10px !important;
+    }
+    /* Hide text area borders to blend into the pill */
+    div[data-testid="stHorizontalBlock"]:has(.input-marker) div[data-testid="stTextArea"] textarea {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 10px 0 !important;
         font-family: 'Inter', sans-serif !important;
-        font-size: 16px !important;
+        font-size: 15px !important;
         color: #111827 !important;
     }
-    div[data-testid="stTextArea"] textarea:focus { border-color: #111827 !important; box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important; }
-    
-    /* Submit Button inside Desk */
-    div[data-testid="column"]:nth-child(2) div[data-testid="stButton"] button {
+    /* Circular Send Button */
+    div[data-testid="stHorizontalBlock"]:has(.input-marker) div[data-testid="stButton"] button {
         background-color: #111827 !important;
         color: #FFFFFF !important;
         border-radius: 999px !important;
-        height: 55px !important;
-        width: 55px !important;
+        height: 45px !important;
+        width: 45px !important;
+        padding: 0 !important;
         font-size: 20px !important;
-        margin-top: 15px !important;
-        box-shadow: 0 8px 15px rgba(0,0,0,0.1) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border: none !important;
     }
-    
-    /* Quick Actions */
-    .qa-btn button {
+
+    /* ── QUICK ACTIONS (Forcing Horizontal Scroll on Mobile) ── */
+    div[data-testid="stHorizontalBlock"]:has(.qa-marker) {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        padding-bottom: 15px !important;
+        gap: 10px !important;
+        scrollbar-width: none !important; /* Hide scrollbar Firefox */
+    }
+    div[data-testid="stHorizontalBlock"]:has(.qa-marker)::-webkit-scrollbar {
+        display: none !important; /* Hide scrollbar Chrome/Safari */
+    }
+    div[data-testid="stHorizontalBlock"]:has(.qa-marker) > div[data-testid="column"] {
+        min-width: 110px !important;
+        width: auto !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(.qa-marker) button {
         background-color: #FFFFFF !important;
-        border: 1px solid #F3F4F6 !important;
+        border: 1px solid #E5E7EB !important;
         border-radius: 999px !important;
         color: #4B5563 !important;
         font-family: 'Inter', sans-serif !important;
         font-size: 13px !important;
         padding: 8px 16px !important;
         box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
+        white-space: nowrap !important;
     }
+
+    /* ── RECENT INKS ── */
+    .history-header { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 20px; margin-bottom: 15px; }
+    .history-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: #111827; }
+    .history-link { font-size: 12px; color: #6B7280; font-family: 'Inter', sans-serif; }
     
-    /* History Cards */
     .history-card {
         background: #FFFFFF; border-radius: 16px; padding: 16px; display: flex; gap: 16px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 12px; align-items: center;
@@ -123,52 +150,46 @@ def _render_desk(cfg: dict):
         align-items: center; justify-content: center; font-family: 'Noto Naskh Arabic', serif; font-size: 22px; color: #111827; flex-shrink: 0;
     }
     .history-content { flex-grow: 1; }
-    .history-title { font-size: 15px; font-weight: 600; color: #111827; margin-bottom: 4px; font-family: 'Inter', sans-serif; }
+    .history-title-text { font-size: 15px; font-weight: 600; color: #111827; margin-bottom: 4px; font-family: 'Inter', sans-serif; }
     .history-preview { font-size: 12px; color: #6B7280; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: 'Inter', sans-serif;}
     .history-date { font-size: 11px; color: #9CA3AF; font-family: 'Inter', sans-serif;}
     </style>
     """, unsafe_allow_html=True)
 
-    # Header
-    st.markdown("""
-        <div class="desk-header">
-            <div class="desk-logo">İnkOS</div>
-            <div class="desk-logo-sub">PREMIUM AI PROMPT REFINER</div>
-        </div>
-        <div class="greet-main">Good morning.</div>
-        <div class="greet-sub">Let's craft something exceptional.</div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="greet-main">Good morning.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="greet-sub">Let\'s craft something exceptional.</div>', unsafe_allow_html=True)
 
-    # Input Area (Fusing Streamlit widgets to look like the pill)
+    # ── INPUT PILL ──
     col_input, col_btn = st.columns([5, 1])
     with col_input:
+        st.markdown("<div class='input-marker'></div>", unsafe_allow_html=True) # Invisible marker protects CSS layout
         prefill = st.session_state.pop("prefill_input", "")
-        intent_val = st.text_area("Draft", value=prefill, height=100, placeholder="✨ Draft your prompt...", label_visibility="collapsed", key="desk_input")
+        intent_val = st.text_area("Draft", value=prefill, height=68, placeholder="✨ Draft your prompt...", label_visibility="collapsed", key="desk_input")
     with col_btn:
         send = st.button("→", key="desk_send", use_container_width=True)
 
-    # Quick Actions
-    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    # ── QUICK ACTIONS ──
+    st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     cols = [c1, c2, c3, c4]
     for i, (icon, label, starter) in enumerate(QUICK_ACTIONS):
         with cols[i]:
-            st.markdown('<div class="qa-btn">', unsafe_allow_html=True)
+            if i == 0:
+                st.markdown("<div class='qa-marker'></div>", unsafe_allow_html=True) # Invisible marker protects CSS layout
             if st.button(f"{icon} {label}", key=f"qa_{i}", use_container_width=True):
                 st.session_state["prefill_input"] = starter
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
 
-    # History Segment
+    # ── RECENT INKS ──
     history = st.session_state.get(K.HISTORY, [])
+    st.markdown("""
+        <div class="history-header">
+            <div class="history-title">Recent Inks</div>
+            <div class="history-link">View all ›</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
     if history:
-        st.markdown("""
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 30px; margin-bottom: 15px;">
-                <div style="font-family:'Playfair Display', serif; font-size:20px; font-weight:600; color:#111827;">Recent Inks</div>
-                <div style="font-size:12px; color:#6B7280; font-family:'Inter', sans-serif;">View all ›</div>
-            </div>
-        """, unsafe_allow_html=True)
-        
         for idx, entry in enumerate(reversed(history[-3:])):
             out_text = entry.get("output", "")
             title = out_text[:40] + "..." if len(out_text) > 40 else out_text
@@ -176,16 +197,23 @@ def _render_desk(cfg: dict):
                 <div class="history-card">
                     <div class="history-avatar">❖</div>
                     <div class="history-content">
-                        <div class="history-title">{title}</div>
+                        <div class="history-title-text">{title}</div>
                         <div class="history-preview">{entry.get("input", "")[:80]}...</div>
                     </div>
                     <div><div class="history-date">Just now</div></div>
                 </div>
             """, unsafe_allow_html=True)
+    else:
+         st.markdown("""
+             <div style='text-align:center; padding: 40px; color: #9CA3AF; font-size: 14px; font-family: Inter, sans-serif;'>
+                 No recent inks found.
+             </div>
+         """, unsafe_allow_html=True)
 
     # Process Input
     if send and intent_val and intent_val.strip():
         _process_prompt(intent_val, cfg)
+
 
 
 # ────────────────────────────────────────────────
