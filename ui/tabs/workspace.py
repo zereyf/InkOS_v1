@@ -64,163 +64,148 @@ def _word_count(text: str) -> int:
 def _render_desk(cfg: dict):
     st.markdown("""
     <style>
-    /* Base Light Theme */
+    /* ── BASE THEME FORCING ── */
     .stApp { background-color: #F9F9F9 !important; color: #111827 !important; }
     .main .block-container { max-width: 600px !important; padding-top: 20px !important; padding-bottom: 100px !important; }
-    
-    /* Typography */
-    .desk-header { margin-bottom: 30px; text-align: center; }
-    .desk-logo { font-family: 'Playfair Display', serif; font-size: 38px; color: #111827; line-height: 1; letter-spacing: -1px; }
-    .desk-logo-sub { font-family: 'Inter', sans-serif; font-size: 9px; color: #9CA3AF; letter-spacing: 2px; text-transform: uppercase; }
     
     .greet-main { font-family: 'Playfair Display', serif; font-size: 34px; color: #111827; margin-bottom: 5px; }
     .greet-sub { font-family: 'Inter', sans-serif; font-size: 15px; color: #6B7280; margin-bottom: 30px; }
 
-    /* ── THE INPUT PILL (Bulletproof Mobile Fix) ── */
+    /* ── FORCED PILL LAYOUT (Mobile Fixed) ── */
     div[data-testid="stHorizontalBlock"]:has(.input-marker) {
         display: flex !important;
-        flex-direction: row !important; /* FORCES side-by-side on mobile */
+        flex-direction: row !important;
         flex-wrap: nowrap !important;
         background-color: #FFFFFF !important;
-        border-radius: 30px !important;
-        padding: 6px 12px !important;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.05) !important;
+        border-radius: 35px !important;
+        padding: 5px 10px 5px 20px !important;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.06) !important;
         border: 1px solid #E5E7EB !important;
         align-items: center !important;
-        gap: 10px !important;
+        justify-content: space-between !important;
+        width: 100% !important;
     }
 
-    /* Force the column widths to prevent crushing */
+    /* Force the column widths */
     div[data-testid="stHorizontalBlock"]:has(.input-marker) > div[data-testid="column"]:nth-child(1) {
-        width: 100% !important;
         flex: 1 1 auto !important;
+        min-width: 0 !important;
     }
     div[data-testid="stHorizontalBlock"]:has(.input-marker) > div[data-testid="column"]:nth-child(2) {
+        flex: 0 0 45px !important;
         width: 45px !important;
-        flex: 0 0 45px !important; /* Locks button size */
+        display: flex !important;
+        justify-content: flex-end !important;
     }
 
-    /* Strip the dark theme leak from the Text Area */
+    /* ── STRIP DARK LEAK (High Specificity) ── */
+    div[data-testid="stHorizontalBlock"]:has(.input-marker) div[data-testid="stTextArea"] {
+        background: transparent !important;
+        border: none !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(.input-marker) textarea[data-testid="stWidgetLabel"] {
+        display: none !important; /* Hide native label space */
+    }
     div[data-testid="stHorizontalBlock"]:has(.input-marker) textarea {
-        background-color: transparent !important;
+        background-color: rgba(0,0,0,0) !important; /* Force true transparency */
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        padding: 10px 5px !important;
-        font-family: 'Inter', sans-serif !important;
-        font-size: 15px !important;
         color: #111827 !important;
-        -webkit-text-fill-color: #111827 !important; /* Fixes iOS dark mode rendering */
-    }
-    div[data-testid="stHorizontalBlock"]:has(.input-marker) textarea:focus {
-        box-shadow: none !important;
-        border: none !important;
+        -webkit-text-fill-color: #111827 !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 16px !important;
+        padding: 10px 0 !important;
+        min-height: 45px !important;
+        max-height: 100px !important;
     }
 
-    /* Circular Send Button */
-    div[data-testid="stHorizontalBlock"]:has(.input-marker) div[data-testid="stButton"] button {
+    /* ── SEND BUTTON (Pure Circle) ── */
+    div[data-testid="stHorizontalBlock"]:has(.input-marker) button {
         background-color: #111827 !important;
         color: #FFFFFF !important;
-        border-radius: 999px !important;
-        height: 45px !important;
-        width: 45px !important;
+        border-radius: 50% !important;
+        height: 44px !important;
+        width: 44px !important;
+        min-width: 44px !important;
         padding: 0 !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         border: none !important;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
     }
 
-    /* ── QUICK ACTIONS (Force Horizontal Scroll) ── */
+    /* ── QUICK ACTIONS (Scroll Fixed) ── */
     div[data-testid="stHorizontalBlock"]:has(.qa-marker) {
         display: flex !important;
-        flex-direction: row !important; /* Force side-by-side */
+        flex-direction: row !important;
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
+        gap: 12px !important;
         padding-bottom: 10px !important;
-        gap: 10px !important;
-        -webkit-overflow-scrolling: touch; /* Smooth mobile scroll */
+        -webkit-overflow-scrolling: touch !important;
     }
     div[data-testid="stHorizontalBlock"]:has(.qa-marker)::-webkit-scrollbar { display: none !important; }
-    div[data-testid="stHorizontalBlock"]:has(.qa-marker) > div[data-testid="column"] {
-        min-width: 105px !important;
-        flex: 0 0 auto !important;
-        width: auto !important;
-    }
     div[data-testid="stHorizontalBlock"]:has(.qa-marker) button {
         background-color: #FFFFFF !important;
         border: 1px solid #E5E7EB !important;
         border-radius: 999px !important;
         color: #4B5563 !important;
-        font-family: 'Inter', sans-serif !important;
-        font-size: 13px !important;
-        padding: 8px 16px !important;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
+        font-size: 14px !important;
+        padding: 8px 18px !important;
         white-space: nowrap !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
     }
-
-    /* ── RECENT INKS ── */
-    .history-header { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 20px; margin-bottom: 15px; }
-    .history-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: #111827; }
-    .history-link { font-size: 12px; color: #6B7280; font-family: 'Inter', sans-serif; }
     
+    /* ── RECENT INKS CARDS ── */
     .history-card {
-        background: #FFFFFF; border-radius: 16px; padding: 16px; display: flex; gap: 16px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 12px; align-items: center;
-        border: 1px solid #F9FAFB;
+        background: #FFFFFF; border-radius: 20px; padding: 18px; display: flex; gap: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 12px; align-items: center;
+        border: 1px solid #F3F4F6;
     }
     .history-avatar {
-        width: 55px; height: 55px; border-radius: 999px; background: #F3F4F6; display: flex;
+        width: 55px; height: 55px; border-radius: 50%; background: #F3F4F6; display: flex;
         align-items: center; justify-content: center; font-family: 'Noto Naskh Arabic', serif; font-size: 22px; color: #111827; flex-shrink: 0;
     }
-    .history-content { flex-grow: 1; }
-    .history-title-text { font-size: 15px; font-weight: 600; color: #111827; margin-bottom: 4px; font-family: 'Inter', sans-serif; }
-    .history-preview { font-size: 12px; color: #6B7280; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: 'Inter', sans-serif;}
-    .history-date { font-size: 11px; color: #9CA3AF; font-family: 'Inter', sans-serif;}
+    .history-content { flex-grow: 1; min-width: 0; }
+    .history-title-text { font-size: 15px; font-weight: 600; color: #111827; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .history-preview { font-size: 13px; color: #6B7280; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .history-date { font-size: 11px; color: #9CA3AF; margin-left: auto; white-space: nowrap; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ── HEADER ──
-    st.markdown("""
-        <div class="desk-header">
-            <div class="desk-logo">İnkOS</div>
-            <div class="desk-logo-sub">PREMIUM AI PROMPT REFINER</div>
-        </div>
-    """, unsafe_allow_html=True)
-
+    # ── RENDER ──
     st.markdown('<div class="greet-main">Good morning.</div>', unsafe_allow_html=True)
     st.markdown('<div class="greet-sub">Let\'s craft something exceptional.</div>', unsafe_allow_html=True)
 
-    # ── INPUT PILL ──
-    col_input, col_btn = st.columns([5, 1])
+    # Input Pill
+    col_input, col_btn = st.columns([10, 1.5])
     with col_input:
-        st.markdown("<div class='input-marker'></div>", unsafe_allow_html=True) # Invisible marker protects CSS layout
+        st.markdown("<div class='input-marker'></div>", unsafe_allow_html=True)
         prefill = st.session_state.pop("prefill_input", "")
         intent_val = st.text_area("Draft", value=prefill, height=68, placeholder="✨ Draft your prompt...", label_visibility="collapsed", key="desk_input")
     with col_btn:
-        send = st.button("→", key="desk_send", use_container_width=True)
+        send = st.button("→", key="desk_send")
 
-    # ── QUICK ACTIONS ──
-    st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
+    # Quick Actions
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     cols = [c1, c2, c3, c4]
     for i, (icon, label, starter) in enumerate(QUICK_ACTIONS):
         with cols[i]:
-            if i == 0:
-                st.markdown("<div class='qa-marker'></div>", unsafe_allow_html=True) # Invisible marker protects CSS layout
+            if i == 0: st.markdown("<div class='qa-marker'></div>", unsafe_allow_html=True)
             if st.button(f"{icon} {label}", key=f"qa_{i}", use_container_width=True):
                 st.session_state["prefill_input"] = starter
                 st.rerun()
 
-    # ── RECENT INKS ──
-    history = st.session_state.get(K.HISTORY, [])
-    st.markdown("""
-        <div class="history-header">
-            <div class="history-title">Recent Inks</div>
-            <div class="history-link">View all ›</div>
-        </div>
-    """, unsafe_allow_html=True)
+    # History
+    st.markdown("""<div style="display:flex; justify-content:space-between; margin-top:30px; margin-bottom:15px;">
+        <div style="font-family:'Playfair Display', serif; font-size:24px; font-weight:600; color:#111827;">Recent Inks</div>
+        <div style="font-size:13px; color:#6B7280; padding-top:8px;">View all ›</div>
+    </div>""", unsafe_allow_html=True)
     
+    history = st.session_state.get(K.HISTORY, [])
     if history:
         for idx, entry in enumerate(reversed(history[-3:])):
             out_text = entry.get("output", "")
@@ -232,17 +217,10 @@ def _render_desk(cfg: dict):
                         <div class="history-title-text">{title}</div>
                         <div class="history-preview">{entry.get("input", "")[:80]}...</div>
                     </div>
-                    <div><div class="history-date">Just now</div></div>
+                    <div class="history-date">Just now</div>
                 </div>
             """, unsafe_allow_html=True)
-    else:
-         st.markdown("""
-             <div style='text-align:center; padding: 40px; color: #9CA3AF; font-size: 14px; font-family: Inter, sans-serif;'>
-                 No recent inks found.
-             </div>
-         """, unsafe_allow_html=True)
 
-    # ── PROCESS INTENT ──
     if send and intent_val and intent_val.strip():
         _process_prompt(intent_val, cfg)
 
