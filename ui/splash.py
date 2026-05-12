@@ -1,9 +1,10 @@
 """
-ui/splash.py — Terminal Latch Gateway
-=======================================
-v4.0: Tech-Noir Editorial Sync.
-      - Synced with global typography and color palette.
-      - Retained all live-ID and PIN logic.
+ui/splash.py — InkOS Official Login Gateway
+=============================================
+Matches the UX/UI Purpose Design Document (Section 6).
+- Centralized login container (#2D3748)
+- Blue accent primary buttons (#4299E1)
+- Seamlessly integrates with existing vault_engine logic.
 """
 from __future__ import annotations
 import time
@@ -12,319 +13,235 @@ from state import K
 from vault.vault_engine import authenticate_terminal, check_id_availability
 from vault.supabase_client import SUPABASE_MISSING
 
-# ── Inline styles scoped to splash only ──
+# ── Inline styles scoped to match the PDF Mockup ──
 _SPLASH_CSS = """
 <style>
 /* Base overrides for splash */
-.stApp { background-color: #0B0F19 !important; }
+.stApp { background-color: #1A202C !important; }
 header[data-testid="stHeader"] { display: none !important; }
 
-/* Boot header */
-.splash-boot {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  color: #6B7280; letter-spacing: 0.15em; margin-bottom: 40px;
-  line-height: 2; text-transform: uppercase;
+/* Top Right Language Toggle */
+.lang-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    color: #A8A095;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    z-index: 100;
 }
-.splash-boot .ok   { color: #D4AF37; } 
-.splash-boot .warn { color: #F59E0B; }
-.splash-boot .err  { color: #EF4444; }
+.lang-toggle span { cursor: pointer; transition: color 0.2s; }
+.lang-toggle span:hover { color: #FFFFFF; }
+.lang-toggle .active { color: #4299E1; font-weight: 600; }
 
-/* Hero */
-.splash-hero { text-align: center; margin-bottom: 30px; }
-.splash-logo {
-  font-family: 'Playfair Display', serif; font-size: 56px;
-  color: #F8F9FA; letter-spacing: -1px; line-height: 1; margin-bottom: -5px;
+/* Brand Logo Area */
+.splash-logo-container {
+    text-align: center;
+    margin-bottom: 30px;
+    margin-top: 40px;
 }
-.splash-ar {
-  font-family: 'Amiri', serif; font-size: 28px;
-  color: #D4AF37; display: block; margin-bottom: 12px;
+.splash-logo-main {
+    font-family: 'Playfair Display', serif;
+    font-size: 42px;
+    font-weight: 700;
+    color: #FFFFFF;
+    line-height: 1;
 }
-.splash-divider {
-  width: 40px; height: 1px; background: #D4AF37;
-  margin: 16px auto; opacity: 0.5;
-}
-.splash-sub {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  color: #9CA3AF; letter-spacing: 0.3em; text-transform: uppercase;
-}
-
-/* Status pill */
-.splash-status {
-  display: inline-flex; align-items: center; gap: 8px; justify-content: center;
-  background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.2);
-  border-radius: 999px; padding: 6px 16px; width: 100%;
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1px;
-  color: #D4AF37; margin-bottom: 30px;
-}
-.splash-status .dot { font-size: 8px; animation: pulse 2s infinite; }
-@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-
-/* Step indicator */
-.splash-step {
-  font-family: 'Inter', sans-serif; font-size: 10px; color: #D4AF37;
-  letter-spacing: 0.15em; margin-bottom: 12px; text-transform: uppercase;
+.splash-logo-sub {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    color: #7A7A7A;
+    letter-spacing: 0.4em;
+    margin-top: 5px;
 }
 
-/* ID state badges */
-.id-badge {
-  display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
-  padding: 4px 14px; font-size: 11px; font-family: 'Inter', sans-serif; margin-top: 6px;
+/* Auth Card Typography */
+.auth-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #FFFFFF;
+    text-align: center;
+    margin-bottom: 4px;
 }
-.id-badge.new      { background: rgba(212, 175, 55, 0.1); color: #D4AF37; border: 1px solid rgba(212, 175, 55, 0.3); }
-.id-badge.existing { background: rgba(34, 197, 94, 0.1); color: #22C55E; border: 1px solid rgba(34, 197, 94, 0.3); }
-.id-badge.invalid  { background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+.auth-subtitle {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    color: #7A7A7A;
+    text-align: center;
+    margin-bottom: 24px;
+}
 
-/* Description box */
-.splash-desc {
-  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
-  border-left: 2px solid #D4AF37; padding: 16px 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;
+/* Links & Utilities */
+.auth-link {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    color: #4299E1;
+    text-align: right;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    margin-top: -10px;
+    margin-bottom: 15px;
+    transition: color 0.2s;
 }
-.splash-desc p { font-family: 'Inter', sans-serif; font-size: 13px; color: #9CA3AF; line-height: 1.6; margin: 0; }
-.splash-desc .ar { font-family: 'Amiri', serif; font-size: 16px; color: #D4AF37; display: block; text-align: right; margin-top: 12px; }
+.auth-link:hover { color: #5BA3E8; }
 
-/* Input overrides for Splash */
-[data-testid="stTextInput"] input {
-    background: #121826 !important; border: 1px solid rgba(255,255,255,0.1) !important;
-    color: #F8F9FA !important; font-family: 'Inter', sans-serif !important; border-radius: 8px !important;
+.auth-switch {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    color: #7A7A7A;
+    text-align: center;
+    margin-top: 20px;
 }
-[data-testid="stTextInput"] input:focus { border-color: #D4AF37 !important; box-shadow: 0 0 0 1px #D4AF37 !important; }
+.auth-switch a {
+    color: #4299E1;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
 
-/* Splash Button overrides */
-button[kind="primary"] {
-    background: #D4AF37 !important; color: #0B0F19 !important; font-family: 'Inter', sans-serif !important; 
-    font-weight: 600 !important; border-radius: 8px !important; border: none !important; transition: all 0.2s ease !important;
+/* Custom Checkbox Alignment */
+[data-testid="stCheckbox"] label { font-size: 12px !important; color: #7A7A7A !important; }
+
+/* Security Footer */
+.security-footer {
+    text-align: center;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    color: #7A7A7A;
+    margin-top: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
-button[kind="primary"]:hover { transform: scale(0.98) !important; background: #E8C84A !important; }
 </style>
 """
-
-_BOOT_LINES = [
-    ('<span class="ok">[ OK ]</span>', "CIPHER ENGINE v2026 loaded"),
-    ('<span class="ok">[ OK ]</span>', "Security sanitizer armed"),
-    ('<span class="ok">[ OK ]</span>', "Forge & persona layers ready"),
-    ('<span class="warn">[ ?? ]</span>', "Awaiting neural latch..."),
-]
-
-def _boot_sequence_html() -> str:
-    lines = "".join(f"<div>{tag}&nbsp;&nbsp;{msg}</div>" for tag, msg in _BOOT_LINES)
-    return f"<div class='splash-boot'>{lines}</div>"
-
-def _hero_html() -> str:
-    return """
-    <div class='splash-hero'>
-      <div class='splash-logo'>İnkOS</div>
-      <span class='splash-ar'>حبر وفكرة</span>
-      <div class='splash-divider'></div>
-      <div class='splash-sub'>SECURE VAULT GATEWAY</div>
-    </div>
-    """
-
-def _status_pill() -> str:
-    if SUPABASE_MISSING:
-        return "<div class='splash-status' style='color:#EF4444; border-color:rgba(239,68,68,0.2);'><span class='dot' style='color:#EF4444;'>●</span> VAULT OFFLINE — GUEST MODE</div>"
-    return "<div class='splash-status'><span class='dot'>●</span> NEURAL UPLINK SECURED</div>"
 
 def render_splash_screen() -> None:
     st.markdown(_SPLASH_CSS, unsafe_allow_html=True)
     
-    # Push content down to center it vertically
-    for _ in range(2): st.write("")
+    # Language Toggle (Visual match to PDF)
+    st.markdown("""
+        <div class="lang-toggle">
+            <span>🌐</span>
+            <span class="active">English</span> | <span>العربية</span>
+        </div>
+    """, unsafe_allow_html=True)
 
-    _, center_col, _ = st.columns([1, 2, 1])
+    # State management for Login vs Sign Up toggle
+    if "auth_mode" not in st.session_state:
+        st.session_state["auth_mode"] = "login"
+    
+    is_login = st.session_state["auth_mode"] == "login"
+
+    _, center_col, _ = st.columns([1, 1.2, 1])
     
     with center_col:
-        st.markdown(_boot_sequence_html() + _hero_html(), unsafe_allow_html=True)
-        st.markdown(_status_pill(), unsafe_allow_html=True)
+        # AmeerInk Logo
+        st.markdown("""
+            <div class="splash-logo-container">
+                <div style="font-size: 50px; color: #4299E1; margin-bottom: -15px;">A</div>
+                <div class="splash-logo-main">AmeerInk</div>
+                <div class="splash-logo-sub">I N K O S</div>
+            </div>
+        """, unsafe_allow_html=True)
 
         # ── Offline / guest mode ──
         if SUPABASE_MISSING:
             st.markdown("""
-            <div style='background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); padding:16px; border-radius:8px; text-align:center; color:#EF4444; font-family:Inter, sans-serif; font-size:13px; margin-bottom:20px;'>
-              ⚠ Vault connection unavailable.<br>
-              You can still use InkOS in guest mode with limited features.
+            <div style='background:rgba(229,62,62,0.1); border:1px solid rgba(229,62,62,0.2); padding:16px; border-radius:8px; text-align:center; color:#E53E3E; font-family:Montserrat, sans-serif; font-size:12px; margin-bottom:20px;'>
+              ⚠ Vault connection unavailable. Enterprise database offline.<br>
+              Operating in Guest Mode.
             </div>
             """, unsafe_allow_html=True)
 
-            if st.button("⚡ Enter as Guest", use_container_width=True, type="primary", key="guest_enter"):
+            if st.button("Continue as Guest", use_container_width=True, type="primary"):
                 st.session_state[K.USER_HASH] = f"GUEST_{int(time.time())}"
                 st.rerun()
             return
 
-        # ── Routing ──
-        latch_phase = st.session_state.get("latch_phase", "id")
+        # ── Auth Card (Matches Document exactly) ──
+        with st.container(border=True):
+            if is_login:
+                st.markdown('<div class="auth-title">Welcome back</div>', unsafe_allow_html=True)
+                st.markdown('<div class="auth-subtitle">Please login to your InkOS account</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="auth-title">Create an Account</div>', unsafe_allow_html=True)
+                st.markdown('<div class="auth-subtitle">Register to secure your InkOS vault</div>', unsafe_allow_html=True)
 
-        with st.container(border=True): # Gives the entire auth block a subtle border
-            if latch_phase == "id":
-                _render_id_phase()
-            elif latch_phase == "pin":
-                _render_pin_phase()
-            elif latch_phase == "success":
-                _render_success_phase()
+            with st.form("auth_form", border=False):
+                # Using Streamlit native inputs but they inherit our beautiful CSS from styles.py
+                uid = st.text_input("Username/Email", placeholder="Enter your username or email")
+                pin = st.text_input("Password", type="password", placeholder="Enter your password")
+                
+                if is_login:
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.checkbox("Remember me", value=True)
+                    with c2:
+                        st.markdown('<a class="auth-link">Forgot Password?</a>', unsafe_allow_html=True)
+                else:
+                    pin_confirm = st.text_input("Confirm Password", type="password", placeholder="Re-enter your password")
+                
+                btn_label = "Login" if is_login else "Sign Up"
+                submit = st.form_submit_button(btn_label, type="primary", use_container_width=True)
 
+                if submit:
+                    uid_clean = (uid or "").strip()
+                    pin_clean = (pin or "").strip()
 
-# ────────────────────────────────────────────────────────────
-# PHASE 1 — ID ENTRY
-# ────────────────────────────────────────────────────────────
-def _render_id_phase() -> None:
-    st.markdown("""
-    <div class='splash-desc'>
-      <p>
-        InkOS is a specialized Prompt Engineering OS — it refines raw ideas
-        into production-grade prompts using an 8B Reflex Engine, CIPHER identity
-        layers, and a Maqasid ethical framework.
-      </p>
-      <span class='ar'>أدخل معرّفك للبدء</span>
-    </div>
-    """, unsafe_allow_html=True)
+                    if len(uid_clean) < 3 or len(pin_clean) < 4:
+                        st.error("Invalid credentials format.")
+                    else:
+                        available, _ = check_id_availability(uid_clean)
+                        
+                        if is_login:
+                            if available:
+                                st.error("Account not found. Please Sign Up.")
+                            else:
+                                with st.spinner("Authenticating..."):
+                                    success, err = authenticate_terminal(uid_clean, pin_clean, is_new=False)
+                                    if success:
+                                        st.session_state[K.USER_HASH] = uid_clean
+                                        st.rerun()
+                                    else:
+                                        st.error("Incorrect password.")
+                        else:
+                            if not available:
+                                st.error("Username already exists. Please Login.")
+                            elif pin_clean != (pin_confirm or "").strip():
+                                st.error("Passwords do not match.")
+                            else:
+                                with st.spinner("Creating secure vault..."):
+                                    success, err = authenticate_terminal(uid_clean, pin_clean, is_new=True)
+                                    if success:
+                                        st.session_state[K.USER_HASH] = uid_clean
+                                        st.rerun()
+                                    else:
+                                        st.error(f"Registration failed: {err}")
 
-    st.markdown("<div class='splash-step'>STEP 1 OF 2  —  IDENTITY</div>", unsafe_allow_html=True)
-
-    uid = st.text_input(
-        "Your ID",
-        placeholder="Enter your identifier (e.g. Ameer)",
-        label_visibility="collapsed",
-        key="latch_uid_input",
-        max_chars=64,
-    )
-
-    # Live ID check
-    if uid and uid.strip():
-        uid_clean = uid.strip()
-        available, msg = check_id_availability(uid_clean)
-
-        if len(uid_clean) < 3:
-            st.markdown("<div class='id-badge invalid'>⚠ Too short — min 3 characters</div>", unsafe_allow_html=True)
-        elif available:
-            st.markdown(f"<div class='id-badge new'>✦ New identity — '{uid_clean}' will be created</div>", unsafe_allow_html=True)
+        # ── Bottom Toggle ──
+        if is_login:
+            if st.button("Don't have an account? Sign Up", type="secondary", use_container_width=True):
+                st.session_state["auth_mode"] = "signup"
+                st.rerun()
         else:
-            st.markdown(f"<div class='id-badge existing'>✓ Welcome back, {uid_clean}</div>", unsafe_allow_html=True)
+            if st.button("Already have an account? Login", type="secondary", use_container_width=True):
+                st.session_state["auth_mode"] = "login"
+                st.rerun()
 
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-
-    proceed = st.button("Continue  →", use_container_width=True, type="primary", key="latch_proceed")
-
-    if proceed:
-        uid_clean = (uid or "").strip()
-        if len(uid_clean) < 3:
-            st.error("ID must be at least 3 characters.")
-            return
-
-        available, _ = check_id_availability(uid_clean)
-        st.session_state["latch_uid"]    = uid_clean
-        st.session_state["latch_is_new"] = available
-        st.session_state["latch_phase"]  = "pin"
-        st.rerun()
-
-    st.markdown("""
-    <div style='text-align:center; margin-top:16px; font-size:11px; color:#6B7280; font-family:JetBrains Mono, monospace;'>
-      Your ID is your identity — choose something memorable.
-    </div>
-    """, unsafe_allow_html=True)
-
-
-# ────────────────────────────────────────────────────────────
-# PHASE 2 — PIN ENTRY
-# ────────────────────────────────────────────────────────────
-def _render_pin_phase() -> None:
-    uid    = st.session_state.get("latch_uid", "")
-    is_new = st.session_state.get("latch_is_new", True)
-
-    action_label = "REGISTRATION" if is_new else "AUTHENTICATION"
-    action_verb  = "Create a PIN" if is_new else "Enter your PIN"
-    action_hint  = "Choose a secure PIN (min 4 chars)" if is_new else f"Welcome back, {uid}"
-
-    st.markdown(f"""
-    <div style='background:#121826; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:16px 20px; margin-bottom:20px;'>
-      <div style='font-size:10px; font-family:JetBrains Mono, monospace; color:#D4AF37; letter-spacing:.1em; margin-bottom:8px;'>{action_label}</div>
-      <div style='font-size:22px; font-weight:700; color:#F8F9FA; margin-bottom:2px; font-family:Playfair Display, serif;'>{uid}</div>
-      <div style='font-size:12px; color:#9CA3AF; font-family:Inter, sans-serif;'>{action_hint}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown(f"<div class='splash-step'>STEP 2 OF 2  —  {action_verb.upper()}</div>", unsafe_allow_html=True)
-
-    pin = st.text_input(
-        "PIN",
-        placeholder="Enter PIN...",
-        type="password",
-        label_visibility="collapsed",
-        key="latch_pin_input",
-        max_chars=128,
-    )
-
-    if is_new:
-        pin_confirm = st.text_input(
-            "Confirm PIN",
-            placeholder="Confirm PIN...",
-            type="password",
-            label_visibility="collapsed",
-            key="latch_pin_confirm",
-            max_chars=128,
-        )
-    else:
-        pin_confirm = pin
-
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-
-    col_back, col_go = st.columns([1, 2])
-    with col_back:
-        if st.button("← Back", key="latch_back", use_container_width=True):
-            st.session_state["latch_phase"] = "id"
-            st.rerun()
-
-    with col_go:
-        btn_label = "⚡ Create Identity" if is_new else "⚡ Initiate Latch"
-        submit = st.button(btn_label, use_container_width=True, type="primary", key="latch_submit")
-
-    if submit:
-        pin_val = (pin or "").strip()
-
-        if len(pin_val) < 4:
-            st.error("PIN must be at least 4 characters.")
-            return
-
-        if is_new and pin_val != (pin_confirm or "").strip():
-            st.error("PINs do not match.")
-            return
-
-        with st.spinner("Authenticating..."):
-            success, err = authenticate_terminal(uid, pin_val, is_new)
-
-        if success:
-            st.session_state[K.USER_HASH]   = uid
-            st.session_state["latch_phase"] = "success"
-            st.rerun()
-        else:
-            st.error(f"⚠ {err or 'Authentication failed.'}")
-
-
-# ────────────────────────────────────────────────────────────
-# PHASE 3 — SUCCESS
-# ────────────────────────────────────────────────────────────
-def _render_success_phase() -> None:
-    uid = st.session_state.get("latch_uid", "")
-
-    st.markdown(f"""
-    <div style='text-align:center; padding:40px 24px;'>
-      <div style='font-size:48px; margin-bottom:16px; color:#D4AF37;'>⚡</div>
-      <div style='font-family:Playfair Display, serif; font-size:28px; font-weight:700; color:#F8F9FA; margin-bottom:8px;'>Identity Latched</div>
-      <div style='font-family:Inter, sans-serif; font-size:14px; color:#9CA3AF; margin-bottom:4px;'>
-        Welcome, {uid}
-      </div>
-      <div style='font-family:Amiri, serif; font-size:18px; color:#D4AF37;'>
-        أهلاً بك في النظام
-      </div>
-      <div style='margin-top:30px;'>
-        <div style='display:inline-flex; align-items:center; gap:8px; background:rgba(34, 197, 94, 0.1);
-                    border:1px solid rgba(34, 197, 94, 0.3); border-radius:999px;
-                    padding:6px 16px; font-size:10px; color:#22C55E; font-family:JetBrains Mono, monospace;'>
-          <span class="dot" style="font-size:8px;">●</span> UPLINK ESTABLISHED
-        </div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    time.sleep(1.2)
-    for key in ("latch_phase", "latch_uid", "latch_is_new"):
-        st.session_state.pop(key, None)
-    st.rerun()
+        # ── Footer ──
+        st.markdown("""
+            <div class="security-footer">
+                🛡️ Your data is protected by enterprise-grade security
+            </div>
+        """, unsafe_allow_html=True)
