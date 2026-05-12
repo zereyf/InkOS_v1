@@ -1,9 +1,10 @@
 """
 ui/tabs/workspace.py — Dual-State Workspace (Desk & Studio)
 =============================================================
-v5.0: The Figma Sync.
-      - Automatically routes between Light "Desk" (Ideation) and Dark "Studio" (Refinement).
-      - Integrates native Streamlit widgets into the custom CSS grid.
+v5.1: Mobile-First Figma Sync.
+      - Bulletproof CSS to prevent Streamlit mobile column crushing.
+      - Strips dark-mode bleed from text areas in Light mode.
+      - Preserves all AI payload and security logics.
 """
 from __future__ import annotations
 import re, time
@@ -28,7 +29,7 @@ QUICK_ACTIONS = [
 ]
 
 # ────────────────────────────────────────────────
-# HELPERS & LOGIC (Retained from your core)
+# HELPERS & LOGIC
 # ────────────────────────────────────────────────
 
 def _get_dna_context() -> dict:
@@ -56,18 +57,22 @@ def extract_clean_output(raw: str) -> str:
 def _word_count(text: str) -> int:
     return len(text.split()) if text.strip() else 0
 
-# ────────────────────────────────────────────────
+
 # ────────────────────────────────────────────────
 # STATE 1: THE DESK (LIGHT MODE IDEATION)
 # ────────────────────────────────────────────────
 def _render_desk(cfg: dict):
-       st.markdown("""
+    st.markdown("""
     <style>
     /* Base Light Theme */
     .stApp { background-color: #F9F9F9 !important; color: #111827 !important; }
     .main .block-container { max-width: 600px !important; padding-top: 20px !important; padding-bottom: 100px !important; }
     
     /* Typography */
+    .desk-header { margin-bottom: 30px; text-align: center; }
+    .desk-logo { font-family: 'Playfair Display', serif; font-size: 38px; color: #111827; line-height: 1; letter-spacing: -1px; }
+    .desk-logo-sub { font-family: 'Inter', sans-serif; font-size: 9px; color: #9CA3AF; letter-spacing: 2px; text-transform: uppercase; }
+    
     .greet-main { font-family: 'Playfair Display', serif; font-size: 34px; color: #111827; margin-bottom: 5px; }
     .greet-sub { font-family: 'Inter', sans-serif; font-size: 15px; color: #6B7280; margin-bottom: 30px; }
 
@@ -175,6 +180,14 @@ def _render_desk(cfg: dict):
     </style>
     """, unsafe_allow_html=True)
 
+    # ── HEADER ──
+    st.markdown("""
+        <div class="desk-header">
+            <div class="desk-logo">İnkOS</div>
+            <div class="desk-logo-sub">PREMIUM AI PROMPT REFINER</div>
+        </div>
+    """, unsafe_allow_html=True)
+
     st.markdown('<div class="greet-main">Good morning.</div>', unsafe_allow_html=True)
     st.markdown('<div class="greet-sub">Let\'s craft something exceptional.</div>', unsafe_allow_html=True)
 
@@ -229,10 +242,9 @@ def _render_desk(cfg: dict):
              </div>
          """, unsafe_allow_html=True)
 
-    # Process Input
+    # ── PROCESS INTENT ──
     if send and intent_val and intent_val.strip():
         _process_prompt(intent_val, cfg)
-
 
 
 # ────────────────────────────────────────────────
@@ -309,8 +321,10 @@ def _render_studio(cfg: dict):
     # Action Row
     st.markdown('<div class="studio-actions">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    with c1: st.button("⎘ Copy", use_container_width=True)
-    with c2: st.button("↗ Share", use_container_width=True)
+    with c1: 
+        st.button("⎘ Copy", use_container_width=True)
+    with c2: 
+        st.button("↗ Share", use_container_width=True)
     with c3: 
         if st.button("↺ Re-ink", use_container_width=True):
             st.session_state[K.LAST_RESULT] = None
@@ -332,8 +346,6 @@ def _process_prompt(intent_val: str, cfg: dict):
         run_cfg = dict(cfg)
         payload = assemble_master_payload(cleaned, run_cfg, _get_dna_context())
         
-        # We bypass the manual 7-second sleep animation for production speed
-        # Real AI call:
         result, audit, _ = run_refinement_and_audit(
             payload,
             resolve_target_model(cfg.get("target_model", "auto"), cleaned)[0],
@@ -358,9 +370,7 @@ def _process_prompt(intent_val: str, cfg: dict):
 # MAIN RENDERER (THE ROUTER)
 # ────────────────────────────────────────────────
 def render_workspace(cfg: dict) -> None:
-    # THE DUAL-STATE ROUTER
-    # If a result exists in memory, we are in the Studio (Dark).
-    # If memory is clear, we are at the Desk (Light).
+    # Router logic: Empty result = Desk Mode. Populated result = Studio Mode.
     if st.session_state.get(K.LAST_RESULT):
         _render_studio(cfg)
     else:
