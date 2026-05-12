@@ -1,11 +1,11 @@
 """
 ui/tabs/workspace.py — Dual-State Workspace (Desk & Studio)
 =============================================================
-v6.0: The Brutalist Theme Engine.
-      - Added dynamic Light/Dark Desk toggle.
-      - Fixed Hamburger menu and top header icon colors.
-      - Enforced strict Brutalist button styling.
-      - Hardened state routing via "in_studio" flag.
+v6.5: The Master Polish.
+      - Nuked useless Streamlit toolbar icons; perfected Hamburger menu.
+      - Relocated Theme Toggle to a premium top-right circular icon.
+      - Updated Regex to strip "JSON Audit Object" artifacts.
+      - Fixed Studio horizontal button layout.
 """
 from __future__ import annotations
 import re, time
@@ -38,6 +38,9 @@ def _get_dna_context() -> dict:
 
 def extract_clean_output(raw: str) -> str:
     t = str(raw or "")
+    # Strip known backend artifacts
+    t = re.sub(r"Claude Target Specific Output\s*", "", t, flags=re.I)
+    t = re.sub(r"JSON Audit Object[\s\S]*", "", t, flags=re.I) # Drops everything after JSON Audit Object
     t = re.sub(r"\*\*\s*PART\s*\d+\s*:.*?(?=\*\*\s*PART\s*\d+\s*:|$)", "", t, flags=re.I | re.S)
     t = re.sub(r"(?:Claude|GPT|ChatGPT|Gemini|DALL-?E|Midjourney|FLUX|OpenAI)\s*(?:Target\s*)?Prompt\s*:\s*", "", t, flags=re.I)
     t = re.sub(r"A\.I\.Z\.E\.N\..*?(?:InkOS\.|(?=\n\n))", "", t, flags=re.I | re.S)
@@ -79,7 +82,6 @@ def _format_history_entry(output_text: str, input_text: str):
 # STATE 1: THE DESK (IDEATION WITH THEME ENGINE)
 # ────────────────────────────────────────────────
 def _render_desk(cfg: dict):
-    # ── THEME ENGINE VARIABLES ──
     theme = st.session_state.get("desk_theme", "light")
     
     if theme == "light":
@@ -89,7 +91,6 @@ def _render_desk(cfg: dict):
         C_CARD   = "#FFFFFF"
         C_BORDER = "#E5E7EB"
     else:
-        # Studio Dark Blue/Black Theme
         C_BG     = "#0B0F19"
         C_TEXT   = "#F8F9FA"
         C_SUB    = "#9CA3AF"
@@ -98,14 +99,14 @@ def _render_desk(cfg: dict):
 
     st.markdown(f"""
     <style>
-    /* ── HEADER & ICONS FIX ── */
+    /* ── HEADER & TOOLBAR FIXES ── */
     header[data-testid="stHeader"] {{ background-color: transparent !important; box-shadow: none !important; }}
     .stAppDeployButton {{ display: none !important; }}
     
-    /* Force top right toolbar icons to be visible */
-    .stAppToolbar button {{ color: {C_TEXT} !important; }}
+    /* Nuke Streamlit's extra toolbar icons (GitHub, Star, etc.) */
+    .stAppToolbar > div:not(:first-child) {{ display: none !important; }}
     
-    /* Hamburger Menu Transform */
+    /* Perfect Hamburger Menu */
     [data-testid="collapsedControl"] {{ color: {C_TEXT} !important; }}
     [data-testid="collapsedControl"] svg {{ display: none !important; }}
     [data-testid="collapsedControl"]::before {{
@@ -114,31 +115,46 @@ def _render_desk(cfg: dict):
         color: {C_TEXT} !important;
         display: block !important;
         line-height: 1;
+        margin-top: 4px;
+        margin-left: 8px;
     }}
 
     /* ── BASE THEME ── */
     .stApp {{ background-color: {C_BG} !important; transition: background-color 0.3s ease; }}
-    .main .block-container {{ max-width: 600px !important; padding-top: 0px !important; padding-bottom: 100px !important; }}
+    .main .block-container {{ max-width: 600px !important; padding-top: 10px !important; padding-bottom: 100px !important; }}
     
     @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
     
-    .desk-header {{ display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; margin-top: 10px; }}
-    .desk-logo-container {{ text-align: center; flex-grow: 1; }}
-    .desk-logo {{ font-family: 'Playfair Display', serif; font-size: 42px; color: {C_TEXT}; line-height: 1; letter-spacing: -1px; font-weight: 600; }}
-    .desk-logo-sub {{ font-family: 'Inter', sans-serif; font-size: 9px; color: {C_SUB}; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; margin-top: 4px; }}
+    /* ── TOP RIGHT THEME TOGGLE ── */
+    div.theme-toggle-btn div[data-testid="stButton"] button {{
+        background: transparent !important;
+        border: 1px solid {C_BORDER} !important;
+        border-radius: 50% !important;
+        width: 44px !important;
+        height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: {C_TEXT} !important;
+        font-size: 18px !important;
+        box-shadow: none !important;
+        margin-left: auto !important;
+    }}
+    
+    .desk-header {{ display: flex; flex-direction: column; align-items: center; margin-bottom: 40px; margin-top: -30px; }}
+    .desk-logo {{ font-family: 'Playfair Display', serif; font-size: 46px; color: {C_TEXT}; line-height: 1; letter-spacing: -1px; font-weight: 600; }}
+    .desk-logo-sub {{ font-family: 'Inter', sans-serif; font-size: 9px; color: {C_SUB}; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600; margin-top: 6px; }}
     
     .greet-main {{ font-family: 'Playfair Display', serif; font-size: 34px; color: {C_TEXT} !important; margin-bottom: 5px; }}
     .greet-sub {{ font-family: 'Inter', sans-serif; font-size: 15px; color: {C_SUB} !important; margin-bottom: 25px; }}
 
-    /* ── STABLE INPUT AREA ── */
-    div[data-testid="stTextArea"] > div, div[data-baseweb="textarea"], div[data-baseweb="base-input"] {{
-        background-color: transparent !important; background: transparent !important; border: none !important;
-    }}
+    /* ── INPUT AREA ── */
+    div[data-testid="stTextArea"] > div, div[data-baseweb="textarea"], div[data-baseweb="base-input"] {{ background: transparent !important; border: none !important; }}
     div[data-testid="stTextArea"] textarea {{
         background-color: {C_CARD} !important;
         border: 1px solid {C_BORDER} !important;
         border-radius: 16px !important;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.04) !important;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.03) !important;
         color: {C_TEXT} !important;
         -webkit-text-fill-color: {C_TEXT} !important;
         font-family: 'Inter', sans-serif !important;
@@ -146,92 +162,66 @@ def _render_desk(cfg: dict):
         padding: 16px !important;
         min-height: 120px !important;
     }}
-    div[data-testid="stTextArea"] textarea:focus {{
-        border-color: {C_TEXT} !important; box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important; outline: none !important;
-    }}
+    div[data-testid="stTextArea"] textarea:focus {{ border-color: {C_TEXT} !important; box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important; outline: none !important; }}
     div[data-testid="stTextArea"] label {{ display: none !important; }}
 
-    /* ── EXACT BRUTALIST ACTION BUTTON ── */
-    div[data-testid="stButton"] button[kind="primary"] {{
-        background: transparent !important;
-        background-color: transparent !important;
-        color: {C_TEXT} !important;
-        border-radius: 0px !important; /* Completely Square */
-        border: 2px solid {C_TEXT} !important; /* Thick Border */
-        height: 54px !important;
-        font-family: 'Inter', sans-serif !important;
-        font-size: 14px !important;
-        font-weight: 700 !important;
-        letter-spacing: 1.5px !important;
-        text-transform: uppercase !important;
-        margin-top: 4px !important;
-        box-shadow: none !important;
-        transition: all 0.2s ease !important;
+    /* ── EXACT BRUTALIST BUTTON ── */
+    button[kind="primary"] {{
+        background: transparent !important; background-color: transparent !important; color: {C_TEXT} !important;
+        border-radius: 0px !important; border: 2px solid {C_TEXT} !important; height: 54px !important;
+        font-family: 'Inter', sans-serif !important; font-size: 14px !important; font-weight: 700 !important;
+        letter-spacing: 1.5px !important; text-transform: uppercase !important; margin-top: 4px !important;
+        box-shadow: none !important; transition: all 0.2s ease !important;
     }}
-    div[data-testid="stButton"] button[kind="primary"]:hover, 
-    div[data-testid="stButton"] button[kind="primary"]:active {{
-        background: {C_TEXT} !important;
-        background-color: {C_TEXT} !important;
-        color: {C_BG} !important; /* Inverts text color */
+    button[kind="primary"]:hover, button[kind="primary"]:active {{
+        background: {C_TEXT} !important; background-color: {C_TEXT} !important; color: {C_BG} !important; border-color: {C_TEXT} !important;
     }}
 
-    /* ── DROPDOWN QUICK ACTIONS ── */
+    /* ── DROPDOWN ── */
     div[data-testid="stSelectbox"] > div > div {{
-        background-color: {C_CARD} !important;
-        border-radius: 16px !important;
-        border: 1px solid {C_BORDER} !important;
-        color: {C_TEXT} !important;
-        font-family: 'Inter', sans-serif !important;
-        font-size: 14px !important;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
+        background-color: {C_CARD} !important; border-radius: 16px !important; border: 1px solid {C_BORDER} !important;
+        color: {C_TEXT} !important; font-family: 'Inter', sans-serif !important; font-size: 14px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
     }}
     
-    /* ── RECENT INKS CARDS ── */
+    /* ── HISTORY CARDS ── */
     .history-header {{ display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; margin-bottom: 12px; }}
     .history-title {{ font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: {C_TEXT}; }}
     .history-link {{ font-size: 13px; color: {C_SUB}; font-family: 'Inter', sans-serif; padding-top: 8px;}}
-    
     .history-card {{
         background: {C_CARD} !important; border-radius: 16px; padding: 14px 16px; display: flex; gap: 14px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 12px; align-items: center;
-        border: 1px solid {C_BORDER};
+        box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 12px; align-items: center; border: 1px solid {C_BORDER};
     }}
-    
-    .history-avatar {{
-        width: 48px; height: 48px; border-radius: 50%; background: {C_BG}; display: flex;
-        align-items: center; justify-content: center; color: {C_TEXT}; flex-shrink: 0; overflow: hidden;
-        border: 1px solid {C_BORDER};
-    }}
+    .history-avatar {{ width: 48px; height: 48px; border-radius: 50%; background: {C_BG}; display: flex; align-items: center; justify-content: center; color: {C_TEXT}; flex-shrink: 0; border: 1px solid {C_BORDER}; }}
     .ar-avatar {{ font-family: 'Amiri', 'Noto Naskh Arabic', serif; font-size: 18px; font-weight: bold; }}
     .en-avatar {{ font-family: 'Playfair Display', serif; font-size: 22px; font-weight: bold; }}
-
     .history-content {{ flex-grow: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }}
     .ar-text {{ direction: rtl; text-align: right; }}
     .en-text {{ direction: ltr; text-align: left; }}
-    
     .history-title-text {{ font-size: 14px; font-weight: 600; color: {C_TEXT}; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Inter', sans-serif; }}
     .history-preview {{ font-size: 12px; color: {C_SUB}; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: 'Inter', sans-serif; }}
-    
     .history-meta {{ display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; height: 44px; flex-shrink: 0; }}
     .history-date {{ font-size: 11px; color: {C_SUB}; font-family: 'Inter', sans-serif; margin-top: 2px; }}
     .history-dots {{ font-size: 16px; color: {C_SUB}; font-weight: bold; line-height: 1; }}
     </style>
     """, unsafe_allow_html=True)
 
-    # ── TOP HEADER & THEME TOGGLE ──
-    col_empty, col_logo, col_toggle = st.columns([1, 8, 1])
-    with col_logo:
-        st.markdown("""
-            <div class="desk-logo-container">
-                <div class="desk-logo">İnkOS</div>
-                <div class="desk-logo-sub">PREMIUM AI PROMPT REFINER</div>
-            </div>
-        """, unsafe_allow_html=True)
-    with col_toggle:
+    # Top Right Theme Toggle
+    st.markdown('<div class="theme-toggle-btn">', unsafe_allow_html=True)
+    col_space, col_t = st.columns([8, 1.5])
+    with col_t:
         toggle_icon = "🌙" if theme == "light" else "☀️"
         if st.button(toggle_icon, key="btn_theme_toggle"):
             st.session_state["desk_theme"] = "dark" if theme == "light" else "light"
             st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Logo
+    st.markdown("""
+        <div class="desk-header">
+            <div class="desk-logo">İnkOS</div>
+            <div class="desk-logo-sub">PREMIUM AI PROMPT REFINER</div>
+        </div>
+    """, unsafe_allow_html=True)
 
     st.markdown('<div class="greet-main">Good morning.</div>', unsafe_allow_html=True)
     st.markdown('<div class="greet-sub">Let\'s craft something exceptional.</div>', unsafe_allow_html=True)
@@ -242,25 +232,17 @@ def _render_desk(cfg: dict):
     prefill = st.session_state.pop("prefill_input", "")
     if selected_action != action_options[0]:
         for icon, label, starter in QUICK_ACTIONS:
-            if f"{icon} {label}" == selected_action:
-                prefill = starter
-                break
+            if f"{icon} {label}" == selected_action: prefill = starter; break
 
     intent_val = st.text_area("Draft", value=prefill, placeholder="Draft your prompt...", key="desk_input")
-    
-    # EXACT BRUTALIST BUTTON LOGIC
     send = st.button("REFINE PROMPT", key="desk_send", type="primary", use_container_width=True)
 
-    st.markdown("""<div class="history-header">
-        <div class="history-title">Recent Inks</div>
-        <div class="history-link">View all ›</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="history-header"><div class="history-title">Recent Inks</div><div class="history-link">View all ›</div></div>""", unsafe_allow_html=True)
     
     history = st.session_state.get(K.HISTORY, [])
     if history:
         for idx, entry in enumerate(reversed(history[-3:])):
             avatar, title, preview, lang_class, dir_class = _format_history_entry(entry.get("output", ""), entry.get("input", ""))
-            
             st.markdown(f"""
                 <div class="history-card">
                     <div class="history-avatar {lang_class}">{avatar}</div>
@@ -268,49 +250,33 @@ def _render_desk(cfg: dict):
                         <div class="history-title-text">{title}</div>
                         <div class="history-preview">{preview}</div>
                     </div>
-                    <div class="history-meta">
-                        <div class="history-date">Just now</div>
-                        <div class="history-dots">⋮</div>
-                    </div>
+                    <div class="history-meta"><div class="history-date">Just now</div><div class="history-dots">⋮</div></div>
                 </div>
             """, unsafe_allow_html=True)
     else:
-         st.markdown(f"""
-             <div style='text-align:center; padding: 40px; color: {C_SUB}; font-size: 14px; font-family: Inter, sans-serif;'>
-                 No recent inks found.
-             </div>
-         """, unsafe_allow_html=True)
+         st.markdown(f"<div style='text-align:center; padding: 40px; color: {C_SUB}; font-size: 14px; font-family: Inter, sans-serif;'>No recent inks found.</div>", unsafe_allow_html=True)
 
-    if send and intent_val and intent_val.strip():
-        _process_prompt(intent_val, cfg)
+    if send and intent_val and intent_val.strip(): _process_prompt(intent_val, cfg)
 
 
 # ────────────────────────────────────────────────
-# ENGINE EXECUTION (Hardened Router)
+# ENGINE EXECUTION
 # ────────────────────────────────────────────────
 def _process_prompt(intent_val: str, cfg: dict):
     cleaned, violations = sanitize_input(intent_val)
-    if violations:
-        st.error("⚠ Blocked by security policy.")
-        return
+    if violations: st.error("⚠ Blocked by security policy."); return
 
     with st.spinner("Inking..."):
         run_cfg = dict(cfg)
         payload = assemble_master_payload(cleaned, run_cfg, _get_dna_context())
-        
         try:
             result, audit, _ = run_refinement_and_audit(
-                payload,
-                resolve_target_model(cfg.get("target_model", "auto"), cleaned)[0],
-                cfg.get("framework", "RACE"),
-                cfg.get("source_lang", "English"),
-                cfg.get("aesthetic_choice", "Default"),
-                hikmah_style=str(cfg.get("hikmah_style") or "None"),
-                skip_security=False,
+                payload, resolve_target_model(cfg.get("target_model", "auto"), cleaned)[0],
+                cfg.get("framework", "RACE"), cfg.get("source_lang", "English"),
+                cfg.get("aesthetic_choice", "Default"), hikmah_style=str(cfg.get("hikmah_style") or "None"), skip_security=False,
             )
             result = extract_clean_output(result)
-            if not result or result.strip() == "":
-                result = "Engine returned an empty response. Verify AI uplink."
+            if not result or result.strip() == "": result = "Engine returned an empty response. Verify AI uplink."
         except Exception as e:
             result = f"[ UPLINK FAILED ]\n\nThe A.I.Z.E.N. core encountered an error:\n{str(e)}"
 
@@ -318,10 +284,9 @@ def _process_prompt(intent_val: str, cfg: dict):
         history.append({"input": cleaned, "output": result, "time": datetime.now(WAT_TZ).isoformat()})
         st.session_state[K.HISTORY] = history[-50:]
         
-        # Absolute Force Lock for Studio Rendering
         st.session_state[K.LAST_RESULT] = str(result)
         st.session_state[K.LAST_INPUT] = str(cleaned)
-        st.session_state["in_studio"] = True  # Strict Routing Flag
+        st.session_state["in_studio"] = True
         st.rerun()
 
 
@@ -331,30 +296,24 @@ def _process_prompt(intent_val: str, cfg: dict):
 def _render_studio(cfg: dict):
     st.markdown("""
     <style>
-    /* Studio Header Fixes */
+    /* ── STUDIO HEADER FIXES ── */
     header[data-testid="stHeader"] { background-color: transparent !important; box-shadow: none !important; }
-    .stAppToolbar button { color: #F8F9FA !important; }
+    .stAppDeployButton { display: none !important; }
+    .stAppToolbar > div:not(:first-child) { display: none !important; }
     
     [data-testid="collapsedControl"] { color: #F8F9FA !important; }
     [data-testid="collapsedControl"] svg { display: none !important; }
-    [data-testid="collapsedControl"]::before { content: "☰" !important; font-size: 28px !important; color: #F8F9FA !important; display: block !important; line-height: 1;}
+    [data-testid="collapsedControl"]::before { content: "☰" !important; font-size: 28px !important; color: #F8F9FA !important; display: block !important; line-height: 1; margin-top: 4px; margin-left: 8px;}
     
     .stApp { background-color: #0B0F19 !important; color: #F8F9FA !important; }
-    .main .block-container { max-width: 600px !important; padding-top: 40px !important; }
+    .main .block-container { max-width: 600px !important; padding-top: 40px !important; padding-bottom: 100px !important;}
     
-    .studio-header { margin-bottom: 30px; }
+    .studio-header { margin-bottom: 30px; margin-top: 20px;}
     .studio-title { font-family: 'Playfair Display', serif; font-size: 32px; color: #F8F9FA; margin-bottom: 4px; }
     .studio-sub { font-family: 'Inter', sans-serif; font-size: 14px; color: #9CA3AF; }
 
-    .card-orig {
-        background: #121826; border-radius: 16px; padding: 20px; margin-bottom: -10px;
-        border: 1px solid rgba(255,255,255,0.05); z-index: 1; position: relative;
-    }
-    .card-refined {
-        background: #0B0F19; border-radius: 16px; padding: 24px; margin-bottom: 20px;
-        border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: 0 0 30px rgba(212,175,55,0.08);
-        z-index: 2; position: relative;
-    }
+    .card-orig { background: #121826; border-radius: 16px; padding: 20px; margin-bottom: -10px; border: 1px solid rgba(255,255,255,0.05); z-index: 1; position: relative; }
+    .card-refined { background: #0B0F19; border-radius: 16px; padding: 24px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: 0 0 30px rgba(212,175,55,0.08); z-index: 2; position: relative; }
     
     .card-label { display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif; font-size: 13px; color: #9CA3AF; margin-bottom: 15px; }
     .card-label-gold { color: #D4AF37; font-weight: 500; }
@@ -366,21 +325,16 @@ def _render_studio(cfg: dict):
     .connector { text-align: center; z-index: 3; position: relative; transform: translateY(4px); }
     .connector-icon { background: #121826; color: #6B7280; border: 1px solid rgba(255,255,255,0.05); border-radius: 999px; padding: 4px; font-size: 12px; }
 
-    /* Secondary actions in Studio */
-    div.stButton button[kind="secondary"] {
-        background: #121826 !important; border: 1px solid rgba(255,255,255,0.1) !important;
-        color: #D4AF37 !important; border-radius: 8px !important; font-family: 'Inter', sans-serif !important; font-size: 13px !important;
-        text-transform: uppercase !important; letter-spacing: 1px !important; font-weight: 600 !important;
+    /* ── STUDIO BUTTONS (Perfect Horizontal Layout) ── */
+    div[data-testid="stHorizontalBlock"]:has(.studio-btn-marker) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 10px !important; }
+    div[data-testid="stHorizontalBlock"]:has(.studio-btn-marker) > div[data-testid="column"] { width: 33.33% !important; flex: 1 1 0px !important; }
+    div[data-testid="stHorizontalBlock"]:has(.studio-btn-marker) button {
+        background: #121826 !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #D4AF37 !important; border-radius: 12px !important; font-family: 'Inter', sans-serif !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; font-weight: 600 !important; width: 100% !important; padding: 12px 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
-        <div class="studio-header">
-            <div class="studio-title">Studio</div>
-            <div class="studio-sub">Refine your thoughts. Ink with clarity.</div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="studio-header"><div class="studio-title">Studio</div><div class="studio-sub">Refine your thoughts. Ink with clarity.</div></div>', unsafe_allow_html=True)
 
     raw_input = st.session_state.get(K.LAST_INPUT, "")
     result = st.session_state.get(K.LAST_RESULT, "")
@@ -399,6 +353,7 @@ def _render_studio(cfg: dict):
         </div>
     """, unsafe_allow_html=True)
 
+    st.markdown("<div class='studio-btn-marker'></div>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     with c1: st.button("Copy", key="btn_copy", use_container_width=True)
     with c2: st.button("Share", key="btn_share", use_container_width=True)
@@ -413,8 +368,5 @@ def _render_studio(cfg: dict):
 # MAIN RENDERER (THE ROUTER)
 # ────────────────────────────────────────────────
 def render_workspace(cfg: dict) -> None:
-    # Router uses the strict "in_studio" flag.
-    if st.session_state.get("in_studio", False):
-        _render_studio(cfg)
-    else:
-        _render_desk(cfg)
+    if st.session_state.get("in_studio", False): _render_studio(cfg)
+    else: _render_desk(cfg)
