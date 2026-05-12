@@ -1,10 +1,10 @@
 """
 ui/tabs/workspace.py — Dual-State Workspace (Desk & Studio)
 =============================================================
-v5.1: Mobile-First Figma Sync.
-      - Bulletproof CSS to prevent Streamlit mobile column crushing.
-      - Strips dark-mode bleed from text areas in Light mode.
-      - Preserves all AI payload and security logics.
+v5.2: Master Mobile Sync.
+      - Integrated Dropdown Quick Actions for native mobile feel.
+      - High-specificity CSS to destroy Dark Mode bleed in the drafting phase.
+      - Preserves full backend AI execution and security auditing.
 """
 from __future__ import annotations
 import re, time
@@ -64,113 +64,103 @@ def _word_count(text: str) -> int:
 def _render_desk(cfg: dict):
     st.markdown("""
     <style>
-    /* ── BASE THEME FORCING ── */
-    .stApp { background-color: #F9F9F9 !important; color: #111827 !important; }
+    /* ── BASE LIGHT THEME FORCING ── */
+    .stApp { background-color: #F9F9F9 !important; }
     .main .block-container { max-width: 600px !important; padding-top: 20px !important; padding-bottom: 100px !important; }
     
-    .greet-main { font-family: 'Playfair Display', serif; font-size: 34px; color: #111827; margin-bottom: 5px; }
-    .greet-sub { font-family: 'Inter', sans-serif; font-size: 15px; color: #6B7280; margin-bottom: 30px; }
+    .greet-main { font-family: 'Playfair Display', serif; font-size: 34px; color: #111827 !important; margin-bottom: 5px; }
+    .greet-sub { font-family: 'Inter', sans-serif; font-size: 15px; color: #6B7280 !important; margin-bottom: 25px; }
 
-    /* ── STABLE INPUT AREA ── */
-    /* Target the text area specifically with high priority */
+    /* ── STABLE INPUT AREA (Forces White, Beats Dark Mode) ── */
     div[data-testid="stTextArea"] textarea {
         background-color: #FFFFFF !important;
         background: #FFFFFF !important;
         border: 1px solid #E5E7EB !important;
         border-radius: 20px !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.03) !important;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.04) !important;
         color: #111827 !important;
-        -webkit-text-fill-color: #111827 !important;
+        -webkit-text-fill-color: #111827 !important; /* Forces text color on iOS/Android */
         font-family: 'Inter', sans-serif !important;
         font-size: 16px !important;
         padding: 16px !important;
-        min-height: 100px !important;
+        min-height: 120px !important;
     }
     div[data-testid="stTextArea"] textarea:focus {
-        border: 1px solid #111827 !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+        border-color: #111827 !important;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
     }
     div[data-testid="stTextArea"] label { display: none !important; }
 
-    /* ── STABLE ACTION BUTTON ── */
-    div.desk-action-btn div[data-testid="stButton"] button {
+    /* ── ACTION BUTTON ── */
+    div.desk-btn div[data-testid="stButton"] button {
         background-color: #111827 !important;
         color: #FFFFFF !important;
         border-radius: 999px !important;
-        height: 52px !important;
+        height: 50px !important;
         font-size: 16px !important;
         font-weight: 500 !important;
         border: none !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
         margin-top: 5px !important;
-        margin-bottom: 20px !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
     }
 
-    /* ── QUICK ACTIONS (2x2 Grid) ── */
-    div.qa-grid div[data-testid="stButton"] button {
+    /* ── DROPDOWN QUICK ACTIONS ── */
+    div[data-testid="stSelectbox"] > div > div {
         background-color: #FFFFFF !important;
-        border: 1px solid #E5E7EB !important;
         border-radius: 999px !important;
+        border: 1px solid #E5E7EB !important;
         color: #4B5563 !important;
-        font-size: 13px !important;
-        padding: 10px 16px !important;
-        width: 100% !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 14px !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
     }
     
     /* ── RECENT INKS CARDS ── */
     .history-header { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; margin-bottom: 15px; }
-    .history-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 600; color: #111827; }
+    .history-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: #111827; }
     .history-link { font-size: 13px; color: #6B7280; font-family: 'Inter', sans-serif; padding-top: 8px;}
     
     .history-card {
-        background: #FFFFFF; border-radius: 20px; padding: 18px; display: flex; gap: 16px;
+        background: #FFFFFF !important; border-radius: 20px; padding: 18px; display: flex; gap: 16px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 12px; align-items: center;
         border: 1px solid #F3F4F6;
     }
     .history-avatar {
-        width: 55px; height: 55px; border-radius: 50%; background: #F3F4F6; display: flex;
-        align-items: center; justify-content: center; font-family: 'Noto Naskh Arabic', serif; font-size: 22px; color: #111827; flex-shrink: 0;
+        width: 50px; height: 50px; border-radius: 50%; background: #F3F4F6; display: flex;
+        align-items: center; justify-content: center; font-family: 'Noto Naskh Arabic', serif; font-size: 20px; color: #111827; flex-shrink: 0;
     }
     .history-content { flex-grow: 1; min-width: 0; }
-    .history-title-text { font-size: 15px; font-weight: 600; color: #111827; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .history-preview { font-size: 13px; color: #6B7280; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .history-date { font-size: 11px; color: #9CA3AF; margin-left: auto; white-space: nowrap; }
+    .history-title-text { font-size: 15px; font-weight: 600; color: #111827; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Inter', sans-serif; }
+    .history-preview { font-size: 13px; color: #6B7280; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: 'Inter', sans-serif; }
+    .history-date { font-size: 11px; color: #9CA3AF; margin-left: auto; white-space: nowrap; font-family: 'Inter', sans-serif; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ── RENDER ──
+    # ── RENDER HEADER ──
     st.markdown('<div class="greet-main">Good morning.</div>', unsafe_allow_html=True)
     st.markdown('<div class="greet-sub">Let\'s craft something exceptional.</div>', unsafe_allow_html=True)
 
-    # Input Area
-    prefill = st.session_state.pop("prefill_input", "")
-    intent_val = st.text_area("Draft", value=prefill, placeholder="✨ Draft your prompt...", key="desk_input")
+    # ── DROPDOWN QUICK ACTIONS ──
+    action_options = ["✨ Select a Quick Action..."] + [f"{icon} {label}" for icon, label, _ in QUICK_ACTIONS]
+    selected_action = st.selectbox("Quick Actions", options=action_options, label_visibility="collapsed")
     
-    st.markdown('<div class="desk-action-btn">', unsafe_allow_html=True)
+    prefill = st.session_state.pop("prefill_input", "")
+    
+    # If a user selects an action, update the prefill text
+    if selected_action != action_options[0]:
+        for icon, label, starter in QUICK_ACTIONS:
+            if f"{icon} {label}" == selected_action:
+                prefill = starter
+                break
+
+    # ── INPUT AREA ──
+    intent_val = st.text_area("Draft", value=prefill, placeholder="Draft your prompt...", key="desk_input")
+    
+    st.markdown('<div class="desk-btn">', unsafe_allow_html=True)
     send = st.button("→ Refine Prompt", key="desk_send", use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Quick Actions (2x2 Grid)
-    st.markdown('<div class="qa-grid">', unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button(f"{QUICK_ACTIONS[0][0]} {QUICK_ACTIONS[0][1]}", key="qa_0", use_container_width=True):
-            st.session_state["prefill_input"] = QUICK_ACTIONS[0][2]
-            st.rerun()
-        if st.button(f"{QUICK_ACTIONS[2][0]} {QUICK_ACTIONS[2][1]}", key="qa_2", use_container_width=True):
-            st.session_state["prefill_input"] = QUICK_ACTIONS[2][2]
-            st.rerun()
-    with col2:
-        if st.button(f"{QUICK_ACTIONS[1][0]} {QUICK_ACTIONS[1][1]}", key="qa_1", use_container_width=True):
-            st.session_state["prefill_input"] = QUICK_ACTIONS[1][2]
-            st.rerun()
-        if st.button(f"{QUICK_ACTIONS[3][0]} {QUICK_ACTIONS[3][1]}", key="qa_3", use_container_width=True):
-            st.session_state["prefill_input"] = QUICK_ACTIONS[3][2]
-            st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # History
+    # ── RECENT INKS ──
     st.markdown("""<div class="history-header">
         <div class="history-title">Recent Inks</div>
         <div class="history-link">View all ›</div>
@@ -191,10 +181,16 @@ def _render_desk(cfg: dict):
                     <div class="history-date">Just now</div>
                 </div>
             """, unsafe_allow_html=True)
+    else:
+         st.markdown("""
+             <div style='text-align:center; padding: 40px; color: #9CA3AF; font-size: 14px; font-family: Inter, sans-serif;'>
+                 No recent inks found.
+             </div>
+         """, unsafe_allow_html=True)
 
+    # ── PROCESS ──
     if send and intent_val and intent_val.strip():
         _process_prompt(intent_val, cfg)
-
 
 
 # ────────────────────────────────────────────────
