@@ -13,7 +13,6 @@ from state import K
 from vault.vault_engine import authenticate_terminal, check_id_availability
 from vault.supabase_client import SUPABASE_MISSING
 
-
 # ── Inline styles scoped to splash only ──
 _SPLASH_CSS = """
 <style>
@@ -137,6 +136,12 @@ def _hero_html() -> str:
       <div class='splash-sub'>SECURE VAULT GATEWAY</div>
     </div>
     """
+
+def _status_pill() -> str:
+    if SUPABASE_MISSING:
+        return "<div class='splash-status' style='color:#EF4444; border-color:rgba(239,68,68,0.2);'><span class='dot' style='color:#EF4444;'>●</span> VAULT OFFLINE — GUEST MODE</div>"
+    return "<div class='splash-status'><span class='dot'>●</span> NEURAL UPLINK SECURED</div>"
+
 
 def _status_pill() -> str:
     if SUPABASE_MISSING:
