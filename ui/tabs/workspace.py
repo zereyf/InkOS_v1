@@ -71,94 +71,58 @@ def _render_desk(cfg: dict):
     .greet-main { font-family: 'Playfair Display', serif; font-size: 34px; color: #111827; margin-bottom: 5px; }
     .greet-sub { font-family: 'Inter', sans-serif; font-size: 15px; color: #6B7280; margin-bottom: 30px; }
 
-    /* ── FORCED PILL LAYOUT (Mobile Fixed) ── */
-    div[data-testid="stHorizontalBlock"]:has(.input-marker) {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
+    /* ── STABLE INPUT AREA ── */
+    /* Target the text area specifically with high priority */
+    div[data-testid="stTextArea"] textarea {
         background-color: #FFFFFF !important;
-        border-radius: 35px !important;
-        padding: 5px 10px 5px 20px !important;
-        box-shadow: 0 12px 30px rgba(0,0,0,0.06) !important;
+        background: #FFFFFF !important;
         border: 1px solid #E5E7EB !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        width: 100% !important;
-    }
-
-    /* Force the column widths */
-    div[data-testid="stHorizontalBlock"]:has(.input-marker) > div[data-testid="column"]:nth-child(1) {
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-    }
-    div[data-testid="stHorizontalBlock"]:has(.input-marker) > div[data-testid="column"]:nth-child(2) {
-        flex: 0 0 45px !important;
-        width: 45px !important;
-        display: flex !important;
-        justify-content: flex-end !important;
-    }
-
-    /* ── STRIP DARK LEAK (High Specificity) ── */
-    div[data-testid="stHorizontalBlock"]:has(.input-marker) div[data-testid="stTextArea"] {
-        background: transparent !important;
-        border: none !important;
-    }
-    div[data-testid="stHorizontalBlock"]:has(.input-marker) textarea[data-testid="stWidgetLabel"] {
-        display: none !important; /* Hide native label space */
-    }
-    div[data-testid="stHorizontalBlock"]:has(.input-marker) textarea {
-        background-color: rgba(0,0,0,0) !important; /* Force true transparency */
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
+        border-radius: 20px !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03) !important;
         color: #111827 !important;
         -webkit-text-fill-color: #111827 !important;
         font-family: 'Inter', sans-serif !important;
         font-size: 16px !important;
-        padding: 10px 0 !important;
-        min-height: 45px !important;
-        max-height: 100px !important;
+        padding: 16px !important;
+        min-height: 100px !important;
     }
+    div[data-testid="stTextArea"] textarea:focus {
+        border: 1px solid #111827 !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+    }
+    div[data-testid="stTextArea"] label { display: none !important; }
 
-    /* ── SEND BUTTON (Pure Circle) ── */
-    div[data-testid="stHorizontalBlock"]:has(.input-marker) button {
+    /* ── STABLE ACTION BUTTON ── */
+    div.desk-action-btn div[data-testid="stButton"] button {
         background-color: #111827 !important;
         color: #FFFFFF !important;
-        border-radius: 50% !important;
-        height: 44px !important;
-        width: 44px !important;
-        min-width: 44px !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        border-radius: 999px !important;
+        height: 52px !important;
+        font-size: 16px !important;
+        font-weight: 500 !important;
         border: none !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+        margin-top: 5px !important;
+        margin-bottom: 20px !important;
     }
 
-    /* ── QUICK ACTIONS (Scroll Fixed) ── */
-    div[data-testid="stHorizontalBlock"]:has(.qa-marker) {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        gap: 12px !important;
-        padding-bottom: 10px !important;
-        -webkit-overflow-scrolling: touch !important;
-    }
-    div[data-testid="stHorizontalBlock"]:has(.qa-marker)::-webkit-scrollbar { display: none !important; }
-    div[data-testid="stHorizontalBlock"]:has(.qa-marker) button {
+    /* ── QUICK ACTIONS (2x2 Grid) ── */
+    div.qa-grid div[data-testid="stButton"] button {
         background-color: #FFFFFF !important;
         border: 1px solid #E5E7EB !important;
         border-radius: 999px !important;
         color: #4B5563 !important;
-        font-size: 14px !important;
-        padding: 8px 18px !important;
-        white-space: nowrap !important;
+        font-size: 13px !important;
+        padding: 10px 16px !important;
+        width: 100% !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
     }
     
     /* ── RECENT INKS CARDS ── */
+    .history-header { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; margin-bottom: 15px; }
+    .history-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 600; color: #111827; }
+    .history-link { font-size: 13px; color: #6B7280; font-family: 'Inter', sans-serif; padding-top: 8px;}
+    
     .history-card {
         background: #FFFFFF; border-radius: 20px; padding: 18px; display: flex; gap: 16px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 12px; align-items: center;
@@ -179,30 +143,37 @@ def _render_desk(cfg: dict):
     st.markdown('<div class="greet-main">Good morning.</div>', unsafe_allow_html=True)
     st.markdown('<div class="greet-sub">Let\'s craft something exceptional.</div>', unsafe_allow_html=True)
 
-    # Input Pill
-    col_input, col_btn = st.columns([10, 1.5])
-    with col_input:
-        st.markdown("<div class='input-marker'></div>", unsafe_allow_html=True)
-        prefill = st.session_state.pop("prefill_input", "")
-        intent_val = st.text_area("Draft", value=prefill, height=68, placeholder="✨ Draft your prompt...", label_visibility="collapsed", key="desk_input")
-    with col_btn:
-        send = st.button("→", key="desk_send")
+    # Input Area
+    prefill = st.session_state.pop("prefill_input", "")
+    intent_val = st.text_area("Draft", value=prefill, placeholder="✨ Draft your prompt...", key="desk_input")
+    
+    st.markdown('<div class="desk-action-btn">', unsafe_allow_html=True)
+    send = st.button("→ Refine Prompt", key="desk_send", use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # Quick Actions
-    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns(4)
-    cols = [c1, c2, c3, c4]
-    for i, (icon, label, starter) in enumerate(QUICK_ACTIONS):
-        with cols[i]:
-            if i == 0: st.markdown("<div class='qa-marker'></div>", unsafe_allow_html=True)
-            if st.button(f"{icon} {label}", key=f"qa_{i}", use_container_width=True):
-                st.session_state["prefill_input"] = starter
-                st.rerun()
+    # Quick Actions (2x2 Grid)
+    st.markdown('<div class="qa-grid">', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button(f"{QUICK_ACTIONS[0][0]} {QUICK_ACTIONS[0][1]}", key="qa_0", use_container_width=True):
+            st.session_state["prefill_input"] = QUICK_ACTIONS[0][2]
+            st.rerun()
+        if st.button(f"{QUICK_ACTIONS[2][0]} {QUICK_ACTIONS[2][1]}", key="qa_2", use_container_width=True):
+            st.session_state["prefill_input"] = QUICK_ACTIONS[2][2]
+            st.rerun()
+    with col2:
+        if st.button(f"{QUICK_ACTIONS[1][0]} {QUICK_ACTIONS[1][1]}", key="qa_1", use_container_width=True):
+            st.session_state["prefill_input"] = QUICK_ACTIONS[1][2]
+            st.rerun()
+        if st.button(f"{QUICK_ACTIONS[3][0]} {QUICK_ACTIONS[3][1]}", key="qa_3", use_container_width=True):
+            st.session_state["prefill_input"] = QUICK_ACTIONS[3][2]
+            st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # History
-    st.markdown("""<div style="display:flex; justify-content:space-between; margin-top:30px; margin-bottom:15px;">
-        <div style="font-family:'Playfair Display', serif; font-size:24px; font-weight:600; color:#111827;">Recent Inks</div>
-        <div style="font-size:13px; color:#6B7280; padding-top:8px;">View all ›</div>
+    st.markdown("""<div class="history-header">
+        <div class="history-title">Recent Inks</div>
+        <div class="history-link">View all ›</div>
     </div>""", unsafe_allow_html=True)
     
     history = st.session_state.get(K.HISTORY, [])
@@ -223,6 +194,7 @@ def _render_desk(cfg: dict):
 
     if send and intent_val and intent_val.strip():
         _process_prompt(intent_val, cfg)
+
 
 
 # ────────────────────────────────────────────────
