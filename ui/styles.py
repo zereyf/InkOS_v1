@@ -3,7 +3,7 @@ STYLES_LIGHT = '''
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Amiri:wght@400;700&display=swap');
 
 :root {
-  --bg:            #F9F9F9;
+  --bg:            #F6F5F2; /* Updated to iOS Mockup */
   --bg-secondary:  #F0EEE9;
   --surface:       #FFFFFF;
   --surface-up:    #F5F3EF;
@@ -18,9 +18,9 @@ STYLES_LIGHT = '''
   --gold-light:    #E8C84A;
   --gold-dim:      #D4AF3715;
   --gold-border:   #D4AF3740;
-  --text-1:        #1A1A1A;
-  --text-2:        #7F8C8D;
-  --text-3:        #B0A898;
+  --text-1:        #111111; /* Updated to iOS Mockup */
+  --text-2:        #7A7A7A; /* Updated to iOS Mockup */
+  --text-3:        #A8A095; /* Updated to iOS Mockup */
   --success:       #27AE60;
   --warning:       #F39C12;
   --danger:        #E74C3C;
@@ -29,9 +29,9 @@ STYLES_LIGHT = '''
   --font-mono:     'JetBrains Mono', monospace;
   --font-ar:       'IBM Plex Sans Arabic', sans-serif;
   --font-ar-serif: 'Amiri', serif;
-  --shadow-sm:     0 1px 4px rgba(0,0,0,.06);
-  --shadow-md:     0 4px 16px rgba(0,0,0,.08);
-  --shadow-lg:     0 8px 32px rgba(0,0,0,.10);
+  --shadow-sm:     0 2px 10px rgba(0,0,0,0.03); /* Softened */
+  --shadow-md:     0 4px 16px rgba(0,0,0,0.05);
+  --shadow-lg:     0 10px 30px rgba(0,0,0,0.08); /* Float shadow */
 }
 </style>
 '''
@@ -98,6 +98,17 @@ html, body, [class*="css"] {
   pointer-events: none;
   user-select: none;
   opacity: .5;
+}
+
+/* iOS Watercolor Abstract Background */
+.stApp::before {
+    content: "";
+    position: fixed;
+    top: -10%; left: -10%; width: 120%; height: 120%;
+    background: radial-gradient(circle at 15% 20%, rgba(168, 160, 149, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 85% 80%, rgba(17, 17, 17, 0.02) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
 }
 
 /* ── SIDEBAR ── */
@@ -209,8 +220,8 @@ section[data-testid="stMain"] .stButton > button:hover {
   color: var(--text-3) !important;
 }
 
-/* ── DESK INPUT — transparent inside pill ── */
-#desk-input .stTextArea textarea {
+/* ── DESK INPUT — transparent inside pill (Using :has to fix Streamlit issue) ── */
+div[data-testid="stHorizontalBlock"]:has(.input-marker) .stTextArea textarea {
   background:  transparent !important;
   border:      none !important;
   box-shadow:  none !important;
@@ -220,24 +231,9 @@ section[data-testid="stMain"] .stButton > button:hover {
   max-height:  100px !important;
   resize:      none !important;
 }
-#desk-input .stTextArea textarea:focus {
+div[data-testid="stHorizontalBlock"]:has(.input-marker) .stTextArea textarea:focus {
   border:     none !important;
   box-shadow: none !important;
-}
-
-/* ── STUDIO BOTTOM INPUT ── */
-#studio-input .stTextArea textarea {
-  background:  transparent !important;
-  border:      none !important;
-  box-shadow:  none !important;
-  font-size:   14px !important;
-  padding:     6px 0 !important;
-  min-height:  40px !important;
-  max-height:  100px !important;
-  resize:      none !important;
-}
-#studio-input .stTextArea textarea:focus {
-  border: none !important; box-shadow: none !important;
 }
 
 /* ── SELECTBOX ── */
@@ -263,13 +259,6 @@ label, .stTextArea label,
   color: var(--text-2) !important; font-size: 13px !important;
 }
 
-/* ── ALERTS ── */
-.stAlert {
-  border-radius: 10px !important;
-  border:        none !important;
-  font-size:     13px !important;
-}
-
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar       { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -284,14 +273,13 @@ label, .stTextArea label,
 
 /* ── HIDE STREAMLIT CHROME ── */
 #MainMenu, footer { visibility: hidden !important; }
-[data-testid="collapsedControl"] { display: flex !important; }
 .stDeployButton { display: none !important; }
 
-/* ── MAIN LAYOUT ── */
+/* ── MAIN LAYOUT (iOS Width Constraint) ── */
 .main .block-container {
-  padding-bottom: 140px !important;
+  padding-bottom: 120px !important; /* Space for Bottom Nav */
   padding-top:    0 !important;
-  max-width:      680px !important;
+  max-width:      430px !important; /* Mobile width constraint */
   margin:         0 auto !important;
 }
 
@@ -312,22 +300,6 @@ div[data-testid="column"] .stButton > button:hover {
   background:   var(--accent-glow) !important;
   color:        var(--accent) !important;
   border-color: var(--border-blue) !important;
-}
-
-/* ── STUDIO ACTION BUTTONS ── */
-.studio-action .stButton > button {
-  background:    var(--surface-up) !important;
-  border:        1px solid var(--border-gold) !important;
-  border-radius: 12px !important;
-  color:         var(--text-2) !important;
-  height:        48px !important;
-  font-size:     13px !important;
-  transition:    all 150ms ease !important;
-}
-.studio-action .stButton > button:hover {
-  background:   var(--gold-dim) !important;
-  color:        var(--gold) !important;
-  border-color: var(--gold-border) !important;
 }
 
 /* ── BRAND ── */
@@ -394,25 +366,6 @@ div[data-testid="column"] .stButton > button:hover {
 }
 .identity-card:hover .logout { opacity: 1; }
 
-/* ── SIDEBAR SECTION LABELS ── */
-.sidebar-section-label {
-  font:           10px var(--font-mono);
-  color:          var(--text-3);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding:        0 2px;
-  margin:         14px 0 6px;
-}
-
-/* ── NAV SECTION ── */
-.nav-section {
-  margin:        8px 0;
-  padding:       6px 0;
-  border-top:    1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-.nav-item { display: block; }
-
 /* ── STATS CARD ── */
 .stats-card {
   background:            var(--surface-card);
@@ -457,65 +410,88 @@ div[data-testid="column"] .stButton > button:hover {
 .intel-key { font-size:10px; color:var(--text-3); text-transform:uppercase; }
 .intel-val { font-size:12px; color:var(--text-1); font-weight:500; }
 
-/* ── EMPTY STATE ── */
-.empty-state      { text-align:center; padding:60px 24px; }
-.empty-state .en  {
-  font:600 20px var(--font-serif); color:var(--text-3); margin-bottom:8px;
-}
-.empty-state .ar  {
-  font-size:15px; color:var(--text-3); font-family:var(--font-ar-serif);
-}
-
-/* ── MAINTENANCE ── */
-.maintenance-lock {
-  text-align:center; padding:40px;
-  font-family:var(--font-mono); color:var(--danger); font-size:18px;
-}
-
-/* ── EXPANDER ── */
-.streamlit-expanderHeader {
-  font-size:     13px !important;
-  color:         var(--text-2) !important;
-  border-radius: 10px !important;
-}
-
 /* ── RTL SUPPORT ── */
 [dir="rtl"] .brand-ar          { text-align: left; }
 [dir="rtl"] .identity-card     { flex-direction: row-reverse; }
 [dir="rtl"] .logout            { margin-left: 0; margin-right: auto; }
-[dir="rtl"] [data-testid="stSidebar"] .stButton > button {
-  text-align:    right !important;
-  border-left:   none !important;
-  border-right:  3px solid transparent !important;
-  border-radius: 8px 0 0 8px !important;
-}
-[dir="rtl"] [data-testid="stSidebar"] .nav-active + div .stButton > button {
-  border-right: 3px solid var(--accent) !important;
-  border-left:  none !important;
+
+/* ── BOTTOM NAVIGATION (iOS Style) ── */
+.bottom-nav-container {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(0,0,0,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px 25px 20px; /* Account for iOS home bar */
+    z-index: 999;
 }
 
-/* ── ANIMATIONS ── */
-@keyframes spin   { to { transform: rotate(360deg); } }
-@keyframes fadeUp {
-  from { opacity:0; transform:translateY(10px); }
-  to   { opacity:1; transform:translateY(0); }
+/* Base style for the hidden Streamlit buttons inside the nav */
+.bottom-nav-container .stButton {
+    width: auto !important;
+    flex-grow: 1;
+}
+.bottom-nav-container .stButton > button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: auto !important;
+    padding: 5px 0 !important;
+    color: var(--text-2) !important;
+    border-radius: 0 !important;
 }
 
-/* ── MISC ── */
-.topbar { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
-.tag {
-  font-size:12px; background:var(--surface-up); color:var(--text-2);
-  padding:2px 10px; border-radius:999px; border:1px solid var(--border);
+/* Nav Item Typography */
+.bottom-nav-container .stButton > button p {
+    font-size: 10px !important;
+    font-weight: 500 !important;
+    margin-top: 4px !important;
+    font-family: var(--font-sans) !important;
 }
+
+/* Nav Icons (Injected via CSS since Streamlit buttons don't support custom HTML inside) */
+.bottom-nav-container div:nth-child(1) .stButton > button::before { content: "⌂"; font-size: 22px; line-height: 1; }
+.bottom-nav-container div:nth-child(2) .stButton > button::before { content: "❖"; font-size: 20px; line-height: 1; }
+.bottom-nav-container div:nth-child(4) .stButton > button::before { content: "☆"; font-size: 22px; line-height: 1; }
+.bottom-nav-container div:nth-child(5) .stButton > button::before { content: "👤"; font-size: 18px; line-height: 1; margin-top: 2px; }
+
+/* The Floating Fab Button (Center) */
+.bottom-nav-container div:nth-child(3) .stButton > button {
+    background: var(--text-1) !important;
+    color: var(--surface) !important;
+    width: 54px !important;
+    height: 54px !important;
+    border-radius: 50% !important;
+    margin-top: -30px !important; /* Pull it up out of the bar */
+    box-shadow: var(--shadow-lg) !important;
+    transition: transform 0.2s ease !important;
+}
+.bottom-nav-container div:nth-child(3) .stButton > button::before {
+    content: "+"; font-size: 28px; font-weight: 300; line-height: 0;
+}
+.bottom-nav-container div:nth-child(3) .stButton > button p { display: none !important; /* Hide text on FAB */ }
+
+/* Active State Simulation (You will control this via Streamlit Session State classes later) */
+.nav-active > button { color: var(--text-1) !important; }
 
 </style>
 '''
 
-
 def get_styles(dark_mode: bool = False) -> str:
     """
     Returns complete CSS for the given mode.
-    Default is LIGHT mode to match the design proposal.
     """
     token_block = STYLES_DARK if dark_mode else STYLES_LIGHT
     return token_block + STYLES_BASE
