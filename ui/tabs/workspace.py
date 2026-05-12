@@ -1,11 +1,10 @@
 """
 ui/tabs/workspace.py — Dual-State Workspace (Desk & Studio)
 =============================================================
-v6.5: The Master Polish.
-      - Nuked useless Streamlit toolbar icons; perfected Hamburger menu.
-      - Relocated Theme Toggle to a premium top-right circular icon.
-      - Updated Regex to strip "JSON Audit Object" artifacts.
-      - Fixed Studio horizontal button layout.
+v7.0: The Design System Sync.
+      - Fully decoupled from hardcoded hex colors.
+      - Powered entirely by global CSS variables (var(--bg), var(--text-1), etc.).
+      - Router automatically forces global Dark Mode when entering the Studio.
 """
 from __future__ import annotations
 import re, time
@@ -38,9 +37,8 @@ def _get_dna_context() -> dict:
 
 def extract_clean_output(raw: str) -> str:
     t = str(raw or "")
-    # Strip known backend artifacts
     t = re.sub(r"Claude Target Specific Output\s*", "", t, flags=re.I)
-    t = re.sub(r"JSON Audit Object[\s\S]*", "", t, flags=re.I) # Drops everything after JSON Audit Object
+    t = re.sub(r"JSON Audit Object[\s\S]*", "", t, flags=re.I) 
     t = re.sub(r"\*\*\s*PART\s*\d+\s*:.*?(?=\*\*\s*PART\s*\d+\s*:|$)", "", t, flags=re.I | re.S)
     t = re.sub(r"(?:Claude|GPT|ChatGPT|Gemini|DALL-?E|Midjourney|FLUX|OpenAI)\s*(?:Target\s*)?Prompt\s*:\s*", "", t, flags=re.I)
     t = re.sub(r"A\.I\.Z\.E\.N\..*?(?:InkOS\.|(?=\n\n))", "", t, flags=re.I | re.S)
@@ -79,129 +77,70 @@ def _format_history_entry(output_text: str, input_text: str):
 
 
 # ────────────────────────────────────────────────
-# STATE 1: THE DESK (IDEATION WITH THEME ENGINE)
+# STATE 1: THE DESK (IDEATION PHASE)
 # ────────────────────────────────────────────────
 def _render_desk(cfg: dict):
     theme = st.session_state.get("desk_theme", "light")
     
-    if theme == "light":
-        C_BG     = "#F9F9F9"
-        C_TEXT   = "#111827"
-        C_SUB    = "#6B7280"
-        C_CARD   = "#FFFFFF"
-        C_BORDER = "#E5E7EB"
-    else:
-        C_BG     = "#0B0F19"
-        C_TEXT   = "#F8F9FA"
-        C_SUB    = "#9CA3AF"
-        C_CARD   = "#121826"
-        C_BORDER = "rgba(255,255,255,0.1)"
-
-    st.markdown(f"""
+    st.markdown("""
     <style>
-    /* ── HEADER & TOOLBAR FIXES ── */
-    header[data-testid="stHeader"] {{ background-color: transparent !important; box-shadow: none !important; }}
-    .stAppDeployButton {{ display: none !important; }}
+    /* ── TOOLBAR & HEADER HACKS ── */
+    header[data-testid="stHeader"] { background-color: transparent !important; box-shadow: none !important; }
+    .stAppDeployButton { display: none !important; }
+    .stAppToolbar > div:not(:first-child) { display: none !important; }
     
-    /* Nuke Streamlit's extra toolbar icons (GitHub, Star, etc.) */
-    .stAppToolbar > div:not(:first-child) {{ display: none !important; }}
-    
-    /* Perfect Hamburger Menu */
-    [data-testid="collapsedControl"] {{ color: {C_TEXT} !important; }}
-    [data-testid="collapsedControl"] svg {{ display: none !important; }}
-    [data-testid="collapsedControl"]::before {{
-        content: "☰" !important;
-        font-size: 28px !important;
-        color: {C_TEXT} !important;
-        display: block !important;
-        line-height: 1;
-        margin-top: 4px;
-        margin-left: 8px;
-    }}
+    [data-testid="collapsedControl"] { color: var(--text-1) !important; }
+    [data-testid="collapsedControl"] svg { display: none !important; }
+    [data-testid="collapsedControl"]::before {
+        content: "☰" !important; font-size: 28px !important; color: var(--text-1) !important;
+        display: block !important; line-height: 1; margin-top: 4px; margin-left: 8px;
+    }
 
-    /* ── BASE THEME ── */
-    .stApp {{ background-color: {C_BG} !important; transition: background-color 0.3s ease; }}
-    .main .block-container {{ max-width: 600px !important; padding-top: 10px !important; padding-bottom: 100px !important; }}
+    /* ── DESK TYPOGRAPHY & LOGO ── */
+    .desk-header { display: flex; flex-direction: column; align-items: center; margin-bottom: 40px; margin-top: -30px; }
+    .desk-logo { font-family: var(--font-serif); font-size: 46px; color: var(--text-1); line-height: 1; letter-spacing: -1px; font-weight: 600; }
+    .desk-logo-sub { font-family: var(--font-sans); font-size: 9px; color: var(--text-3); letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600; margin-top: 6px; }
     
-    @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
-    
-    /* ── TOP RIGHT THEME TOGGLE ── */
-    div.theme-toggle-btn div[data-testid="stButton"] button {{
-        background: transparent !important;
-        border: 1px solid {C_BORDER} !important;
-        border-radius: 50% !important;
-        width: 44px !important;
-        height: 44px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        color: {C_TEXT} !important;
-        font-size: 18px !important;
-        box-shadow: none !important;
-        margin-left: auto !important;
-    }}
-    
-    .desk-header {{ display: flex; flex-direction: column; align-items: center; margin-bottom: 40px; margin-top: -30px; }}
-    .desk-logo {{ font-family: 'Playfair Display', serif; font-size: 46px; color: {C_TEXT}; line-height: 1; letter-spacing: -1px; font-weight: 600; }}
-    .desk-logo-sub {{ font-family: 'Inter', sans-serif; font-size: 9px; color: {C_SUB}; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600; margin-top: 6px; }}
-    
-    .greet-main {{ font-family: 'Playfair Display', serif; font-size: 34px; color: {C_TEXT} !important; margin-bottom: 5px; }}
-    .greet-sub {{ font-family: 'Inter', sans-serif; font-size: 15px; color: {C_SUB} !important; margin-bottom: 25px; }}
+    .greet-main { font-family: var(--font-serif); font-size: 34px; color: var(--text-1) !important; margin-bottom: 5px; }
+    .greet-sub { font-family: var(--font-sans); font-size: 15px; color: var(--text-2) !important; margin-bottom: 25px; }
 
-    /* ── INPUT AREA ── */
-    div[data-testid="stTextArea"] > div, div[data-baseweb="textarea"], div[data-baseweb="base-input"] {{ background: transparent !important; border: none !important; }}
-    div[data-testid="stTextArea"] textarea {{
-        background-color: {C_CARD} !important;
-        border: 1px solid {C_BORDER} !important;
-        border-radius: 16px !important;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.03) !important;
-        color: {C_TEXT} !important;
-        -webkit-text-fill-color: {C_TEXT} !important;
-        font-family: 'Inter', sans-serif !important;
-        font-size: 15px !important;
-        padding: 16px !important;
-        min-height: 120px !important;
-    }}
-    div[data-testid="stTextArea"] textarea:focus {{ border-color: {C_TEXT} !important; box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important; outline: none !important; }}
-    div[data-testid="stTextArea"] label {{ display: none !important; }}
+    /* ── THEME TOGGLE (Top Right) ── */
+    div.theme-toggle-btn div[data-testid="stButton"] button {
+        background: transparent !important; border: 1px solid var(--border) !important; border-radius: 50% !important;
+        width: 44px !important; height: 44px !important; display: flex !important; align-items: center !important; justify-content: center !important;
+        color: var(--text-1) !important; font-size: 18px !important; box-shadow: none !important; margin-left: auto !important;
+    }
 
-    /* ── EXACT BRUTALIST BUTTON ── */
-    button[kind="primary"] {{
-        background: transparent !important; background-color: transparent !important; color: {C_TEXT} !important;
-        border-radius: 0px !important; border: 2px solid {C_TEXT} !important; height: 54px !important;
-        font-family: 'Inter', sans-serif !important; font-size: 14px !important; font-weight: 700 !important;
-        letter-spacing: 1.5px !important; text-transform: uppercase !important; margin-top: 4px !important;
-        box-shadow: none !important; transition: all 0.2s ease !important;
-    }}
-    button[kind="primary"]:hover, button[kind="primary"]:active {{
-        background: {C_TEXT} !important; background-color: {C_TEXT} !important; color: {C_BG} !important; border-color: {C_TEXT} !important;
-    }}
+    /* ── EXACT BRUTALIST BUTTON (Overrides Global Styles) ── */
+    button[kind="primary"] {
+        background: transparent !important; color: var(--text-1) !important; border-radius: 0px !important; 
+        border: 2px solid var(--text-1) !important; height: 54px !important; font-family: var(--font-sans) !important; 
+        font-size: 14px !important; font-weight: 700 !important; letter-spacing: 1.5px !important; text-transform: uppercase !important; 
+        margin-top: 4px !important; box-shadow: none !important; transition: all 0.2s ease !important;
+    }
+    button[kind="primary"]:hover, button[kind="primary"]:active {
+        background: var(--text-1) !important; color: var(--bg) !important; border-color: var(--text-1) !important;
+    }
 
-    /* ── DROPDOWN ── */
-    div[data-testid="stSelectbox"] > div > div {{
-        background-color: {C_CARD} !important; border-radius: 16px !important; border: 1px solid {C_BORDER} !important;
-        color: {C_TEXT} !important; font-family: 'Inter', sans-serif !important; font-size: 14px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
-    }}
-    
     /* ── HISTORY CARDS ── */
-    .history-header {{ display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; margin-bottom: 12px; }}
-    .history-title {{ font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: {C_TEXT}; }}
-    .history-link {{ font-size: 13px; color: {C_SUB}; font-family: 'Inter', sans-serif; padding-top: 8px;}}
-    .history-card {{
-        background: {C_CARD} !important; border-radius: 16px; padding: 14px 16px; display: flex; gap: 14px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 12px; align-items: center; border: 1px solid {C_BORDER};
-    }}
-    .history-avatar {{ width: 48px; height: 48px; border-radius: 50%; background: {C_BG}; display: flex; align-items: center; justify-content: center; color: {C_TEXT}; flex-shrink: 0; border: 1px solid {C_BORDER}; }}
-    .ar-avatar {{ font-family: 'Amiri', 'Noto Naskh Arabic', serif; font-size: 18px; font-weight: bold; }}
-    .en-avatar {{ font-family: 'Playfair Display', serif; font-size: 22px; font-weight: bold; }}
-    .history-content {{ flex-grow: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }}
-    .ar-text {{ direction: rtl; text-align: right; }}
-    .en-text {{ direction: ltr; text-align: left; }}
-    .history-title-text {{ font-size: 14px; font-weight: 600; color: {C_TEXT}; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Inter', sans-serif; }}
-    .history-preview {{ font-size: 12px; color: {C_SUB}; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: 'Inter', sans-serif; }}
-    .history-meta {{ display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; height: 44px; flex-shrink: 0; }}
-    .history-date {{ font-size: 11px; color: {C_SUB}; font-family: 'Inter', sans-serif; margin-top: 2px; }}
-    .history-dots {{ font-size: 16px; color: {C_SUB}; font-weight: bold; line-height: 1; }}
+    .history-header { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; margin-bottom: 12px; }
+    .history-title { font-family: var(--font-serif); font-size: 22px; font-weight: 600; color: var(--text-1); }
+    .history-link { font-size: 13px; color: var(--text-2); font-family: var(--font-sans); padding-top: 8px;}
+    .history-card {
+        background: var(--surface-card) !important; border-radius: 16px; padding: 14px 16px; display: flex; gap: 14px;
+        box-shadow: var(--shadow-sm); margin-bottom: 12px; align-items: center; border: 1px solid var(--border);
+    }
+    .history-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--surface-up); display: flex; align-items: center; justify-content: center; color: var(--text-1); flex-shrink: 0; border: 1px solid var(--border); }
+    .ar-avatar { font-family: var(--font-ar-serif); font-size: 18px; font-weight: bold; }
+    .en-avatar { font-family: var(--font-serif); font-size: 22px; font-weight: bold; }
+    .history-content { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+    .ar-text { direction: rtl; text-align: right; }
+    .en-text { direction: ltr; text-align: left; }
+    .history-title-text { font-size: 14px; font-weight: 600; color: var(--text-1); margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-sans); }
+    .history-preview { font-size: 12px; color: var(--text-2); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: var(--font-sans); }
+    .history-meta { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; height: 44px; flex-shrink: 0; }
+    .history-date { font-size: 11px; color: var(--text-3); font-family: var(--font-sans); margin-top: 2px; }
+    .history-dots { font-size: 16px; color: var(--text-3); font-weight: bold; line-height: 1; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -215,30 +154,30 @@ def _render_desk(cfg: dict):
             st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Logo
+    # Logo & Greetings
     st.markdown("""
         <div class="desk-header">
             <div class="desk-logo">İnkOS</div>
             <div class="desk-logo-sub">PREMIUM AI PROMPT REFINER</div>
         </div>
     """, unsafe_allow_html=True)
-
     st.markdown('<div class="greet-main">Good morning.</div>', unsafe_allow_html=True)
     st.markdown('<div class="greet-sub">Let\'s craft something exceptional.</div>', unsafe_allow_html=True)
 
+    # Quick Actions
     action_options = ["✨ Select a Quick Action..."] + [f"{icon} {label}" for icon, label, _ in QUICK_ACTIONS]
     selected_action = st.selectbox("Quick Actions", options=action_options, label_visibility="collapsed")
-    
     prefill = st.session_state.pop("prefill_input", "")
     if selected_action != action_options[0]:
         for icon, label, starter in QUICK_ACTIONS:
             if f"{icon} {label}" == selected_action: prefill = starter; break
 
+    # Input & Button
     intent_val = st.text_area("Draft", value=prefill, placeholder="Draft your prompt...", key="desk_input")
     send = st.button("REFINE PROMPT", key="desk_send", type="primary", use_container_width=True)
 
+    # Recent Inks
     st.markdown("""<div class="history-header"><div class="history-title">Recent Inks</div><div class="history-link">View all ›</div></div>""", unsafe_allow_html=True)
-    
     history = st.session_state.get(K.HISTORY, [])
     if history:
         for idx, entry in enumerate(reversed(history[-3:])):
@@ -254,7 +193,7 @@ def _render_desk(cfg: dict):
                 </div>
             """, unsafe_allow_html=True)
     else:
-         st.markdown(f"<div style='text-align:center; padding: 40px; color: {C_SUB}; font-size: 14px; font-family: Inter, sans-serif;'>No recent inks found.</div>", unsafe_allow_html=True)
+         st.markdown(f"<div style='text-align:center; padding: 40px; color: var(--text-3); font-size: 14px; font-family: var(--font-sans);'>No recent inks found.</div>", unsafe_allow_html=True)
 
     if send and intent_val and intent_val.strip(): _process_prompt(intent_val, cfg)
 
@@ -286,7 +225,10 @@ def _process_prompt(intent_val: str, cfg: dict):
         
         st.session_state[K.LAST_RESULT] = str(result)
         st.session_state[K.LAST_INPUT] = str(cleaned)
+        
+        # ── STATE SYNC: Force Global Theme to Dark when entering Studio ──
         st.session_state["in_studio"] = True
+        st.session_state["desk_theme"] = "dark"
         st.rerun()
 
 
@@ -301,36 +243,32 @@ def _render_studio(cfg: dict):
     .stAppDeployButton { display: none !important; }
     .stAppToolbar > div:not(:first-child) { display: none !important; }
     
-    [data-testid="collapsedControl"] { color: #F8F9FA !important; }
+    [data-testid="collapsedControl"] { color: var(--text-1) !important; }
     [data-testid="collapsedControl"] svg { display: none !important; }
-    [data-testid="collapsedControl"]::before { content: "☰" !important; font-size: 28px !important; color: #F8F9FA !important; display: block !important; line-height: 1; margin-top: 4px; margin-left: 8px;}
-    
-    .stApp { background-color: #0B0F19 !important; color: #F8F9FA !important; }
-    .main .block-container { max-width: 600px !important; padding-top: 40px !important; padding-bottom: 100px !important;}
+    [data-testid="collapsedControl"]::before { content: "☰" !important; font-size: 28px !important; color: var(--text-1) !important; display: block !important; line-height: 1; margin-top: 4px; margin-left: 8px;}
     
     .studio-header { margin-bottom: 30px; margin-top: 20px;}
-    .studio-title { font-family: 'Playfair Display', serif; font-size: 32px; color: #F8F9FA; margin-bottom: 4px; }
-    .studio-sub { font-family: 'Inter', sans-serif; font-size: 14px; color: #9CA3AF; }
+    .studio-title { font-family: var(--font-serif); font-size: 32px; color: var(--text-1); margin-bottom: 4px; }
+    .studio-sub { font-family: var(--font-sans); font-size: 14px; color: var(--text-2); }
 
-    .card-orig { background: #121826; border-radius: 16px; padding: 20px; margin-bottom: -10px; border: 1px solid rgba(255,255,255,0.05); z-index: 1; position: relative; }
-    .card-refined { background: #0B0F19; border-radius: 16px; padding: 24px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: 0 0 30px rgba(212,175,55,0.08); z-index: 2; position: relative; }
+    /* ── REFINED CARDS (Uses Global Tokens) ── */
+    .card-orig { background: var(--surface-card); border-radius: 16px; padding: 20px; margin-bottom: -10px; border: 1px solid var(--border); z-index: 1; position: relative; }
+    .card-refined { background: var(--surface); border-radius: 16px; padding: 24px; margin-bottom: 20px; border: 1px solid var(--border-gold); box-shadow: 0 0 30px var(--gold-dim); z-index: 2; position: relative; }
     
-    .card-label { display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif; font-size: 13px; color: #9CA3AF; margin-bottom: 15px; }
-    .card-label-gold { color: #D4AF37; font-weight: 500; }
-    .badge-gold { border: 1px solid rgba(212,175,55,0.3); background: rgba(212,175,55,0.1); padding: 4px 10px; border-radius: 999px; font-size: 11px; }
-    .text-orig { font-family: 'Inter', sans-serif; font-size: 15px; color: #E5E7EB; line-height: 1.6; margin-bottom: 20px;}
-    .text-refined { font-family: 'Playfair Display', serif; font-size: 18px; color: #F8F9FA; line-height: 1.7; margin-bottom: 20px; white-space: pre-wrap;}
-    .meta-row { display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; font-size: 11px; color: #6B7280; font-family: 'Inter', sans-serif;}
+    .card-label { display: flex; align-items: center; justify-content: space-between; font-family: var(--font-sans); font-size: 13px; color: var(--text-2); margin-bottom: 15px; }
+    .card-label-gold { color: var(--gold); font-weight: 500; }
+    .badge-gold { border: 1px solid var(--gold-border); background: var(--gold-dim); padding: 4px 10px; border-radius: 999px; font-size: 11px; color: var(--gold); }
+    .text-orig { font-family: var(--font-sans); font-size: 15px; color: var(--text-1); line-height: 1.6; margin-bottom: 20px;}
+    .text-refined { font-family: var(--font-serif); font-size: 18px; color: var(--text-1); line-height: 1.7; margin-bottom: 20px; white-space: pre-wrap;}
+    .meta-row { display: flex; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 12px; font-size: 11px; color: var(--text-3); font-family: var(--font-sans);}
     
     .connector { text-align: center; z-index: 3; position: relative; transform: translateY(4px); }
-    .connector-icon { background: #121826; color: #6B7280; border: 1px solid rgba(255,255,255,0.05); border-radius: 999px; padding: 4px; font-size: 12px; }
+    .connector-icon { background: var(--surface-card); color: var(--text-3); border: 1px solid var(--border); border-radius: 999px; padding: 4px; font-size: 12px; }
 
-    /* ── STUDIO BUTTONS (Perfect Horizontal Layout) ── */
+    /* ── STUDIO BUTTONS (Layout Hack Only, Styles inherit from global) ── */
     div[data-testid="stHorizontalBlock"]:has(.studio-btn-marker) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 10px !important; }
     div[data-testid="stHorizontalBlock"]:has(.studio-btn-marker) > div[data-testid="column"] { width: 33.33% !important; flex: 1 1 0px !important; }
-    div[data-testid="stHorizontalBlock"]:has(.studio-btn-marker) button {
-        background: #121826 !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #D4AF37 !important; border-radius: 12px !important; font-family: 'Inter', sans-serif !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; font-weight: 600 !important; width: 100% !important; padding: 12px 0 !important;
-    }
+    div[data-testid="stHorizontalBlock"]:has(.studio-btn-marker) button { width: 100% !important; padding: 12px 0 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -349,7 +287,7 @@ def _render_studio(cfg: dict):
         <div class="card-refined">
             <div class="card-label card-label-gold"><span>✨ Refined Ink</span> <span class="badge-gold">✦ Refined</span></div>
             <div class="text-refined">{result}</div>
-            <div class="meta-row" style="border-top: 1px solid rgba(212,175,55,0.2);"><span>{_word_count(result)} words</span> <span>⎘</span></div>
+            <div class="meta-row" style="border-top: 1px solid var(--border-gold);"><span>{_word_count(result)} words</span> <span>⎘</span></div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -362,6 +300,7 @@ def _render_studio(cfg: dict):
             st.session_state["in_studio"] = False
             st.session_state[K.LAST_RESULT] = None
             st.session_state["prefill_input"] = raw_input
+            # Optionally switch back to light mode here: st.session_state["desk_theme"] = "light"
             st.rerun()
 
 # ────────────────────────────────────────────────
