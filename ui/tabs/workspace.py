@@ -1,10 +1,10 @@
 """
 ui/tabs/workspace.py — Dual-State Workspace (Desk & Studio)
 =============================================================
-v5.3: The Precision History Patch.
-      - Dynamic Avatar Generation (English 1st Letter vs Arabic 1st Word).
-      - Bidirectional Text Alignment (RTL/LTR) for history cards.
-      - Compressed, pixel-perfect card layouts matching Figma.
+v5.4: The Brutalist Sync.
+      - Eradicated native Streamlit header (dark bar).
+      - Added Fail-safe routing to guarantee Studio transition.
+      - Applied Brutalist / Editorial styling to the Refine button.
 """
 from __future__ import annotations
 import re, time
@@ -31,7 +31,6 @@ QUICK_ACTIONS = [
 # ────────────────────────────────────────────────
 # HELPERS & LOGIC
 # ────────────────────────────────────────────────
-
 def _get_dna_context() -> dict:
     return {
         K.INK_DNA:    str(st.session_state.get(K.INK_DNA)    or ""),
@@ -58,16 +57,12 @@ def _word_count(text: str) -> int:
     return len(text.split()) if text.strip() else 0
 
 def _format_history_entry(output_text: str, input_text: str):
-    """Dynamically parses history to generate correct avatars and alignments."""
     input_clean = input_text.strip()
     is_arabic = bool(re.search(r'[\u0600-\u06FF]', input_clean))
-    
-    # Clean the title (remove markdown artifacts)
     title = output_text.strip().split('\n')[0][:35]
     title = re.sub(r'[*#_`]', '', title).strip()
     if not title: title = "Refined Prompt"
     
-    # Generate Avatar
     if is_arabic:
         words = input_clean.split()
         avatar = words[0][:4] if words else "ع"
@@ -88,9 +83,12 @@ def _format_history_entry(output_text: str, input_text: str):
 def _render_desk(cfg: dict):
     st.markdown("""
     <style>
-    /* ── BASE LIGHT THEME FORCING ── */
+    /* ── NUKE STREAMLIT HEADER (Fixes Bug 1) ── */
+    header[data-testid="stHeader"] { display: none !important; }
+    
+    /* ── BASE LIGHT THEME ── */
     .stApp { background-color: #F9F9F9 !important; }
-    .main .block-container { max-width: 600px !important; padding-top: 20px !important; padding-bottom: 100px !important; }
+    .main .block-container { max-width: 600px !important; padding-top: 40px !important; padding-bottom: 100px !important; }
     
     @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
     
@@ -98,12 +96,9 @@ def _render_desk(cfg: dict):
     .greet-sub { font-family: 'Inter', sans-serif; font-size: 15px; color: #6B7280 !important; margin-bottom: 25px; }
 
     /* ── STABLE INPUT AREA ── */
-    div[data-testid="stTextArea"] > div,
-    div[data-baseweb="textarea"],
-    div[data-baseweb="base-input"] {
+    div[data-testid="stTextArea"] > div, div[data-baseweb="textarea"], div[data-baseweb="base-input"] {
         background-color: transparent !important; background: transparent !important; border: none !important;
     }
-    
     div[data-testid="stTextArea"] textarea {
         background-color: #FFFFFF !important;
         border: 1px solid #E5E7EB !important;
@@ -121,18 +116,26 @@ def _render_desk(cfg: dict):
     }
     div[data-testid="stTextArea"] label { display: none !important; }
 
-    /* ── PREMIUM ACTION BUTTON ── */
+    /* ── BRUTALIST ACTION BUTTON (Fixes Bug 3) ── */
     div.desk-btn div[data-testid="stButton"] button {
-        background: linear-gradient(135deg, #111827, #1F2937) !important;
-        color: #FFFFFF !important;
-        border-radius: 16px !important;
+        background: transparent !important;
+        color: #111827 !important;
+        border-radius: 0px !important; /* Completely Square */
+        border: 2px solid #111827 !important; /* Thick black border */
         height: 54px !important;
-        font-size: 15px !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.5px !important;
-        border: none !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        letter-spacing: 1.5px !important;
+        text-transform: uppercase !important;
         margin-top: 4px !important;
-        box-shadow: 0 8px 20px rgba(17, 24, 39, 0.15) !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+    }
+    div.desk-btn div[data-testid="stButton"] button:hover, 
+    div.desk-btn div[data-testid="stButton"] button:active {
+        background: #111827 !important;
+        color: #FFFFFF !important;
+        transform: scale(0.98) !important;
     }
 
     /* ── DROPDOWN QUICK ACTIONS ── */
@@ -146,7 +149,7 @@ def _render_desk(cfg: dict):
         box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
     }
     
-    /* ── RECENT INKS CARDS (Compact & Organized) ── */
+    /* ── RECENT INKS CARDS ── */
     .history-header { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; margin-bottom: 12px; }
     .history-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: #111827; }
     .history-link { font-size: 13px; color: #6B7280; font-family: 'Inter', sans-serif; padding-top: 8px;}
@@ -157,7 +160,6 @@ def _render_desk(cfg: dict):
         border: 1px solid #F3F4F6;
     }
     
-    /* Dynamic Avatars */
     .history-avatar {
         width: 48px; height: 48px; border-radius: 50%; background: #F3F4F6; display: flex;
         align-items: center; justify-content: center; color: #111827; flex-shrink: 0; overflow: hidden;
@@ -165,7 +167,6 @@ def _render_desk(cfg: dict):
     .ar-avatar { font-family: 'Amiri', 'Noto Naskh Arabic', serif; font-size: 18px; font-weight: bold; }
     .en-avatar { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: bold; }
 
-    /* Content Alignment */
     .history-content { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
     .ar-text { direction: rtl; text-align: right; }
     .en-text { direction: ltr; text-align: left; }
@@ -173,18 +174,15 @@ def _render_desk(cfg: dict):
     .history-title-text { font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Inter', sans-serif; }
     .history-preview { font-size: 12px; color: #9CA3AF; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: 'Inter', sans-serif; }
     
-    /* Meta Box (Date and Dots pinned right) */
     .history-meta { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; height: 44px; flex-shrink: 0; }
     .history-date { font-size: 11px; color: #9CA3AF; font-family: 'Inter', sans-serif; margin-top: 2px; }
     .history-dots { font-size: 16px; color: #6B7280; font-weight: bold; line-height: 1; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ── RENDER HEADER ──
     st.markdown('<div class="greet-main">Good morning.</div>', unsafe_allow_html=True)
     st.markdown('<div class="greet-sub">Let\'s craft something exceptional.</div>', unsafe_allow_html=True)
 
-    # ── DROPDOWN QUICK ACTIONS ──
     action_options = ["✨ Select a Quick Action..."] + [f"{icon} {label}" for icon, label, _ in QUICK_ACTIONS]
     selected_action = st.selectbox("Quick Actions", options=action_options, label_visibility="collapsed")
     
@@ -195,14 +193,12 @@ def _render_desk(cfg: dict):
                 prefill = starter
                 break
 
-    # ── INPUT AREA ──
     intent_val = st.text_area("Draft", value=prefill, placeholder="Draft your prompt...", key="desk_input")
     
     st.markdown('<div class="desk-btn">', unsafe_allow_html=True)
-    send = st.button("→ Refine Prompt", key="desk_send", use_container_width=True)
+    send = st.button("Refine Prompt", key="desk_send", use_container_width=True) # Arrow removed
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── RECENT INKS ──
     st.markdown("""<div class="history-header">
         <div class="history-title">Recent Inks</div>
         <div class="history-link">View all ›</div>
@@ -212,7 +208,6 @@ def _render_desk(cfg: dict):
     if history:
         for idx, entry in enumerate(reversed(history[-3:])):
             avatar, title, preview, lang_class, dir_class = _format_history_entry(entry.get("output", ""), entry.get("input", ""))
-            date_str = "Just now" # In a future update we can format the actual ISO timestamp
             
             st.markdown(f"""
                 <div class="history-card">
@@ -222,15 +217,54 @@ def _render_desk(cfg: dict):
                         <div class="history-preview">{preview}</div>
                     </div>
                     <div class="history-meta">
-                        <div class="history-date">{date_str}</div>
+                        <div class="history-date">Just now</div>
                         <div class="history-dots">⋮</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
 
-    # ── PROCESS ──
     if send and intent_val and intent_val.strip():
         _process_prompt(intent_val, cfg)
+
+
+# ────────────────────────────────────────────────
+# ENGINE EXECUTION (Fixes Bug 2)
+# ────────────────────────────────────────────────
+def _process_prompt(intent_val: str, cfg: dict):
+    cleaned, violations = sanitize_input(intent_val)
+    if violations:
+        st.error("⚠ Blocked by security policy.")
+        return
+
+    with st.spinner("Inking..."):
+        run_cfg = dict(cfg)
+        payload = assemble_master_payload(cleaned, run_cfg, _get_dna_context())
+        
+        # FAIL-SAFE BLOCK
+        try:
+            result, audit, _ = run_refinement_and_audit(
+                payload,
+                resolve_target_model(cfg.get("target_model", "auto"), cleaned)[0],
+                cfg.get("framework", "RACE"),
+                cfg.get("source_lang", "English"),
+                cfg.get("aesthetic_choice", "Default"),
+                hikmah_style=str(cfg.get("hikmah_style") or "None"),
+                skip_security=False,
+            )
+            result = extract_clean_output(result)
+            if not result:
+                result = "Engine returned an empty response. Verify AI uplink."
+        except Exception as e:
+            result = f"[ UPLINK FAILED ]\n\nThe A.I.Z.E.N. core encountered an error:\n{str(e)}"
+
+        history = st.session_state.get(K.HISTORY, [])
+        history.append({"input": cleaned, "output": result, "time": datetime.now(WAT_TZ).isoformat()})
+        st.session_state[K.HISTORY] = history[-50:]
+        
+        # Force the router variable
+        st.session_state[K.LAST_RESULT] = result
+        st.session_state[K.LAST_INPUT] = cleaned
+        st.rerun()
 
 
 # ────────────────────────────────────────────────
@@ -239,16 +273,14 @@ def _render_desk(cfg: dict):
 def _render_studio(cfg: dict):
     st.markdown("""
     <style>
-    /* Studio Dark Theme Overrides */
+    header[data-testid="stHeader"] { display: none !important; }
     .stApp { background-color: #0B0F19 !important; color: #F8F9FA !important; }
-    .main .block-container { max-width: 600px !important; padding-top: 30px !important; }
+    .main .block-container { max-width: 600px !important; padding-top: 40px !important; }
     
-    /* Header */
     .studio-header { margin-bottom: 30px; }
     .studio-title { font-family: 'Playfair Display', serif; font-size: 32px; color: #F8F9FA; margin-bottom: 4px; }
     .studio-sub { font-family: 'Inter', sans-serif; font-size: 14px; color: #9CA3AF; }
 
-    /* Cards */
     .card-orig {
         background: #121826; border-radius: 16px; padding: 20px; margin-bottom: -10px;
         border: 1px solid rgba(255,255,255,0.05); z-index: 1; position: relative;
@@ -259,22 +291,20 @@ def _render_studio(cfg: dict):
         z-index: 2; position: relative;
     }
     
-    /* Typography inside cards */
     .card-label { display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif; font-size: 13px; color: #9CA3AF; margin-bottom: 15px; }
     .card-label-gold { color: #D4AF37; font-weight: 500; }
     .badge-gold { border: 1px solid rgba(212,175,55,0.3); background: rgba(212,175,55,0.1); padding: 4px 10px; border-radius: 999px; font-size: 11px; }
     .text-orig { font-family: 'Inter', sans-serif; font-size: 15px; color: #E5E7EB; line-height: 1.6; margin-bottom: 20px;}
-    .text-refined { font-family: 'Playfair Display', serif; font-size: 18px; color: #F8F9FA; line-height: 1.7; margin-bottom: 20px;}
+    .text-refined { font-family: 'Playfair Display', serif; font-size: 18px; color: #F8F9FA; line-height: 1.7; margin-bottom: 20px; white-space: pre-wrap;}
     .meta-row { display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; font-size: 11px; color: #6B7280; font-family: 'Inter', sans-serif;}
     
-    /* Connector */
     .connector { text-align: center; z-index: 3; position: relative; transform: translateY(4px); }
     .connector-icon { background: #121826; color: #6B7280; border: 1px solid rgba(255,255,255,0.05); border-radius: 999px; padding: 4px; font-size: 12px; }
 
-    /* Action Row overrides */
     .studio-actions button {
         background: #121826 !important; border: 1px solid rgba(255,255,255,0.1) !important;
-        color: #D4AF37 !important; border-radius: 12px !important; font-family: 'Inter', sans-serif !important; font-size: 13px !important;
+        color: #D4AF37 !important; border-radius: 0px !important; font-family: 'Inter', sans-serif !important; font-size: 13px !important;
+        text-transform: uppercase !important; letter-spacing: 1px !important; font-weight: 600 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -289,7 +319,6 @@ def _render_studio(cfg: dict):
     raw_input = st.session_state.get(K.LAST_INPUT, "")
     result = st.session_state.get(K.LAST_RESULT, "")
 
-    # Original Card
     st.markdown(f"""
         <div class="card-orig">
             <div class="card-label"><span>🖊 Original Prompt</span> <span>Edit ✏️</span></div>
@@ -304,15 +333,12 @@ def _render_studio(cfg: dict):
         </div>
     """, unsafe_allow_html=True)
 
-    # Action Row
     st.markdown('<div class="studio-actions">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    with c1: 
-        st.button("⎘ Copy", use_container_width=True)
-    with c2: 
-        st.button("↗ Share", use_container_width=True)
+    with c1: st.button("Copy", use_container_width=True)
+    with c2: st.button("Share", use_container_width=True)
     with c3: 
-        if st.button("↺ Re-ink", use_container_width=True):
+        if st.button("Re-ink", use_container_width=True):
             st.session_state[K.LAST_RESULT] = None
             st.session_state["prefill_input"] = raw_input
             st.rerun()
@@ -320,43 +346,11 @@ def _render_studio(cfg: dict):
 
 
 # ────────────────────────────────────────────────
-# ENGINE EXECUTION
-# ────────────────────────────────────────────────
-def _process_prompt(intent_val: str, cfg: dict):
-    cleaned, violations = sanitize_input(intent_val)
-    if violations:
-        st.error("⚠ Blocked by security policy.")
-        return
-
-    with st.spinner("Inking..."):
-        run_cfg = dict(cfg)
-        payload = assemble_master_payload(cleaned, run_cfg, _get_dna_context())
-        
-        result, audit, _ = run_refinement_and_audit(
-            payload,
-            resolve_target_model(cfg.get("target_model", "auto"), cleaned)[0],
-            cfg.get("framework", "RACE"),
-            cfg.get("source_lang", "English"),
-            cfg.get("aesthetic_choice", "Default"),
-            hikmah_style=str(cfg.get("hikmah_style") or "None"),
-            skip_security=False,
-        )
-        
-        result = extract_clean_output(result)
-
-        history = st.session_state.get(K.HISTORY, [])
-        history.append({"input": cleaned, "output": result, "time": datetime.now(WAT_TZ).isoformat()})
-        st.session_state[K.HISTORY] = history[-50:]
-        st.session_state[K.LAST_RESULT] = result
-        st.session_state[K.LAST_INPUT] = cleaned
-        st.rerun()
-
-
-# ────────────────────────────────────────────────
-# MAIN RENDERER (THE ROUTER)
+# MAIN RENDERER
 # ────────────────────────────────────────────────
 def render_workspace(cfg: dict) -> None:
-    if st.session_state.get(K.LAST_RESULT):
+    last_result = st.session_state.get(K.LAST_RESULT)
+    if last_result and str(last_result).strip() != "":
         _render_studio(cfg)
     else:
         _render_desk(cfg)
