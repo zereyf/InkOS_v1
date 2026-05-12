@@ -17,146 +17,132 @@ from vault.supabase_client import SUPABASE_MISSING
 # ── Inline styles scoped to splash only ──
 _SPLASH_CSS = """
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@300;400;500&family=Playfair+Display:wght@400;600&family=JetBrains+Mono:wght@400&display=swap');
+
+/* Force dark vault background for Splash */
+.stApp { background-color: #0B0F19 !important; }
+
 /* Boot header */
 .splash-boot {
-  font: 11px 'JetBrains Mono', monospace;
-  color: #3f3f46;
+  font: 10px 'JetBrains Mono', monospace;
+  color: #6B7280;
   letter-spacing: .15em;
   margin-bottom: 40px;
   line-height: 2;
+  text-transform: uppercase;
 }
-.splash-boot .ok   { color: #22c55e; }
-.splash-boot .warn { color: #f59e0b; }
-.splash-boot .err  { color: #ef4444; }
+.splash-boot .ok   { color: #D4AF37; } /* Parchment Gold */
+.splash-boot .warn { color: #F59E0B; }
+.splash-boot .err  { color: #EF4444; }
 
 /* Hero */
-.splash-hero {
-  text-align: center;
-  margin-bottom: 40px;
+.splash-hero { text-align: center; margin-bottom: 40px; }
+.splash-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 56px;
+  color: #F9F9F9;
+  letter-spacing: -1px;
+  line-height: 1;
 }
 .splash-ar {
-  font: 700 48px 'Noto Naskh Arabic', serif;
-  color: #f1f1f3;
-  line-height: 1.2;
+  font-family: 'Amiri', serif;
+  font-size: 28px;
+  color: #D4AF37;
   display: block;
-  margin-bottom: 4px;
+  margin-top: -10px;
+  margin-bottom: 12px;
 }
 .splash-divider {
-  width: 48px;
-  height: 2px;
-  background: #6366f1;
-  margin: 12px auto;
-  border-radius: 999px;
+  width: 40px;
+  height: 1px;
+  background: #D4AF37;
+  margin: 16px auto;
+  opacity: 0.5;
 }
 .splash-sub {
-  font: 11px 'JetBrains Mono', monospace;
-  color: #71717a;
-  letter-spacing: .2em;
+  font: 10px 'Inter', sans-serif;
+  color: #9CA3AF;
+  letter-spacing: .3em;
+  text-transform: uppercase;
 }
 
 /* Status pill */
 .splash-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #16161f;
-  border: 1px solid #ffffff0f;
-  border-radius: 999px;
-  padding: 4px 14px;
-  font: 11px 'JetBrains Mono', monospace;
-  color: #71717a;
-  margin-bottom: 32px;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(212, 175, 55, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 999px; padding: 6px 16px;
+  font: 11px 'Inter', sans-serif; letter-spacing: 1px;
+  color: #D4AF37; margin-bottom: 32px;
 }
-.splash-status .dot { color: #22c55e; font-size: 8px; }
-.splash-status.offline .dot { color: #ef4444; }
+.splash-status .dot { font-size: 8px; animation: pulse 2s infinite; }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
 /* Step indicator */
 .splash-step {
-  font: 11px 'JetBrains Mono', monospace;
-  color: #6366f1;
-  letter-spacing: .1em;
-  margin-bottom: 8px;
-  text-transform: uppercase;
+  font: 10px 'Inter', sans-serif; color: #D4AF37;
+  letter-spacing: .15em; margin-bottom: 12px; text-transform: uppercase;
 }
 
 /* ID state badges */
 .id-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 999px;
-  padding: 3px 12px;
-  font-size: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  margin-top: 6px;
+  display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
+  padding: 4px 14px; font-size: 11px; font-family: 'Inter', sans-serif; margin-top: 6px;
 }
-.id-badge.new      { background: #6366f118; color: #6366f1; border: 1px solid #6366f133; }
-.id-badge.existing { background: #22c55e18; color: #22c55e; border: 1px solid #22c55e33; }
-.id-badge.invalid  { background: #ef444418; color: #ef4444; border: 1px solid #ef444433; }
+.id-badge.new      { background: rgba(212, 175, 55, 0.1); color: #D4AF37; border: 1px solid rgba(212, 175, 55, 0.3); }
+.id-badge.existing { background: rgba(34, 197, 94, 0.1); color: #22C55E; border: 1px solid rgba(34, 197, 94, 0.3); }
 
 /* Description box */
 .splash-desc {
-  background: #111118;
-  border: 1px solid #ffffff0f;
-  border-left: 2px solid #6366f1;
-  border-radius: 0 10px 10px 0;
-  padding: 14px 16px;
-  margin-bottom: 24px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-left: 2px solid #D4AF37;
+  padding: 16px 20px; margin-bottom: 24px;
 }
-.splash-desc p {
-  font-size: 13px;
-  color: #71717a;
-  line-height: 1.7;
-  margin: 0;
-}
-.splash-desc .ar {
-  font-family: 'Noto Naskh Arabic', serif;
-  font-size: 13px;
-  color: #3f3f46;
-  display: block;
-  text-align: right;
-  margin-top: 8px;
-}
+.splash-desc p { font-family: 'Inter', sans-serif; font-size: 13px; color: #9CA3AF; line-height: 1.6; margin: 0; }
+.splash-desc .ar { font-family: 'Amiri', serif; font-size: 16px; color: #D4AF37; display: block; text-align: right; margin-top: 12px; }
 
-/* Offline banner */
-.offline-banner {
-  background: #f59e0b18;
-  border: 1px solid #f59e0b33;
-  border-radius: 10px;
-  padding: 12px 16px;
-  font-size: 13px;
-  color: #f59e0b;
-  margin-bottom: 20px;
-  font-family: 'JetBrains Mono', monospace;
+/* Input overrides for Splash */
+.stTextInput input {
+    background: rgba(0,0,0,0.2) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: #F9F9F9 !important;
+    font-family: 'Inter', sans-serif !important;
+}
+.stTextInput input:focus { border-color: #D4AF37 !important; box-shadow: 0 0 0 1px #D4AF37 !important; }
+.stButton > button[kind="primary"] {
+    background: #D4AF37 !important; color: #0B0F19 !important; font-family: 'Inter', sans-serif !important; font-weight: 600 !important;
 }
 </style>
 """
 
 # ── Boot sequence lines ──
 _BOOT_LINES = [
-    ('<span class="ok">[ OK ]</span>', "CIPHER ENGINE v12.0 loaded"),
+    ('<span class="ok">[ OK ]</span>', "CIPHER ENGINE v2026 loaded"),
     ('<span class="ok">[ OK ]</span>', "Security sanitizer armed"),
     ('<span class="ok">[ OK ]</span>', "Forge & persona layers ready"),
-    ('<span class="warn">[ ?? ]</span>', "Awaiting terminal latch..."),
+    ('<span class="warn">[ ?? ]</span>', "Awaiting neural latch..."),
 ]
 
-
 def _boot_sequence_html() -> str:
-    lines = "".join(
-        f"<div>{tag}&nbsp;&nbsp;{msg}</div>"
-        for tag, msg in _BOOT_LINES
-    )
+    lines = "".join(f"<div>{tag}&nbsp;&nbsp;{msg}</div>" for tag, msg in _BOOT_LINES)
     return f"<div class='splash-boot'>{lines}</div>"
-
 
 def _hero_html() -> str:
     return """
     <div class='splash-hero'>
+      <div class='splash-logo'>İnkOS</div>
       <span class='splash-ar'>حبر وفكرة</span>
       <div class='splash-divider'></div>
-      <div class='splash-sub'>INKOS  //  TERMINAL LATCH  //  v2026</div>
+      <div class='splash-sub'>SECURE VAULT GATEWAY</div>
     </div>
     """
+
+def _status_pill() -> str:
+    if SUPABASE_MISSING:
+        return "<div class='splash-status' style='color:#EF4444; border-color:rgba(239,68,68,0.2);'><span class='dot' style='color:#EF4444;'>●</span> VAULT OFFLINE — GUEST MODE</div>"
+    return "<div class='splash-status'><span class='dot'>●</span> NEURAL UPLINK SECURED</div>"
+
 
 
 def _status_pill() -> str:
