@@ -71,43 +71,57 @@ def _render_desk(cfg: dict):
     .greet-main { font-family: 'Playfair Display', serif; font-size: 34px; color: #111827 !important; margin-bottom: 5px; }
     .greet-sub { font-family: 'Inter', sans-serif; font-size: 15px; color: #6B7280 !important; margin-bottom: 25px; }
 
-    /* ── STABLE INPUT AREA (Forces White, Beats Dark Mode) ── */
+    /* ── STABLE INPUT AREA (Fixing the dark corners) ── */
+    /* Streamlit uses multiple wrapper divs. We MUST strip their backgrounds. */
+    div[data-testid="stTextArea"] > div,
+    div[data-baseweb="textarea"],
+    div[data-baseweb="base-input"] {
+        background-color: transparent !important;
+        background: transparent !important;
+        border: none !important;
+    }
+    
     div[data-testid="stTextArea"] textarea {
         background-color: #FFFFFF !important;
-        background: #FFFFFF !important;
         border: 1px solid #E5E7EB !important;
-        border-radius: 20px !important;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.04) !important;
+        border-radius: 16px !important; /* Slightly tighter radius for luxury feel */
+        box-shadow: 0 8px 24px rgba(0,0,0,0.04) !important;
         color: #111827 !important;
-        -webkit-text-fill-color: #111827 !important; /* Forces text color on iOS/Android */
+        -webkit-text-fill-color: #111827 !important;
         font-family: 'Inter', sans-serif !important;
-        font-size: 16px !important;
+        font-size: 15px !important;
         padding: 16px !important;
         min-height: 120px !important;
     }
     div[data-testid="stTextArea"] textarea:focus {
         border-color: #111827 !important;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important;
+        outline: none !important;
     }
     div[data-testid="stTextArea"] label { display: none !important; }
 
-    /* ── ACTION BUTTON ── */
+    /* ── PREMIUM ACTION BUTTON ── */
     div.desk-btn div[data-testid="stButton"] button {
-        background-color: #111827 !important;
+        background: linear-gradient(135deg, #111827, #1F2937) !important; /* Obsidian gradient */
         color: #FFFFFF !important;
-        border-radius: 999px !important;
-        height: 50px !important;
-        font-size: 16px !important;
-        font-weight: 500 !important;
+        border-radius: 16px !important; /* Match text area */
+        height: 54px !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.5px !important;
         border: none !important;
-        margin-top: 5px !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+        margin-top: 4px !important;
+        box-shadow: 0 8px 20px rgba(17, 24, 39, 0.15) !important;
+        transition: all 0.2s ease !important;
+    }
+    div.desk-btn div[data-testid="stButton"] button:active {
+        transform: scale(0.98) !important;
     }
 
     /* ── DROPDOWN QUICK ACTIONS ── */
     div[data-testid="stSelectbox"] > div > div {
         background-color: #FFFFFF !important;
-        border-radius: 999px !important;
+        border-radius: 16px !important;
         border: 1px solid #E5E7EB !important;
         color: #4B5563 !important;
         font-family: 'Inter', sans-serif !important;
@@ -181,16 +195,11 @@ def _render_desk(cfg: dict):
                     <div class="history-date">Just now</div>
                 </div>
             """, unsafe_allow_html=True)
-    else:
-         st.markdown("""
-             <div style='text-align:center; padding: 40px; color: #9CA3AF; font-size: 14px; font-family: Inter, sans-serif;'>
-                 No recent inks found.
-             </div>
-         """, unsafe_allow_html=True)
 
     # ── PROCESS ──
     if send and intent_val and intent_val.strip():
         _process_prompt(intent_val, cfg)
+)
 
 
 # ────────────────────────────────────────────────
