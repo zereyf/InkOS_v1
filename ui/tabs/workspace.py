@@ -199,7 +199,6 @@ def _render_desk(cfg: dict):
     # ── PROCESS ──
     if send and intent_val and intent_val.strip():
         _process_prompt(intent_val, cfg)
-)
 
 
 # ────────────────────────────────────────────────
