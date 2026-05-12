@@ -61,7 +61,7 @@ def _word_count(text: str) -> int:
 # STATE 1: THE DESK (LIGHT MODE IDEATION)
 # ────────────────────────────────────────────────
 def _render_desk(cfg: dict):
-    st.markdown("""
+       st.markdown("""
     <style>
     /* Base Light Theme */
     .stApp { background-color: #F9F9F9 !important; color: #111827 !important; }
@@ -71,28 +71,47 @@ def _render_desk(cfg: dict):
     .greet-main { font-family: 'Playfair Display', serif; font-size: 34px; color: #111827; margin-bottom: 5px; }
     .greet-sub { font-family: 'Inter', sans-serif; font-size: 15px; color: #6B7280; margin-bottom: 30px; }
 
-    /* ── THE INPUT PILL (Forcing Horizontal on Mobile) ── */
-    /* This overrides Streamlit's mobile stacking rule */
+    /* ── THE INPUT PILL (Bulletproof Mobile Fix) ── */
     div[data-testid="stHorizontalBlock"]:has(.input-marker) {
+        display: flex !important;
+        flex-direction: row !important; /* FORCES side-by-side on mobile */
         flex-wrap: nowrap !important;
         background-color: #FFFFFF !important;
         border-radius: 30px !important;
-        padding: 5px 15px !important;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.03) !important;
-        border: 1px solid #F3F4F6 !important;
+        padding: 6px 12px !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05) !important;
+        border: 1px solid #E5E7EB !important;
         align-items: center !important;
         gap: 10px !important;
     }
-    /* Hide text area borders to blend into the pill */
-    div[data-testid="stHorizontalBlock"]:has(.input-marker) div[data-testid="stTextArea"] textarea {
-        border: none !important;
+
+    /* Force the column widths to prevent crushing */
+    div[data-testid="stHorizontalBlock"]:has(.input-marker) > div[data-testid="column"]:nth-child(1) {
+        width: 100% !important;
+        flex: 1 1 auto !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(.input-marker) > div[data-testid="column"]:nth-child(2) {
+        width: 45px !important;
+        flex: 0 0 45px !important; /* Locks button size */
+    }
+
+    /* Strip the dark theme leak from the Text Area */
+    div[data-testid="stHorizontalBlock"]:has(.input-marker) textarea {
+        background-color: transparent !important;
         background: transparent !important;
+        border: none !important;
         box-shadow: none !important;
-        padding: 10px 0 !important;
+        padding: 10px 5px !important;
         font-family: 'Inter', sans-serif !important;
         font-size: 15px !important;
         color: #111827 !important;
+        -webkit-text-fill-color: #111827 !important; /* Fixes iOS dark mode rendering */
     }
+    div[data-testid="stHorizontalBlock"]:has(.input-marker) textarea:focus {
+        box-shadow: none !important;
+        border: none !important;
+    }
+
     /* Circular Send Button */
     div[data-testid="stHorizontalBlock"]:has(.input-marker) div[data-testid="stButton"] button {
         background-color: #111827 !important;
@@ -101,26 +120,26 @@ def _render_desk(cfg: dict):
         height: 45px !important;
         width: 45px !important;
         padding: 0 !important;
-        font-size: 20px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         border: none !important;
     }
 
-    /* ── QUICK ACTIONS (Forcing Horizontal Scroll on Mobile) ── */
+    /* ── QUICK ACTIONS (Force Horizontal Scroll) ── */
     div[data-testid="stHorizontalBlock"]:has(.qa-marker) {
+        display: flex !important;
+        flex-direction: row !important; /* Force side-by-side */
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
-        padding-bottom: 15px !important;
+        padding-bottom: 10px !important;
         gap: 10px !important;
-        scrollbar-width: none !important; /* Hide scrollbar Firefox */
+        -webkit-overflow-scrolling: touch; /* Smooth mobile scroll */
     }
-    div[data-testid="stHorizontalBlock"]:has(.qa-marker)::-webkit-scrollbar {
-        display: none !important; /* Hide scrollbar Chrome/Safari */
-    }
+    div[data-testid="stHorizontalBlock"]:has(.qa-marker)::-webkit-scrollbar { display: none !important; }
     div[data-testid="stHorizontalBlock"]:has(.qa-marker) > div[data-testid="column"] {
-        min-width: 110px !important;
+        min-width: 105px !important;
+        flex: 0 0 auto !important;
         width: auto !important;
     }
     div[data-testid="stHorizontalBlock"]:has(.qa-marker) button {
