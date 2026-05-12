@@ -1,10 +1,11 @@
 """
 ui/tabs/workspace.py — Dual-State Workspace (Desk & Studio)
 =============================================================
-v5.6: The Architectural Sync.
-      - Fixed DOM targeting for Brutalist button (via kind="primary").
-      - Header forced to transparent to preserve native edge-to-edge UX.
-      - Max history explicitly clamped to 3 items.
+v6.0: The Brutalist Theme Engine.
+      - Added dynamic Light/Dark Desk toggle.
+      - Fixed Hamburger menu and top header icon colors.
+      - Enforced strict Brutalist button styling.
+      - Hardened state routing via "in_studio" flag.
 """
 from __future__ import annotations
 import re, time
@@ -20,6 +21,7 @@ from forge.intelligence import resolve_target_model
 
 WAT_TZ = timezone(timedelta(hours=1))
 
+# ── QUICK ACTIONS ──
 QUICK_ACTIONS = [
     ("🖊", "Refine", "Refine and improve the following prompt:\n\n"),
     ("💡", "Expand", "Expand this prompt with more detail, context, and specificity:\n\n"),
@@ -74,137 +76,162 @@ def _format_history_entry(output_text: str, input_text: str):
 
 
 # ────────────────────────────────────────────────
-# STATE 1: THE DESK (LIGHT MODE IDEATION)
+# STATE 1: THE DESK (IDEATION WITH THEME ENGINE)
 # ────────────────────────────────────────────────
 def _render_desk(cfg: dict):
-    st.markdown("""
-    <style>
-    /* ── HEADER & MENU ICON OVERRIDE ── */
-    header[data-testid="stHeader"] {
-        background-color: transparent !important;
-        box-shadow: none !important;
-    }
-    .stAppDeployButton { display: none !important; }
+    # ── THEME ENGINE VARIABLES ──
+    theme = st.session_state.get("desk_theme", "light")
     
-    /* Transform Streamlit Chevron into a Hamburger Menu */
-    [data-testid="collapsedControl"] svg { display: none !important; }
-    [data-testid="collapsedControl"] { color: transparent !important; background: transparent !important; }
-    [data-testid="collapsedControl"]::after {
-        content: "☰" !important;
-        font-size: 26px !important;
-        color: #111827 !important;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-top: 5px;
-        margin-left: 10px;
-    }
+    if theme == "light":
+        C_BG     = "#F9F9F9"
+        C_TEXT   = "#111827"
+        C_SUB    = "#6B7280"
+        C_CARD   = "#FFFFFF"
+        C_BORDER = "#E5E7EB"
+    else:
+        # Studio Dark Blue/Black Theme
+        C_BG     = "#0B0F19"
+        C_TEXT   = "#F8F9FA"
+        C_SUB    = "#9CA3AF"
+        C_CARD   = "#121826"
+        C_BORDER = "rgba(255,255,255,0.1)"
 
-    /* ── BASE LIGHT THEME ── */
-    .stApp { background-color: #F9F9F9 !important; }
-    .main .block-container { max-width: 600px !important; padding-top: 0px !important; padding-bottom: 100px !important; }
+    st.markdown(f"""
+    <style>
+    /* ── HEADER & ICONS FIX ── */
+    header[data-testid="stHeader"] {{ background-color: transparent !important; box-shadow: none !important; }}
+    .stAppDeployButton {{ display: none !important; }}
+    
+    /* Force top right toolbar icons to be visible */
+    .stAppToolbar button {{ color: {C_TEXT} !important; }}
+    
+    /* Hamburger Menu Transform */
+    [data-testid="collapsedControl"] {{ color: {C_TEXT} !important; }}
+    [data-testid="collapsedControl"] svg {{ display: none !important; }}
+    [data-testid="collapsedControl"]::before {{
+        content: "☰" !important;
+        font-size: 28px !important;
+        color: {C_TEXT} !important;
+        display: block !important;
+        line-height: 1;
+    }}
+
+    /* ── BASE THEME ── */
+    .stApp {{ background-color: {C_BG} !important; transition: background-color 0.3s ease; }}
+    .main .block-container {{ max-width: 600px !important; padding-top: 0px !important; padding-bottom: 100px !important; }}
     
     @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
     
-    .desk-header { text-align: center; margin-bottom: 40px; margin-top: 10px; }
-    .desk-logo { font-family: 'Playfair Display', serif; font-size: 42px; color: #111827; line-height: 1; letter-spacing: -1px; font-weight: 600; }
-    .desk-logo-sub { font-family: 'Inter', sans-serif; font-size: 9px; color: #9CA3AF; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; margin-top: 4px; }
+    .desk-header {{ display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; margin-top: 10px; }}
+    .desk-logo-container {{ text-align: center; flex-grow: 1; }}
+    .desk-logo {{ font-family: 'Playfair Display', serif; font-size: 42px; color: {C_TEXT}; line-height: 1; letter-spacing: -1px; font-weight: 600; }}
+    .desk-logo-sub {{ font-family: 'Inter', sans-serif; font-size: 9px; color: {C_SUB}; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; margin-top: 4px; }}
     
-    .greet-main { font-family: 'Playfair Display', serif; font-size: 34px; color: #111827 !important; margin-bottom: 5px; }
-    .greet-sub { font-family: 'Inter', sans-serif; font-size: 15px; color: #6B7280 !important; margin-bottom: 25px; }
+    .greet-main {{ font-family: 'Playfair Display', serif; font-size: 34px; color: {C_TEXT} !important; margin-bottom: 5px; }}
+    .greet-sub {{ font-family: 'Inter', sans-serif; font-size: 15px; color: {C_SUB} !important; margin-bottom: 25px; }}
 
     /* ── STABLE INPUT AREA ── */
-    div[data-testid="stTextArea"] > div, div[data-baseweb="textarea"], div[data-baseweb="base-input"] {
+    div[data-testid="stTextArea"] > div, div[data-baseweb="textarea"], div[data-baseweb="base-input"] {{
         background-color: transparent !important; background: transparent !important; border: none !important;
-    }
-    div[data-testid="stTextArea"] textarea {
-        background-color: #FFFFFF !important;
-        border: 1px solid #E5E7EB !important;
+    }}
+    div[data-testid="stTextArea"] textarea {{
+        background-color: {C_CARD} !important;
+        border: 1px solid {C_BORDER} !important;
         border-radius: 16px !important;
         box-shadow: 0 8px 24px rgba(0,0,0,0.04) !important;
-        color: #111827 !important;
-        -webkit-text-fill-color: #111827 !important;
+        color: {C_TEXT} !important;
+        -webkit-text-fill-color: {C_TEXT} !important;
         font-family: 'Inter', sans-serif !important;
         font-size: 15px !important;
         padding: 16px !important;
         min-height: 120px !important;
-    }
-    div[data-testid="stTextArea"] textarea:focus {
-        border-color: #111827 !important; box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important; outline: none !important;
-    }
-    div[data-testid="stTextArea"] label { display: none !important; }
+    }}
+    div[data-testid="stTextArea"] textarea:focus {{
+        border-color: {C_TEXT} !important; box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important; outline: none !important;
+    }}
+    div[data-testid="stTextArea"] label {{ display: none !important; }}
 
-    /* ── BRUTALIST PRIMARY BUTTON ── */
-    button[kind="primary"] {
+    /* ── EXACT BRUTALIST ACTION BUTTON ── */
+    div[data-testid="stButton"] button[kind="primary"] {{
         background: transparent !important;
         background-color: transparent !important;
-        color: #111827 !important;
-        border-radius: 0px !important; /* Sharp Square */
-        border: 2px solid #111827 !important; /* Thick Black Border */
+        color: {C_TEXT} !important;
+        border-radius: 0px !important; /* Completely Square */
+        border: 2px solid {C_TEXT} !important; /* Thick Border */
         height: 54px !important;
+        font-family: 'Inter', sans-serif !important;
         font-size: 14px !important;
         font-weight: 700 !important;
         letter-spacing: 1.5px !important;
         text-transform: uppercase !important;
         margin-top: 4px !important;
         box-shadow: none !important;
-        transition: all 0.15s ease !important;
-    }
-    /* Hover/Active states invert the button */
-    button[kind="primary"]:hover, button[kind="primary"]:active {
-        background: #111827 !important;
-        background-color: #111827 !important;
-        color: #FFFFFF !important;
-        border-color: #111827 !important;
-    }
+        transition: all 0.2s ease !important;
+    }}
+    div[data-testid="stButton"] button[kind="primary"]:hover, 
+    div[data-testid="stButton"] button[kind="primary"]:active {{
+        background: {C_TEXT} !important;
+        background-color: {C_TEXT} !important;
+        color: {C_BG} !important; /* Inverts text color */
+    }}
 
     /* ── DROPDOWN QUICK ACTIONS ── */
-    div[data-testid="stSelectbox"] > div > div {
-        background-color: #FFFFFF !important;
+    div[data-testid="stSelectbox"] > div > div {{
+        background-color: {C_CARD} !important;
         border-radius: 16px !important;
-        border: 1px solid #E5E7EB !important;
-        color: #4B5563 !important;
+        border: 1px solid {C_BORDER} !important;
+        color: {C_TEXT} !important;
         font-family: 'Inter', sans-serif !important;
         font-size: 14px !important;
         box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
-    }
+    }}
     
     /* ── RECENT INKS CARDS ── */
-    .history-header { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; margin-bottom: 12px; }
-    .history-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: #111827; }
-    .history-link { font-size: 13px; color: #6B7280; font-family: 'Inter', sans-serif; padding-top: 8px;}
+    .history-header {{ display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; margin-bottom: 12px; }}
+    .history-title {{ font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: {C_TEXT}; }}
+    .history-link {{ font-size: 13px; color: {C_SUB}; font-family: 'Inter', sans-serif; padding-top: 8px;}}
     
-    .history-card {
-        background: #FFFFFF !important; border-radius: 16px; padding: 14px 16px; display: flex; gap: 14px;
+    .history-card {{
+        background: {C_CARD} !important; border-radius: 16px; padding: 14px 16px; display: flex; gap: 14px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 12px; align-items: center;
-        border: 1px solid #F3F4F6;
-    }
-    .history-avatar {
-        width: 48px; height: 48px; border-radius: 50%; background: #F3F4F6; display: flex;
-        align-items: center; justify-content: center; color: #111827; flex-shrink: 0; overflow: hidden;
-    }
-    .ar-avatar { font-family: 'Amiri', 'Noto Naskh Arabic', serif; font-size: 18px; font-weight: bold; }
-    .en-avatar { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: bold; }
+        border: 1px solid {C_BORDER};
+    }}
+    
+    .history-avatar {{
+        width: 48px; height: 48px; border-radius: 50%; background: {C_BG}; display: flex;
+        align-items: center; justify-content: center; color: {C_TEXT}; flex-shrink: 0; overflow: hidden;
+        border: 1px solid {C_BORDER};
+    }}
+    .ar-avatar {{ font-family: 'Amiri', 'Noto Naskh Arabic', serif; font-size: 18px; font-weight: bold; }}
+    .en-avatar {{ font-family: 'Playfair Display', serif; font-size: 22px; font-weight: bold; }}
 
-    .history-content { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
-    .ar-text { direction: rtl; text-align: right; }
-    .en-text { direction: ltr; text-align: left; }
+    .history-content {{ flex-grow: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }}
+    .ar-text {{ direction: rtl; text-align: right; }}
+    .en-text {{ direction: ltr; text-align: left; }}
     
-    .history-title-text { font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Inter', sans-serif; }
-    .history-preview { font-size: 12px; color: #9CA3AF; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: 'Inter', sans-serif; }
+    .history-title-text {{ font-size: 14px; font-weight: 600; color: {C_TEXT}; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Inter', sans-serif; }}
+    .history-preview {{ font-size: 12px; color: {C_SUB}; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: 'Inter', sans-serif; }}
     
-    .history-meta { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; height: 44px; flex-shrink: 0; }
-    .history-date { font-size: 11px; color: #9CA3AF; font-family: 'Inter', sans-serif; margin-top: 2px; }
-    .history-dots { font-size: 16px; color: #6B7280; font-weight: bold; line-height: 1; }
+    .history-meta {{ display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; height: 44px; flex-shrink: 0; }}
+    .history-date {{ font-size: 11px; color: {C_SUB}; font-family: 'Inter', sans-serif; margin-top: 2px; }}
+    .history-dots {{ font-size: 16px; color: {C_SUB}; font-weight: bold; line-height: 1; }}
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
-        <div class="desk-header">
-            <div class="desk-logo">İnkOS</div>
-            <div class="desk-logo-sub">PREMIUM AI PROMPT REFINER</div>
-        </div>
-    """, unsafe_allow_html=True)
+    # ── TOP HEADER & THEME TOGGLE ──
+    col_empty, col_logo, col_toggle = st.columns([1, 8, 1])
+    with col_logo:
+        st.markdown("""
+            <div class="desk-logo-container">
+                <div class="desk-logo">İnkOS</div>
+                <div class="desk-logo-sub">PREMIUM AI PROMPT REFINER</div>
+            </div>
+        """, unsafe_allow_html=True)
+    with col_toggle:
+        toggle_icon = "🌙" if theme == "light" else "☀️"
+        if st.button(toggle_icon, key="btn_theme_toggle"):
+            st.session_state["desk_theme"] = "dark" if theme == "light" else "light"
+            st.rerun()
 
     st.markdown('<div class="greet-main">Good morning.</div>', unsafe_allow_html=True)
     st.markdown('<div class="greet-sub">Let\'s craft something exceptional.</div>', unsafe_allow_html=True)
@@ -221,8 +248,8 @@ def _render_desk(cfg: dict):
 
     intent_val = st.text_area("Draft", value=prefill, placeholder="Draft your prompt...", key="desk_input")
     
-    # ── FIXED BUTTON LOGIC (Targeting Type=Primary) ──
-    send = st.button("Refine Prompt", key="desk_send", type="primary", use_container_width=True)
+    # EXACT BRUTALIST BUTTON LOGIC
+    send = st.button("REFINE PROMPT", key="desk_send", type="primary", use_container_width=True)
 
     st.markdown("""<div class="history-header">
         <div class="history-title">Recent Inks</div>
@@ -248,8 +275,8 @@ def _render_desk(cfg: dict):
                 </div>
             """, unsafe_allow_html=True)
     else:
-         st.markdown("""
-             <div style='text-align:center; padding: 40px; color: #9CA3AF; font-size: 14px; font-family: Inter, sans-serif;'>
+         st.markdown(f"""
+             <div style='text-align:center; padding: 40px; color: {C_SUB}; font-size: 14px; font-family: Inter, sans-serif;'>
                  No recent inks found.
              </div>
          """, unsafe_allow_html=True)
@@ -259,7 +286,7 @@ def _render_desk(cfg: dict):
 
 
 # ────────────────────────────────────────────────
-# ENGINE EXECUTION
+# ENGINE EXECUTION (Hardened Router)
 # ────────────────────────────────────────────────
 def _process_prompt(intent_val: str, cfg: dict):
     cleaned, violations = sanitize_input(intent_val)
@@ -291,8 +318,10 @@ def _process_prompt(intent_val: str, cfg: dict):
         history.append({"input": cleaned, "output": result, "time": datetime.now(WAT_TZ).isoformat()})
         st.session_state[K.HISTORY] = history[-50:]
         
-        st.session_state[K.LAST_RESULT] = result
-        st.session_state[K.LAST_INPUT] = cleaned
+        # Absolute Force Lock for Studio Rendering
+        st.session_state[K.LAST_RESULT] = str(result)
+        st.session_state[K.LAST_INPUT] = str(cleaned)
+        st.session_state["in_studio"] = True  # Strict Routing Flag
         st.rerun()
 
 
@@ -302,10 +331,13 @@ def _process_prompt(intent_val: str, cfg: dict):
 def _render_studio(cfg: dict):
     st.markdown("""
     <style>
-    /* Ensure Header is hidden in Studio too */
+    /* Studio Header Fixes */
     header[data-testid="stHeader"] { background-color: transparent !important; box-shadow: none !important; }
+    .stAppToolbar button { color: #F8F9FA !important; }
+    
+    [data-testid="collapsedControl"] { color: #F8F9FA !important; }
     [data-testid="collapsedControl"] svg { display: none !important; }
-    [data-testid="collapsedControl"]::after { content: "☰" !important; color: #F8F9FA !important; font-size: 26px !important; margin-top: 5px; margin-left: 10px; display: flex; align-items: center; justify-content: center;}
+    [data-testid="collapsedControl"]::before { content: "☰" !important; font-size: 28px !important; color: #F8F9FA !important; display: block !important; line-height: 1;}
     
     .stApp { background-color: #0B0F19 !important; color: #F8F9FA !important; }
     .main .block-container { max-width: 600px !important; padding-top: 40px !important; }
@@ -334,8 +366,8 @@ def _render_studio(cfg: dict):
     .connector { text-align: center; z-index: 3; position: relative; transform: translateY(4px); }
     .connector-icon { background: #121826; color: #6B7280; border: 1px solid rgba(255,255,255,0.05); border-radius: 999px; padding: 4px; font-size: 12px; }
 
-    /* Override secondary buttons in Studio so they look correct */
-    button[kind="secondary"] {
+    /* Secondary actions in Studio */
+    div.stButton button[kind="secondary"] {
         background: #121826 !important; border: 1px solid rgba(255,255,255,0.1) !important;
         color: #D4AF37 !important; border-radius: 8px !important; font-family: 'Inter', sans-serif !important; font-size: 13px !important;
         text-transform: uppercase !important; letter-spacing: 1px !important; font-weight: 600 !important;
@@ -372,16 +404,17 @@ def _render_studio(cfg: dict):
     with c2: st.button("Share", key="btn_share", use_container_width=True)
     with c3: 
         if st.button("Re-ink", key="btn_reink", use_container_width=True):
+            st.session_state["in_studio"] = False
             st.session_state[K.LAST_RESULT] = None
             st.session_state["prefill_input"] = raw_input
             st.rerun()
 
 # ────────────────────────────────────────────────
-# MAIN RENDERER
+# MAIN RENDERER (THE ROUTER)
 # ────────────────────────────────────────────────
 def render_workspace(cfg: dict) -> None:
-    last = st.session_state.get(K.LAST_RESULT)
-    if last is not None and str(last).strip() != "":
+    # Router uses the strict "in_studio" flag.
+    if st.session_state.get("in_studio", False):
         _render_studio(cfg)
     else:
         _render_desk(cfg)
