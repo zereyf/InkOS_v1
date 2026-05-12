@@ -1,11 +1,10 @@
 """
 ui/tabs/workspace.py — Dual-State Workspace (Desk & Studio)
 =============================================================
-v5.5: The Brutalist UI & Router Patch.
-      - Restored InkOS Logo.
-      - Transformed default sidebar chevron into a Hamburger menu (☰).
-      - Applied true Brutalist styling to the Refine button.
-      - Hardened the State Router to guarantee Studio transitions.
+v5.6: The Architectural Sync.
+      - Fixed DOM targeting for Brutalist button (via kind="primary").
+      - Header forced to transparent to preserve native edge-to-edge UX.
+      - Max history explicitly clamped to 3 items.
 """
 from __future__ import annotations
 import re, time
@@ -21,7 +20,6 @@ from forge.intelligence import resolve_target_model
 
 WAT_TZ = timezone(timedelta(hours=1))
 
-# ── QUICK ACTIONS ──
 QUICK_ACTIONS = [
     ("🖊", "Refine", "Refine and improve the following prompt:\n\n"),
     ("💡", "Expand", "Expand this prompt with more detail, context, and specificity:\n\n"),
@@ -29,9 +27,6 @@ QUICK_ACTIONS = [
     ("⚙️", "Adjust", "Adjust this prompt for a professional audience with clear structure:\n\n"),
 ]
 
-# ────────────────────────────────────────────────
-# HELPERS & LOGIC
-# ────────────────────────────────────────────────
 def _get_dna_context() -> dict:
     return {
         K.INK_DNA:    str(st.session_state.get(K.INK_DNA)    or ""),
@@ -139,34 +134,28 @@ def _render_desk(cfg: dict):
     }
     div[data-testid="stTextArea"] label { display: none !important; }
 
-    /* ── BRUTALIST ACTION BUTTON (Completely Square) ── */
-    div.desk-btn button {
+    /* ── BRUTALIST PRIMARY BUTTON ── */
+    button[kind="primary"] {
         background: transparent !important;
         background-color: transparent !important;
-        border-radius: 0px !important; /* Square Edges */
+        color: #111827 !important;
+        border-radius: 0px !important; /* Sharp Square */
         border: 2px solid #111827 !important; /* Thick Black Border */
         height: 54px !important;
-        box-shadow: none !important;
-        transition: all 0.2s ease !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-    }
-    div.desk-btn button p {
-        color: #111827 !important; /* Black Text */
-        font-family: 'Inter', sans-serif !important;
         font-size: 14px !important;
         font-weight: 700 !important;
         letter-spacing: 1.5px !important;
         text-transform: uppercase !important;
+        margin-top: 4px !important;
+        box-shadow: none !important;
+        transition: all 0.15s ease !important;
     }
-    /* Hover & Active States */
-    div.desk-btn button:hover, div.desk-btn button:active {
+    /* Hover/Active states invert the button */
+    button[kind="primary"]:hover, button[kind="primary"]:active {
         background: #111827 !important;
         background-color: #111827 !important;
-    }
-    div.desk-btn button:hover p, div.desk-btn button:active p {
-        color: #FFFFFF !important; /* White text on hover */
+        color: #FFFFFF !important;
+        border-color: #111827 !important;
     }
 
     /* ── DROPDOWN QUICK ACTIONS ── */
@@ -190,7 +179,6 @@ def _render_desk(cfg: dict):
         box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 12px; align-items: center;
         border: 1px solid #F3F4F6;
     }
-    
     .history-avatar {
         width: 48px; height: 48px; border-radius: 50%; background: #F3F4F6; display: flex;
         align-items: center; justify-content: center; color: #111827; flex-shrink: 0; overflow: hidden;
@@ -211,7 +199,6 @@ def _render_desk(cfg: dict):
     </style>
     """, unsafe_allow_html=True)
 
-    # ── RENDER HEADER LOGO ──
     st.markdown("""
         <div class="desk-header">
             <div class="desk-logo">İnkOS</div>
@@ -234,9 +221,8 @@ def _render_desk(cfg: dict):
 
     intent_val = st.text_area("Draft", value=prefill, placeholder="Draft your prompt...", key="desk_input")
     
-    st.markdown('<div class="desk-btn">', unsafe_allow_html=True)
-    send = st.button("Refine Prompt", key="desk_send", use_container_width=True) 
-    st.markdown('</div>', unsafe_allow_html=True)
+    # ── FIXED BUTTON LOGIC (Targeting Type=Primary) ──
+    send = st.button("Refine Prompt", key="desk_send", type="primary", use_container_width=True)
 
     st.markdown("""<div class="history-header">
         <div class="history-title">Recent Inks</div>
@@ -245,7 +231,6 @@ def _render_desk(cfg: dict):
     
     history = st.session_state.get(K.HISTORY, [])
     if history:
-        # Strictly enforces maximum of 3 items
         for idx, entry in enumerate(reversed(history[-3:])):
             avatar, title, preview, lang_class, dir_class = _format_history_entry(entry.get("output", ""), entry.get("input", ""))
             
@@ -274,7 +259,7 @@ def _render_desk(cfg: dict):
 
 
 # ────────────────────────────────────────────────
-# ENGINE EXECUTION (Hardened Router)
+# ENGINE EXECUTION
 # ────────────────────────────────────────────────
 def _process_prompt(intent_val: str, cfg: dict):
     cleaned, violations = sanitize_input(intent_val)
@@ -286,7 +271,6 @@ def _process_prompt(intent_val: str, cfg: dict):
         run_cfg = dict(cfg)
         payload = assemble_master_payload(cleaned, run_cfg, _get_dna_context())
         
-        # FAIL-SAFE: Guarantees routing to Studio
         try:
             result, audit, _ = run_refinement_and_audit(
                 payload,
@@ -307,7 +291,6 @@ def _process_prompt(intent_val: str, cfg: dict):
         history.append({"input": cleaned, "output": result, "time": datetime.now(WAT_TZ).isoformat()})
         st.session_state[K.HISTORY] = history[-50:]
         
-        # Absolute force router flag
         st.session_state[K.LAST_RESULT] = result
         st.session_state[K.LAST_INPUT] = cleaned
         st.rerun()
@@ -320,9 +303,9 @@ def _render_studio(cfg: dict):
     st.markdown("""
     <style>
     /* Ensure Header is hidden in Studio too */
-    header[data-testid="stHeader"] { background-color: transparent !important; }
+    header[data-testid="stHeader"] { background-color: transparent !important; box-shadow: none !important; }
     [data-testid="collapsedControl"] svg { display: none !important; }
-    [data-testid="collapsedControl"]::after { content: "☰" !important; color: #F8F9FA !important; font-size: 26px !important; margin-top: 5px; margin-left: 10px; }
+    [data-testid="collapsedControl"]::after { content: "☰" !important; color: #F8F9FA !important; font-size: 26px !important; margin-top: 5px; margin-left: 10px; display: flex; align-items: center; justify-content: center;}
     
     .stApp { background-color: #0B0F19 !important; color: #F8F9FA !important; }
     .main .block-container { max-width: 600px !important; padding-top: 40px !important; }
@@ -351,9 +334,10 @@ def _render_studio(cfg: dict):
     .connector { text-align: center; z-index: 3; position: relative; transform: translateY(4px); }
     .connector-icon { background: #121826; color: #6B7280; border: 1px solid rgba(255,255,255,0.05); border-radius: 999px; padding: 4px; font-size: 12px; }
 
-    .studio-actions button {
+    /* Override secondary buttons in Studio so they look correct */
+    button[kind="secondary"] {
         background: #121826 !important; border: 1px solid rgba(255,255,255,0.1) !important;
-        color: #D4AF37 !important; border-radius: 0px !important; font-family: 'Inter', sans-serif !important; font-size: 13px !important;
+        color: #D4AF37 !important; border-radius: 8px !important; font-family: 'Inter', sans-serif !important; font-size: 13px !important;
         text-transform: uppercase !important; letter-spacing: 1px !important; font-weight: 600 !important;
     }
     </style>
@@ -383,23 +367,19 @@ def _render_studio(cfg: dict):
         </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="studio-actions">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    with c1: st.button("Copy", use_container_width=True)
-    with c2: st.button("Share", use_container_width=True)
+    with c1: st.button("Copy", key="btn_copy", use_container_width=True)
+    with c2: st.button("Share", key="btn_share", use_container_width=True)
     with c3: 
-        if st.button("Re-ink", use_container_width=True):
+        if st.button("Re-ink", key="btn_reink", use_container_width=True):
             st.session_state[K.LAST_RESULT] = None
             st.session_state["prefill_input"] = raw_input
             st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
 
 # ────────────────────────────────────────────────
-# MAIN RENDERER (THE ROUTER)
+# MAIN RENDERER
 # ────────────────────────────────────────────────
 def render_workspace(cfg: dict) -> None:
-    # Router logic: Empty result = Desk Mode. Populated result = Studio Mode.
     last = st.session_state.get(K.LAST_RESULT)
     if last is not None and str(last).strip() != "":
         _render_studio(cfg)
