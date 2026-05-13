@@ -2,6 +2,7 @@
 ui/tabs/workspace.py — InkOS Official Workspace
 =================================================
 Matches the Mobile UX/UI Design Considerations (Section 5).
+- Branch conflict resolution note: kept workspace tab implementation from feature branch.
 - Stacked, sequential flow (Input -> Controls -> Output).
 - Bilingual headers (English / Arabic).
 - Targeted AI Model dropdown replacing sliders.
@@ -34,6 +35,14 @@ def extract_clean_output(raw: str) -> str:
     t = str(raw or "")
     t = re.sub(r"\*\*\s*PART\s*\d+\s*:[^\n]*\**", "", t, flags=re.I)
     t = re.sub(r"Claude Target Specific Output\s*", "", t, flags=re.I)
+    # Prefer explicit refined-prompt payloads when present.
+    refined_match = re.search(r"REFINED_PROMPT\s*:\s*(.+)", t, flags=re.I | re.S)
+    if refined_match:
+        t = refined_match.group(1)
+
+    t = re.sub(r"Claude Target Specific Output\s*", "", t, flags=re.I)
+    t = re.sub(r"JSON Audit Object[\s\S]*", "", t, flags=re.I)
+    t = re.sub(r"^\s*\*\*\s*PART\s*\d+\s*:.*$", "", t, flags=re.I | re.M)
     t = re.sub(r"(?:Claude|GPT|ChatGPT|Gemini|DALL-?E|Midjourney|FLUX|OpenAI)\s*(?:Target\s*)?Prompt\s*:\s*", "", t, flags=re.I)
     t = re.sub(r"A\.I\.Z\.E\.N\..*?(?:InkOS\.|(?=\n\n))", "", t, flags=re.I | re.S)
     t = re.sub(r"You are a highly advanced.*?(?:InkOS\.|(?=\n\n))", "", t, flags=re.I | re.S)
@@ -43,6 +52,8 @@ def extract_clean_output(raw: str) -> str:
     t = re.sub(r"^\s*JSON Audit Object[\s\S]*$", "", t, flags=re.I | re.M)
     t = re.sub(r"<[^>]+>", "", t)
     t = re.sub(r"```", "", t)
+    t = re.sub(r"```[\s\S]*?```", "", t)
+    t = re.sub(r"^\s*\{[\s\S]*\}\s*$", "", t, flags=re.M)
     t = re.sub(r"^\s*#{1,6}\s.*$", "", t, flags=re.M)
     t = t.replace("**", "").replace("__", "")
     t = re.sub(r"^(?:System\s*Prompt\s*:)?\s*REFINED_PROMPT\s*:\s*", "", t, flags=re.I | re.M)
