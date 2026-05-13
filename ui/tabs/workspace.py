@@ -2,6 +2,7 @@
 ui/tabs/workspace.py — InkOS Official Workspace
 =================================================
 Matches the Mobile UX/UI Design Considerations (Section 5).
+- Branch conflict resolution note: kept workspace tab implementation from feature branch.
 - Stacked, sequential flow (Input -> Controls -> Output).
 - Bilingual headers (English / Arabic).
 - Targeted AI Model dropdown replacing sliders.
