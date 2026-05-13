@@ -41,9 +41,9 @@ _api_key: str = os.getenv("GROQ_API_KEY", "").strip()
 API_KEY_MISSING: bool = not bool(_api_key)
 client: Optional[Groq] = Groq(api_key=_api_key) if _api_key else None
 
-# ── MODEL CONFIGURATION (LAUNCH TIER - 8B INSTANT) ───────────────────────────
-PRIMARY_MODEL_ID: str = os.getenv("INKOS_PRIMARY_MODEL_ID", "llama3-8b-8192").strip() or "llama3-8b-8192"
-FALLBACK_MODEL_ID: str = os.getenv("INKOS_FALLBACK_MODEL_ID", "mixtral-8x7b-32768").strip() or "mixtral-8x7b-32768"
+# ── MODEL CONFIGURATION (CURRENT GROQ DEFAULTS) ───────────────────────────
+PRIMARY_MODEL_ID: str = os.getenv("INKOS_PRIMARY_MODEL_ID", "llama-3.1-8b-instant").strip() or "llama-3.1-8b-instant"
+FALLBACK_MODEL_ID: str = os.getenv("INKOS_FALLBACK_MODEL_ID", "llama-3.3-70b-versatile").strip() or "llama-3.3-70b-versatile"
 MODEL_ID: str = os.getenv("INKOS_MODEL_ID", PRIMARY_MODEL_ID).strip() or PRIMARY_MODEL_ID
 AUDIO_MODEL_ID: str = os.getenv("INKOS_AUDIO_MODEL", "whisper-large-v3-turbo").strip() or "whisper-large-v3-turbo"
 TEMPERATURE: float = _env_float("INKOS_TEMPERATURE", 0.7, minimum=0.0, maximum=2.0)
