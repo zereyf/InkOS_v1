@@ -16,7 +16,7 @@ from config import (
     client, MODEL_ID, MODEL_PRIORITY, TEMPERATURE, MAX_TOKENS, 
     RETRY_THRESHOLD, MAX_RETRIES, EVAL_TEMPERATURE,
     CIPHER_EVALUATOR_PROMPT, CIPHER_OUTPUT_CONTRACT, 
-    CIPHER_RETRY_INJECTION
+    CIPHER_RETRY_INJECTION, REQUEST_TIMEOUT_SECONDS
 )
 
 from security.sanitizer import sanitize_input
@@ -143,6 +143,7 @@ def _call_evaluator(master_payload: str, target: str, refined_prompt: str, hikma
             response_format={"type": "json_object"},
             temperature=EVAL_TEMPERATURE,
             max_tokens=300,
+            timeout=REQUEST_TIMEOUT_SECONDS,
         )
         return _clamp_audit(json.loads(completion.choices[0].message.content))
     except Exception as e:
@@ -162,6 +163,7 @@ def _call_cipher(system_prompt: str) -> Tuple[Optional[str], Optional[dict], Opt
                 ],
                 temperature=TEMPERATURE,
                 max_tokens=MAX_TOKENS,
+                timeout=REQUEST_TIMEOUT_SECONDS,
             )
             refined, audit = _parse_output(completion.choices[0].message.content)
             return refined, audit, None
