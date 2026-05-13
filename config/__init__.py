@@ -1,6 +1,6 @@
 # config/__init__.py  — backward-compatible re-export layer
 from config.api import (
-    client, API_KEY_MISSING, MODEL_ID, AUDIO_MODEL_ID,
+    client, API_KEY_MISSING, MODEL_ID, PRIMARY_MODEL_ID, FALLBACK_MODEL_ID, MODEL_PRIORITY, AUDIO_MODEL_ID,
     TEMPERATURE, MAX_TOKENS, WHISPER_CONTEXT_PROMPT,
 )
 from config.thresholds import (

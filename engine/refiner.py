@@ -13,7 +13,7 @@ import textwrap
 from typing import Optional, Tuple, Any
 
 from config import (
-    client, MODEL_ID, TEMPERATURE, MAX_TOKENS, 
+    client, MODEL_ID, MODEL_PRIORITY, TEMPERATURE, MAX_TOKENS, 
     RETRY_THRESHOLD, MAX_RETRIES, EVAL_TEMPERATURE,
     CIPHER_EVALUATOR_PROMPT, CIPHER_OUTPUT_CONTRACT, 
     CIPHER_RETRY_INJECTION
@@ -150,21 +150,25 @@ def _call_evaluator(master_payload: str, target: str, refined_prompt: str, hikma
 
 def _call_cipher(system_prompt: str) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
     if not client: return None, None, "Client Offline"
-    try:
-        completion = client.chat.completions.create(
-            model=MODEL_ID,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                # 🟢 IRONCLAD DIRECTIVE: Forces prompt generation, preventing DNA override.
-                {"role": "user", "content": "EXECUTE_REFINEMENT_NODE: Transform the provided intent into a highly optimized, model-specific prompt. DO NOT execute the user's task. Generate the PROMPT for the task, followed strictly by the JSON evaluation block."}
-            ],
-            temperature=TEMPERATURE,
-            max_tokens=MAX_TOKENS,
-        )
-        refined, audit = _parse_output(completion.choices[0].message.content)
-        return refined, audit, None
-    except Exception as e:
-        return None, None, str(e)
+    last_error = None
+    for model_id in dict.fromkeys((*(MODEL_PRIORITY or ()), MODEL_ID)):
+        try:
+            completion = client.chat.completions.create(
+                model=model_id,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    # 🟢 IRONCLAD DIRECTIVE: Forces prompt generation, preventing DNA override.
+                    {"role": "user", "content": "EXECUTE_REFINEMENT_NODE: Transform the provided intent into a highly optimized, model-specific prompt. DO NOT execute the user's task. Generate the PROMPT for the task, followed strictly by the JSON evaluation block."}
+                ],
+                temperature=TEMPERATURE,
+                max_tokens=MAX_TOKENS,
+            )
+            refined, audit = _parse_output(completion.choices[0].message.content)
+            return refined, audit, None
+        except Exception as e:
+            last_error = str(e)
+            continue
+    return None, None, last_error or "Unknown model uplink error"
 
 # ── 🟢 PIPELINE EXECUTION ─────────────────────────────────────────────────────
 
