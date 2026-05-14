@@ -1,5 +1,6 @@
 """
 ui/tabs/workspace.py
+=====================
 """
 
 from __future__ import annotations
@@ -85,14 +86,17 @@ def extract_clean_output(raw: str) -> str:
 # ── UI COMPONENTS ─────────────────────────────────────────────────────────────
 
 def _audit_score_component(audit: dict) -> None:
-    """Renders the audit score as a visual component with dimension bars."""
+    """
+    BUG-2 FIX: No HTML comments. No nested f-string.
+    Two separate st.markdown() calls — score strip first, critique second.
+    Each call is a flat concatenated string — no multiline f-string ambiguity.
+    """
     score      = audit.get("score",      0)
     precision  = audit.get("precision",  0)
     alignment  = audit.get("alignment",  0)
     efficiency = audit.get("efficiency", 0)
     critique   = audit.get("critique",   "")
 
-    # Color based on score
     if score >= 85:
         score_color = "#4CAF9A"
         score_label = "HIGH FIDELITY"
@@ -103,71 +107,62 @@ def _audit_score_component(audit: dict) -> None:
         score_color = "#E57373"
         score_label = "NEEDS WORK"
 
-    # Dimension bars: precision/40, alignment/40, efficiency/20
-    prec_pct = int((precision / 40) * 100)
-    align_pct = int((alignment / 40) * 100)
+    prec_pct  = int((precision  / 40) * 100)
+    align_pct = int((alignment  / 40) * 100)
     effic_pct = int((efficiency / 20) * 100)
+    target    = st.session_state.get(K.AUTO_TARGET, "—")
 
-    st.markdown(f"""
-    <div class="audit-strip fade-in">
-        <!-- Main score -->
-        <div style="display:flex; flex-direction:column; align-items:center;
-                    padding-right:16px; border-right:1px solid rgba(255,255,255,0.06);">
-            <div class="audit-main-score" style="color:{score_color};">{score}</div>
-            <div style="font-family:var(--font-m); font-size:8px;
-                        color:{score_color}; letter-spacing:0.15em; margin-top:2px;">
-                {score_label}
-            </div>
-        </div>
+    # Score strip — single flat string, no comments, no nested expressions
+    st.markdown(
+        '<div class="audit-strip fade-in">'
+        '<div style="display:flex;flex-direction:column;align-items:center;'
+        'padding-right:16px;border-right:1px solid rgba(255,255,255,0.06);">'
+        f'<div class="audit-main-score" style="color:{score_color};">{score}</div>'
+        f'<div style="font-family:var(--font-m);font-size:8px;color:{score_color};'
+        f'letter-spacing:0.15em;margin-top:2px;">{score_label}</div>'
+        '</div>'
+        '<div style="display:flex;gap:20px;flex-wrap:wrap;">'
+        '<div>'
+        '<div class="audit-dim-label">Precision</div>'
+        '<div class="audit-dim-bar">'
+        f'<div class="audit-dim-fill" style="width:{prec_pct}%;background:var(--steel);"></div>'
+        '</div>'
+        f'<div style="font-family:var(--font-m);font-size:9px;color:var(--steel);margin-top:2px;">{precision}/40</div>'
+        '</div>'
+        '<div>'
+        '<div class="audit-dim-label">Alignment</div>'
+        '<div class="audit-dim-bar">'
+        f'<div class="audit-dim-fill" style="width:{align_pct}%;background:var(--gold);"></div>'
+        '</div>'
+        f'<div style="font-family:var(--font-m);font-size:9px;color:var(--gold);margin-top:2px;">{alignment}/40</div>'
+        '</div>'
+        '<div>'
+        '<div class="audit-dim-label">Efficiency</div>'
+        '<div class="audit-dim-bar">'
+        f'<div class="audit-dim-fill" style="width:{effic_pct}%;background:#4CAF9A;"></div>'
+        '</div>'
+        f'<div style="font-family:var(--font-m);font-size:9px;color:#4CAF9A;margin-top:2px;">{efficiency}/20</div>'
+        '</div>'
+        '</div>'
+        '<div style="margin-left:auto;">'
+        f'<div class="routing-tag">❖ {target}</div>'
+        '</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
-        <!-- Dimension bars -->
-        <div style="display:flex; gap:20px; flex-wrap:wrap;">
-            <div>
-                <div class="audit-dim-label">Precision</div>
-                <div class="audit-dim-bar">
-                    <div class="audit-dim-fill" style="width:{prec_pct}%;
-                         background:var(--steel);"></div>
-                </div>
-                <div style="font-family:var(--font-m); font-size:9px;
-                            color:var(--steel); margin-top:2px;">{precision}/40</div>
-            </div>
-            <div>
-                <div class="audit-dim-label">Alignment</div>
-                <div class="audit-dim-bar">
-                    <div class="audit-dim-fill" style="width:{align_pct}%;
-                         background:var(--gold);"></div>
-                </div>
-                <div style="font-family:var(--font-m); font-size:9px;
-                            color:var(--gold); margin-top:2px;">{alignment}/40</div>
-            </div>
-            <div>
-                <div class="audit-dim-label">Efficiency</div>
-                <div class="audit-dim-bar">
-                    <div class="audit-dim-fill" style="width:{effic_pct}%;
-                         background:#4CAF9A;"></div>
-                </div>
-                <div style="font-family:var(--font-m); font-size:9px;
-                            color:#4CAF9A; margin-top:2px;">{efficiency}/20</div>
-            </div>
-        </div>
-
-        <!-- Routing tag -->
-        <div style="margin-left:auto;">
-            <div class="routing-tag">
-                ❖ {st.session_state.get(K.AUTO_TARGET, "—")}
-            </div>
-        </div>
-    </div>
-    {"" if not critique else f'<div style="font-family:var(--font-m); font-size:11px; color:var(--text-muted); padding:8px 14px; background:rgba(0,0,0,0.2); border-radius:var(--radius-sm); margin-bottom:10px;">✦ {critique}</div>'}
-    """, unsafe_allow_html=True)
+    # Critique — separate call, plain if-block, no nested f-string
+    if critique:
+        st.markdown(
+            '<div style="font-family:var(--font-m);font-size:11px;'
+            'color:var(--text-muted);padding:8px 14px;'
+            'background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);'
+            f'margin-bottom:10px;">✦ {critique}</div>',
+            unsafe_allow_html=True,
+        )
 
 
 def _copy_to_clipboard_btn(text: str, key: str) -> None:
-    """
-    Renders a copy-to-clipboard button using a small HTML component.
-    Streamlit doesn't have a native copy button — we inject one via
-    components.html() with a self-contained script.
-    """
     escaped = text.replace("`", "\\`").replace("\\", "\\\\").replace("\n", "\\n")
     components.html(f"""
     <style>
@@ -183,27 +178,19 @@ def _copy_to_clipboard_btn(text: str, key: str) -> None:
             cursor: pointer;
             transition: all 0.2s ease;
         }}
-        .copy-btn:hover {{
-            border-color: rgba(124,158,191,0.4);
-            color: #B0C4DE;
-        }}
-        .copy-btn.copied {{
-            border-color: rgba(76,175,154,0.4);
-            color: #4CAF9A;
-        }}
+        .copy-btn:hover {{ border-color: rgba(124,158,191,0.4); color: #B0C4DE; }}
+        .copy-btn.copied {{ border-color: rgba(76,175,154,0.4); color: #4CAF9A; }}
     </style>
     <button class="copy-btn" id="copy_{key}"
-            onclick="
-                navigator.clipboard.writeText(`{escaped}`).then(() => {{
-                    const btn = document.getElementById('copy_{key}');
-                    btn.textContent = '✓  COPIED';
-                    btn.classList.add('copied');
-                    setTimeout(() => {{
-                        btn.textContent = '📋  COPY';
-                        btn.classList.remove('copied');
-                    }}, 2000);
-                }});
-            ">
+            onclick="navigator.clipboard.writeText(`{escaped}`).then(() => {{
+                const btn = document.getElementById('copy_{key}');
+                btn.textContent = '✓  COPIED';
+                btn.classList.add('copied');
+                setTimeout(() => {{
+                    btn.textContent = '📋  COPY';
+                    btn.classList.remove('copied');
+                }}, 2000);
+            }});">
         📋&nbsp;&nbsp;COPY
     </button>
     """, height=40)
@@ -255,13 +242,11 @@ def _run_stream(
     t0     = time.time()
     result = {}
 
-    # Streaming output area
-    st.markdown("""
-    <div style="font-family:var(--font-m); font-size:9px; color:var(--text-dim);
-                letter-spacing:0.2em; text-transform:uppercase; margin-bottom:8px;">
-        ❖ Refining...
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        '<div style="font-family:var(--font-m);font-size:9px;color:var(--text-dim);'
+        'letter-spacing:0.2em;text-transform:uppercase;margin-bottom:8px;">❖ Refining...</div>',
+        unsafe_allow_html=True,
+    )
 
     with st.container():
         st.write_stream(
@@ -292,10 +277,10 @@ def _run_stream(
     word_count = len(clean.split())
     density    = round(word_count / max(len(cleaned.split()), 1), 2)
 
-    st.session_state[K.LAST_RESULT]   = clean
-    st.session_state[K.LAST_AUDIT]    = audit or {}
-    st.session_state[K.LAST_INPUT]    = cleaned
-    st.session_state[K.PROMPT_COUNT]  = st.session_state.get(K.PROMPT_COUNT, 0) + 1
+    st.session_state[K.LAST_RESULT]  = clean
+    st.session_state[K.LAST_AUDIT]   = audit or {}
+    st.session_state[K.LAST_INPUT]   = cleaned
+    st.session_state[K.PROMPT_COUNT] = st.session_state.get(K.PROMPT_COUNT, 0) + 1
 
     history = st.session_state.get(K.HISTORY, [])
     run_id  = f"RUN_{len(history) + 1:03d}"
@@ -327,40 +312,40 @@ def _run_stream(
 
 def render_workspace(cfg: dict) -> None:
 
-    # ── Header ────────────────────────────────────────────────────────────
-    st.markdown("""
-    <div class='vc-header'>
-        <span class='status-dot'></span>
-        WORKSPACE
-        <span style="margin-left:auto; font-size:9px; color:var(--text-dim);
-                     letter-spacing:0.1em;">مساحة العمل</span>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        '<div class="vc-header">'
+        '<span class="status-dot"></span>'
+        'WORKSPACE'
+        '<span style="margin-left:auto;font-size:9px;color:var(--text-dim);'
+        'letter-spacing:0.1em;">مساحة العمل</span>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
     if "workspace_text" not in st.session_state:
         st.session_state["workspace_text"] = st.session_state.get(K.LAST_INPUT, "")
 
-    # ── Quick example chips ───────────────────────────────────────────────
-    st.markdown("""
-    <div style="font-family:var(--font-m); font-size:9px; color:var(--text-dim);
-                letter-spacing:0.15em; text-transform:uppercase; margin-bottom:8px;">
-        Quick examples
-    </div>
-    """, unsafe_allow_html=True)
+    # Quick example chips
+    st.markdown(
+        '<div style="font-family:var(--font-m);font-size:9px;color:var(--text-dim);'
+        'letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;">'
+        'Quick examples</div>',
+        unsafe_allow_html=True,
+    )
 
-    chip_cols = st.columns(4)
     example_texts = [
         "Write an article about AI in education",
         "اكتب مقالاً عن الذكاء الاصطناعي في التعليم",
         "Write marketing copy for a productivity app",
         "اكتب رسالة متابعة احترافية لعميل",
     ]
+    chip_cols = st.columns(4)
     for i, (col, (lang, label), full_text) in enumerate(
         zip(chip_cols, QUICK_EXAMPLES, example_texts)
     ):
         with col:
             if st.button(
-                f"{lang}  {label[:22]}{'…' if len(label)>22 else ''}",
+                f"{lang}  {label[:22]}{'…' if len(label) > 22 else ''}",
                 key=f"chip_{i}",
                 use_container_width=True,
             ):
@@ -369,19 +354,21 @@ def render_workspace(cfg: dict) -> None:
 
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    # ── Input panel ───────────────────────────────────────────────────────
-    st.markdown("<div class='ws-panel-label'>[ 01 ]  SOURCE INTENT</div>",
-                unsafe_allow_html=True)
+    # Input area
+    st.markdown(
+        '<div class="ws-panel-label">[ 01 ]  SOURCE INTENT</div>',
+        unsafe_allow_html=True,
+    )
 
     source = st.text_area(
         "source_prompt",
-        value       = st.session_state["workspace_text"],
-        height      = 200,
-        placeholder = (
+        value            = st.session_state["workspace_text"],
+        height           = 200,
+        placeholder      = (
             "Describe what you want the AI to do — in English or Arabic.\n"
             "اكتب ما تريد من الذكاء الاصطناعي أن يفعله..."
         ),
-        max_chars   = INPUT_MAX_CHARS,
+        max_chars        = INPUT_MAX_CHARS,
         label_visibility = "collapsed",
     )
     st.session_state["workspace_text"] = source
@@ -394,49 +381,45 @@ def render_workspace(cfg: dict) -> None:
             "Long inputs reduce refinement quality."
         )
     else:
-        pct = int((char_count / INPUT_MAX_CHARS) * 100)
-        bar_color = "var(--gold)" if char_count > 1500 else "var(--steel)"
-        st.markdown(f"""
-        <div style="display:flex; justify-content:space-between; align-items:center;
-                    margin-top:-8px; margin-bottom:8px;">
-            <div style="flex:1; height:2px; background:rgba(255,255,255,0.04);
-                        border-radius:1px; overflow:hidden; margin-right:10px;">
-                <div style="height:100%; width:{pct}%; background:{bar_color};
-                             transition:width 0.3s ease;"></div>
-            </div>
-            <div style="font-family:var(--font-m); font-size:10px;
-                        color:var(--text-dim); white-space:nowrap;">
-                {char_count:,} / {INPUT_MAX_CHARS:,}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        pct        = int((char_count / INPUT_MAX_CHARS) * 100)
+        bar_color  = "var(--gold)" if char_count > 1500 else "var(--steel)"
+        st.markdown(
+            '<div style="display:flex;justify-content:space-between;align-items:center;'
+            'margin-top:-8px;margin-bottom:8px;">'
+            '<div style="flex:1;height:2px;background:rgba(255,255,255,0.04);'
+            'border-radius:1px;overflow:hidden;margin-right:10px;">'
+            f'<div style="height:100%;width:{pct}%;background:{bar_color};'
+            'transition:width 0.3s ease;"></div>'
+            '</div>'
+            f'<div style="font-family:var(--font-m);font-size:10px;color:var(--text-dim);'
+            f'white-space:nowrap;">{char_count:,} / {INPUT_MAX_CHARS:,}</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
-    # ── Refinement controls ───────────────────────────────────────────────
-    st.markdown("<div class='ws-panel-label'>[ 02 ]  REFINEMENT CONTROLS</div>",
-                unsafe_allow_html=True)
+    # Controls
+    st.markdown(
+        '<div class="ws-panel-label">[ 02 ]  REFINEMENT CONTROLS</div>',
+        unsafe_allow_html=True,
+    )
 
     ctrl1, ctrl2, ctrl3 = st.columns(3)
-    with ctrl1: tone       = st.slider("Tone",        0, 100, 50, key="sl_tone")
-    with ctrl2: length     = st.slider("Length",      0, 100, 50, key="sl_length")
-    with ctrl3: creativity = st.slider("Creativity",  0, 100, 50, key="sl_creativity")
+    with ctrl1: tone       = st.slider("Tone",       0, 100, 50, key="sl_tone")
+    with ctrl2: length     = st.slider("Length",     0, 100, 50, key="sl_length")
+    with ctrl3: creativity = st.slider("Creativity", 0, 100, 50, key="sl_creativity")
 
     aud_col, _, run_col = st.columns([2, 1, 1])
     with aud_col:
-        audience = st.selectbox(
-            "Audience",
-            AUDIENCE_OPTIONS,
-            label_visibility="collapsed",
-        )
+        audience = st.selectbox("Audience", AUDIENCE_OPTIONS, label_visibility="collapsed")
     with run_col:
         run_clicked = st.button(
             "⚡  REFINE",
-            type              = "primary",
+            type                = "primary",
             use_container_width = True,
-            disabled          = not source.strip(),
-            key               = "refine_btn",
+            disabled            = not source.strip(),
+            key                 = "refine_btn",
         )
 
-    # Secondary actions row
     act1, act2, *_ = st.columns([1, 1, 2, 2])
     with act1:
         if st.button("✕  Clear", use_container_width=True, key="clear_btn"):
@@ -454,40 +437,35 @@ def render_workspace(cfg: dict) -> None:
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-    # ── Output panel ──────────────────────────────────────────────────────
+    # Output panel
     output = st.session_state.get(K.LAST_RESULT)
     audit  = st.session_state.get(K.LAST_AUDIT, {})
 
     if not output:
-        # Empty state
-        st.markdown("""
-        <div style="border:1px dashed rgba(255,255,255,0.06); border-radius:var(--radius-lg);
-                    padding:40px 20px; text-align:center; margin-top:8px;">
-            <div style="font-family:var(--font-m); font-size:0.65rem; color:var(--text-dim);
-                        letter-spacing:0.15em; text-transform:uppercase;">
-                [ ❖ ]  Refined output will appear here
-            </div>
-            <div style="font-family:var(--font-a); font-size:12px; color:var(--text-dim);
-                        margin-top:6px; opacity:0.5;">
-                سيظهر الناتج المحسّن هنا
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            '<div style="border:1px dashed rgba(255,255,255,0.06);'
+            'border-radius:var(--radius-lg);padding:40px 20px;text-align:center;margin-top:8px;">'
+            '<div style="font-family:var(--font-m);font-size:0.65rem;color:var(--text-dim);'
+            'letter-spacing:0.15em;text-transform:uppercase;">[ ❖ ]  Refined output will appear here</div>'
+            '<div style="font-family:var(--font-a);font-size:12px;color:var(--text-dim);'
+            'margin-top:6px;opacity:0.5;">سيظهر الناتج المحسّن هنا</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
         return
 
     # Output header
-    st.markdown("""
-    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
-        <div style="font-family:var(--font-m); font-size:9px; color:var(--gold);
-                    letter-spacing:0.2em; text-transform:uppercase;">
-            [ 03 ]  REFINED OUTPUT
-        </div>
-        <div style="flex:1; height:1px; background:linear-gradient(90deg,
-                    var(--gold-border), transparent);"></div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
+        '<div style="font-family:var(--font-m);font-size:9px;color:var(--gold);'
+        'letter-spacing:0.2em;text-transform:uppercase;">[ 03 ]  REFINED OUTPUT</div>'
+        '<div style="flex:1;height:1px;background:linear-gradient(90deg,'
+        'var(--gold-border),transparent);"></div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
-    # Audit score component
+    # Audit score — BUG-2 fixed function
     _audit_score_component(audit)
 
     # Output text area
@@ -503,22 +481,22 @@ def render_workspace(cfg: dict) -> None:
     words   = len(output.split())
     chars   = len(output)
     minutes = max(1, round(words / 200))
-    latency = ""
     history = st.session_state.get(K.HISTORY, [])
-    if history:
-        latency = history[-1].get("latency", "")
+    latency = history[-1].get("latency", "") if history else ""
 
-    st.markdown(f"""
-    <div style="display:flex; gap:16px; flex-wrap:wrap; font-family:var(--font-m);
-                font-size:10px; color:var(--text-dim); margin-top:-4px; margin-bottom:14px;">
-        <span>📄 {words:,} words</span>
-        <span>Aa {chars:,} chars</span>
-        <span>⏱ ~{minutes} min read</span>
-        {"<span>⚡ " + latency + "</span>" if latency else ""}
-    </div>
-    """, unsafe_allow_html=True)
+    latency_span = f"<span>⚡ {latency}</span>" if latency else ""
+    st.markdown(
+        f'<div style="display:flex;gap:16px;flex-wrap:wrap;font-family:var(--font-m);'
+        f'font-size:10px;color:var(--text-dim);margin-top:-4px;margin-bottom:14px;">'
+        f'<span>📄 {words:,} words</span>'
+        f'<span>Aa {chars:,} chars</span>'
+        f'<span>⏱ ~{minutes} min read</span>'
+        f'{latency_span}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
-    # Action bar: copy + save
+    # Action bar
     copy_col, save_col, _ = st.columns([1, 1, 2])
 
     with copy_col:
@@ -529,15 +507,16 @@ def render_workspace(cfg: dict) -> None:
         is_guest  = not user_hash or "GUEST_" in str(user_hash).upper()
 
         if is_guest:
-            st.markdown("""
-            <div style="font-family:var(--font-m); font-size:10px; color:var(--text-dim);
-                        padding:5px 0; letter-spacing:0.06em;">
-                Login to save to Vault
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(
+                '<div style="font-family:var(--font-m);font-size:10px;'
+                'color:var(--text-dim);padding:5px 0;letter-spacing:0.06em;">'
+                'Login to save to Vault</div>',
+                unsafe_allow_html=True,
+            )
         else:
             if st.button("💾  Save to Vault", use_container_width=True, key="vault_save_btn"):
-                score = (audit or {}).get("score", 0)
+                score  = (audit or {}).get("score", 0)
+                # BUG-1 FIX: intent= removed — vault table has no intent column
                 record, err = save_prompt(
                     user_hash,
                     title     = st.session_state.get(K.LAST_INPUT, "")[:80] or "Untitled",
@@ -547,7 +526,6 @@ def render_workspace(cfg: dict) -> None:
                     framework = cfg.get("framework", "RACE"),
                     score     = score,
                     aesthetic = cfg.get("aesthetic_choice", "Default"),
-                    intent    = st.session_state.get(K.LAST_INPUT, ""),
                 )
                 if err:
                     st.error(f"Vault save failed: {err}")
