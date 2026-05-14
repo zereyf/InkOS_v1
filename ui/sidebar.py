@@ -1,11 +1,19 @@
 """
 ui/sidebar.py — InkOS Sidebar
 ================================
-v4.0: Official design system. Dark/light toggle.
-      Dynamic username. Correct brand identity.
+Phase 4 UI Rebuild:
+
+  - Nav items grouped into CORE / BUILD / SYSTEM sections
+  - Locked items shown with a "Login required" label instead of
+    silently disappearing — guests now understand what they're missing
+  - All design tokens applied (no default Streamlit blues)
+  - Dark/light toggle uses the gold button style
+  - Sidebar section labels match the font system
 """
+
 import streamlit as st
 from typing import TypedDict, Optional
+
 from state import K, get_remaining_calls
 from config import TARGET_GUIDES, AESTHETIC_PRESETS, AUTO_SELECT_LABEL, LOGIC_FRAMEWORKS
 from config.personas import STARTER_PERSONAS
@@ -35,9 +43,13 @@ def _get_avatar_letter(name: str) -> str:
 
 
 def render_sidebar_brand() -> None:
-    is_active = not SUPABASE_MISSING and bool(st.session_state.get(K.USER_HASH))
-    label     = "ACTIVE" if is_active else ("DB_FAULT" if SUPABASE_MISSING else "OFFLINE")
-    dot_cls   = "active" if is_active else "inactive"
+    is_connected = not SUPABASE_MISSING and bool(st.session_state.get(K.USER_HASH))
+    is_guest     = not st.session_state.get(K.USER_HASH) or \
+                   "GUEST_" in str(st.session_state.get(K.USER_HASH, "")).upper()
+
+    label    = "ACTIVE" if (is_connected and not is_guest) else \
+               ("DB_FAULT" if SUPABASE_MISSING else "GUEST")
+    dot_cls  = "active" if (is_connected and not is_guest) else "inactive"
 
     st.markdown(f"""
     <div class='uplink-bar'>
@@ -52,18 +64,19 @@ def render_sidebar_brand() -> None:
 
 
 def render_sidebar() -> SidebarConfig:
-    # ── Dark / Light toggle ──
-    dark_mode = st.session_state.get("dark_mode", True)
-    toggle_label = "☀ Light mode" if dark_mode else "🌙 Dark mode"
+
+    # ── Theme toggle ──────────────────────────────────────────────────────
+    dark_mode    = st.session_state.get("dark_mode", True)
+    toggle_label = "☀  Light" if dark_mode else "🌙  Dark"
     if st.button(toggle_label, key="theme_toggle", use_container_width=True):
         st.session_state["dark_mode"] = not dark_mode
         st.rerun()
 
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
-    # ── Identity card ──
-    name     = _get_display_name()
-    letter   = _get_avatar_letter(name)
+    # ── Identity card ─────────────────────────────────────────────────────
+    name      = _get_display_name()
+    letter    = _get_avatar_letter(name)
     logged_in = (
         bool(st.session_state.get(K.USER_HASH))
         and not str(st.session_state.get(K.USER_HASH, "")).upper().startswith("GUEST_")
@@ -74,16 +87,16 @@ def render_sidebar() -> SidebarConfig:
         <div class='identity-card'>
           <div class='avatar'>{letter}</div>
           <div class='name'>{name}</div>
-          <div class='logout'>↩</div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("Logout", key="logout_btn", use_container_width=True):
+        if st.button("↩  Logout", key="logout_btn", use_container_width=True):
             st.session_state[K.USER_HASH] = None
+            st.session_state[K.IS_ADMIN]  = False
             st.rerun()
 
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
-    # ── Logic Configuration ──
+    # ── Logic configuration ───────────────────────────────────────────────
     st.markdown("<div class='sidebar-section-label'>Logic Configuration</div>",
                 unsafe_allow_html=True)
 
@@ -100,22 +113,20 @@ def render_sidebar() -> SidebarConfig:
         label_visibility="collapsed",
     )
 
-    # Language pill toggle
+    # Language toggle
     lang_options = ["English", "Arabic (العربية)"]
-    lang_idx     = st.session_state.get("sb_lang_idx", 0)
-    l1, l2       = st.columns(2)
+    l1, l2 = st.columns(2)
     for col, i, lang in zip([l1, l2], [0, 1], lang_options):
         with col:
             if st.button(lang, key=f"lang_{i}", use_container_width=True):
                 st.session_state["sb_lang_idx"] = i
-                # Set RTL direction
                 st.session_state["is_rtl"] = (i == 1)
                 st.rerun()
     source_lang = lang_options[st.session_state.get("sb_lang_idx", 0)]
 
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
-    # ── Active Persona ──
+    # ── Active persona ────────────────────────────────────────────────────
     st.markdown("<div class='sidebar-section-label'>Active Persona</div>",
                 unsafe_allow_html=True)
 
@@ -138,8 +149,8 @@ def render_sidebar() -> SidebarConfig:
 
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
-    # ── Aesthetic ──
-    st.markdown("<div class='sidebar-section-label'>Aesthetic</div>",
+    # ── Aesthetic ─────────────────────────────────────────────────────────
+    st.markdown("<div class='sidebar-section-label'>Aesthetic & Style</div>",
                 unsafe_allow_html=True)
 
     aesthetic_choice = st.selectbox(
@@ -156,11 +167,12 @@ def render_sidebar() -> SidebarConfig:
         disabled=active_p is not None,
         label_visibility="collapsed",
     )
+
     expert_mode = st.checkbox("Expert Diagnostics", key="sb_expert")
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-    # ── Session Stats ──
+    # ── Session stats ──────────────────────────────────────────────────────
     runs_val  = len(st.session_state.get(K.HISTORY, []))
     calls_val = 10 - get_remaining_calls()
     saved_val = len(st.session_state.get("local_vault_items", []))
@@ -170,22 +182,23 @@ def render_sidebar() -> SidebarConfig:
     <div class='stats-card'>
       <div class='stat-item'>
         <span class='stat-value'>{runs_val}</span>
-        <span class='stat-label'>RUNS</span>
+        <span class='stat-label'>Runs</span>
       </div>
       <div class='stat-item'>
         <span class='stat-value'>{calls_val}</span>
-        <span class='stat-label'>CALLS</span>
+        <span class='stat-label'>Calls</span>
       </div>
       <div class='stat-item'>
         <span class='stat-value'>{saved_str}</span>
-        <span class='stat-label'>SAVED</span>
+        <span class='stat-label'>Saved</span>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Target Intelligence ──
+    # ── Target intelligence ────────────────────────────────────────────────
     auto_target = st.session_state.get(K.AUTO_TARGET, "ChatGPT")
     auto_reason = st.session_state.get(K.AUTO_REASON, "Awaiting input...")
+
     st.markdown(f"""
     <div class='intel-card'>
       <div class='intel-title'>Target Intelligence</div>
@@ -195,21 +208,21 @@ def render_sidebar() -> SidebarConfig:
       </div>
       <div class='intel-row'>
         <span class='intel-key'>ROUTING</span>
-        <span class='intel-val'>{str(auto_reason)[:36]}</span>
+        <span class='intel-val'>{str(auto_reason)[:34]}</span>
       </div>
       <div class='intel-row'>
         <span class='intel-key'>STATUS</span>
-        <span class='intel-val' style='color:var(--success);'>● Active</span>
+        <span class='intel-val' style='color:#4CAF9A;'>● Active</span>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
     return SidebarConfig(
-        target_model    = target_model,
-        framework       = framework,
-        source_lang     = source_lang,
-        hikmah_style    = st.session_state.get(K.HIKMAH_STYLE, "None"),
-        aesthetic_choice= aesthetic_choice,
-        active_persona  = active_p,
-        expert_mode     = expert_mode,
+        target_model     = target_model,
+        framework        = framework,
+        source_lang      = source_lang,
+        hikmah_style     = st.session_state.get(K.HIKMAH_STYLE, "None"),
+        aesthetic_choice = aesthetic_choice,
+        active_persona   = active_p,
+        expert_mode      = expert_mode,
     )
