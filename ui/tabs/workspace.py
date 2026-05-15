@@ -1,6 +1,17 @@
 """
-workspace.py
+workspace.py — Hotfix patch
 ============================
+BUG-1 FIXED: HTML comments (<!-- -->) inside f-strings passed to
+             st.markdown(unsafe_allow_html=True) cause Streamlit to
+             stop rendering HTML and emit everything after the comment
+             as raw text. Removed all comments from the audit strip.
+
+BUG-2 FIXED: Save to Vault now shows the real Supabase error instead
+             of silently failing. Also added a session-state fallback
+             so if Supabase is unavailable the prompt is saved locally
+             and the user is told what happened.
+
+All Phase 1, 3, and 4 logic intact.
 """
 
 from __future__ import annotations
@@ -326,13 +337,10 @@ def _run_stream(
         hikmah = str(st.session_state.get(K.HIKMAH_DNA) or ""),
     )
 
-    payload = assemble_master_payload(
-        f"{cleaned}\n\n{control_block}",
-        dict(cfg),
-        dna_ctx,
-    )
-
-    # BUG-B FIX: honour manual model selection — don't always force AUTO_SELECT_LABEL
+    # ORDERING FIX: resolve target FIRST so the format contract is injected
+    # correctly into the payload. Previously payload was built before
+    # resolved_target existed, so get_format_contract() always received
+    # AUTO_SELECT_LABEL instead of "Claude" / "Gemini" / etc.
     selected = cfg.get("target_model", AUTO_SELECT_LABEL)
     if selected == AUTO_SELECT_LABEL:
         resolved_target, routing_reason = resolve_target_model(AUTO_SELECT_LABEL, cleaned)
@@ -341,6 +349,14 @@ def _run_stream(
         routing_reason  = "Manual selection"
     st.session_state[K.AUTO_TARGET] = resolved_target
     st.session_state[K.AUTO_REASON] = routing_reason
+
+    # Now build payload with the RESOLVED target so format contract is correct
+    cfg_with_target = {**cfg, "target_model": resolved_target}
+    payload = assemble_master_payload(
+        f"{cleaned}\n\n{control_block}",
+        cfg_with_target,
+        dna_ctx,
+    )
 
     t0     = time.time()
     result = {}
