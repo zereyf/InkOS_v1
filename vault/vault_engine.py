@@ -1,5 +1,6 @@
 """
-vault/vault_engine.py  
+vault/vault_engine.py — Complete File
+=======================================
 """
 
 from __future__ import annotations
@@ -14,114 +15,90 @@ from vault.supabase_client import supabase, SUPABASE_MISSING
 
 UTC = timezone.utc
 
-# PIN lockout constants (Phase 2)
 _MAX_FAILED_ATTEMPTS = 5
 _LOCKOUT_MINUTES     = 15
 
-# Columns guaranteed to exist in every vault deployment
-_SAFE_VAULT_COLUMNS = {
-    "user_hash", "title", "tags", "content", "target", "framework", "score"
-}
 
-
-# ── SAVE PROMPT (patched) ─────────────────────────────────────────────────────
-
-def save_prompt(
-    user_hash: str,
-    title:     str,
-    tags:      str,
-    content:   str,
-    target:    str    = "ChatGPT",
-    framework: str    = "RACE",
-    score:     int    = 0,
-    aesthetic: str    = "Default",
-    intent:    str    = "",
-) -> Tuple[Optional[Any], Optional[str]]:
-    """
-    Save a refined prompt to the vault table.
-
-    Tries a full insert first (all columns).
-    On PGRST204 (unknown column), retries with safe columns only
-    so saves work before the SQL migration is applied.
-    """
-    if SUPABASE_MISSING or supabase is None:
-        return None, "Supabase not configured"
-
-    full_record = {
-        "user_hash": user_hash,
-        "title":     title[:200],
-        "tags":      tags[:100],
-        "content":   content,
-        "target":    target,
-        "framework": framework,
-        "score":     max(0, min(100, int(score))),
-        "aesthetic": aesthetic,
-        "intent":    intent[:500] if intent else None,
-        "created_at": datetime.now(UTC).isoformat(),
-    }
-
-    # ── Primary attempt: all columns ─────────────────────────────────────
-    try:
-        resp = supabase.table("vault").insert(full_record).execute()
-        data = resp.data
-        if data:
-            return data[0], None
-        return None, "Insert returned no data"
-    except Exception as exc:
-        err_str = str(exc)
-
-        # PGRST204 = column doesn't exist in schema cache
-        if "PGRST204" in err_str or "column" in err_str.lower():
-            print(
-                f"[InkOS WARNING] Vault insert failed with schema error: {exc}\n"
-                "Retrying with safe columns only. "
-                "Run supabase_migration_vault_columns.sql to fix permanently.",
-                file=sys.stderr,
-            )
-            return _save_safe_columns(user_hash, title, tags, content,
-                                      target, framework, score)
-
-        return None, f"Save failed: {exc}"
-
-
-def _save_safe_columns(
-    user_hash: str,
-    title:     str,
-    tags:      str,
-    content:   str,
-    target:    str,
-    framework: str,
-    score:     int,
-) -> Tuple[Optional[Any], Optional[str]]:
-    """
-    Fallback insert using only columns guaranteed to exist.
-    Used when the full insert fails due to missing schema columns.
-    """
-    safe_record = {
-        "user_hash": user_hash,
-        "title":     title[:200],
-        "tags":      tags[:100],
-        "content":   content,
-        "target":    target,
-        "framework": framework,
-        "score":     max(0, min(100, int(score))),
-        "created_at": datetime.now(UTC).isoformat(),
-    }
-    try:
-        resp = supabase.table("vault").insert(safe_record).execute()
-        data = resp.data
-        if data:
-            return data[0], None
-        return None, "Safe insert returned no data"
-    except Exception as exc:
-        return None, f"Save failed: {exc}"
-
-
-# ── AUTH & LOCKOUT (Phase 2 — unchanged) ─────────────────────────────────────
+# ── HELPERS ───────────────────────────────────────────────────────────────────
 
 def _hash_pin(pin: str, salt: str = "") -> str:
     return hashlib.sha256(f"{salt}{pin}".encode()).hexdigest()
 
+
+def _now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+# ── USER REGISTRATION ─────────────────────────────────────────────────────────
+
+def check_id_availability(user_id: str) -> Tuple[bool, str]:
+    """
+    Check whether a user ID is available for registration.
+    Returns (is_available, message).
+    """
+    if SUPABASE_MISSING or supabase is None:
+        return False, "Database unavailable"
+
+    if not user_id or len(user_id.strip()) < 3:
+        return False, "ID must be at least 3 characters"
+
+    uid = user_id.strip().lower()
+
+    try:
+        resp = (
+            supabase.table("users")
+            .select("id")
+            .eq("id", uid)
+            .execute()
+        )
+        if resp.data:
+            return False, "ID already taken"
+        return True, "Available"
+    except Exception as exc:
+        return False, f"DB error: {exc}"
+
+
+def register_user(
+    user_id:  str,
+    pin:      str,
+    ink_dna:  str = "",
+    intel_dna: str = "",
+    hikmah_dna: str = "",
+) -> Tuple[bool, str]:
+    """Register a new user. Returns (success, message)."""
+    if SUPABASE_MISSING or supabase is None:
+        return False, "Database unavailable"
+
+    available, msg = check_id_availability(user_id)
+    if not available:
+        return False, msg
+
+    salt     = secrets.token_hex(16)
+    pin_hash = _hash_pin(pin, salt)
+
+    record = {
+        "id":          user_id.strip().lower(),
+        "pin_hash":    pin_hash,
+        "salt":        salt,
+        "ink_dna":     ink_dna,
+        "intel_dna":   intel_dna,
+        "hikmah_dna":  hikmah_dna,
+        "is_admin":    False,
+        "failed_attempts": 0,
+        "lockout_until":   None,
+        "created_at":  _now_iso(),
+    }
+
+    try:
+        resp = supabase.table("users").insert(record).execute()
+        if resp.data:
+            return True, "Registered"
+        return False, "Registration failed — no data returned"
+    except Exception as exc:
+        return False, f"Registration error: {exc}"
+
+
+# ── AUTH & LOCKOUT ─────────────────────────────────────────────────────────────
 
 def get_user_profile(user_hash: str) -> dict:
     """Returns user profile dict including is_admin flag from DB."""
@@ -151,15 +128,17 @@ def _increment_failed_attempts(user_hash: str) -> None:
             .single()
             .execute()
         )
-        current = (resp.data or {}).get("failed_attempts", 0) or 0
+        current   = (resp.data or {}).get("failed_attempts", 0) or 0
         new_count = current + 1
         update: dict = {"failed_attempts": new_count}
+
         if new_count >= _MAX_FAILED_ATTEMPTS:
             lockout_until = (
                 datetime.now(UTC) + timedelta(minutes=_LOCKOUT_MINUTES)
             ).isoformat()
-            update["lockout_until"]  = lockout_until
+            update["lockout_until"]   = lockout_until
             update["failed_attempts"] = 0
+
         supabase.table("users").update(update).eq("id", user_hash).execute()
     except Exception as exc:
         print(f"[InkOS WARNING] Could not increment failed attempts: {exc}",
@@ -202,35 +181,40 @@ def authenticate_terminal(user_hash: str, pin: str) -> Tuple[bool, str]:
     if not data:
         return False, "User not found"
 
-    # Check lockout
     lockout_str = data.get("lockout_until")
     if lockout_str:
         try:
             lockout_dt = datetime.fromisoformat(lockout_str)
             if datetime.now(UTC) < lockout_dt:
-                remaining = int((lockout_dt - datetime.now(UTC)).total_seconds() / 60) + 1
+                remaining = int(
+                    (lockout_dt - datetime.now(UTC)).total_seconds() / 60
+                ) + 1
                 return False, f"Account locked. Try again in {remaining} minute(s)."
         except (ValueError, TypeError):
             pass
 
-    # Verify PIN
-    salt      = data.get("salt", "")
-    pin_hash  = _hash_pin(pin, salt)
-    stored    = data.get("pin_hash", "")
+    salt     = data.get("salt", "")
+    pin_hash = _hash_pin(pin, salt)
+    stored   = data.get("pin_hash", "")
 
     if secrets.compare_digest(pin_hash, stored):
         _reset_failed_attempts(user_hash)
         return True, "Authenticated"
 
     _increment_failed_attempts(user_hash)
-    remaining_attempts = _MAX_FAILED_ATTEMPTS - (data.get("failed_attempts", 0) or 0) - 1
-    if remaining_attempts <= 0:
-        return False, f"Too many failed attempts. Account locked for {_LOCKOUT_MINUTES} minutes."
-    return False, f"Incorrect PIN. {remaining_attempts} attempt(s) remaining."
+    current    = data.get("failed_attempts", 0) or 0
+    remaining  = _MAX_FAILED_ATTEMPTS - current - 1
+
+    if remaining <= 0:
+        return False, (
+            f"Too many failed attempts. "
+            f"Account locked for {_LOCKOUT_MINUTES} minutes."
+        )
+    return False, f"Incorrect PIN. {remaining} attempt(s) remaining."
 
 
 def rehydrate_session(user_hash: str) -> dict:
-    """Rehydrate session data from Supabase for URL-param logins."""
+    """Rehydrate DNA, personas, and admin flag for URL-param logins."""
     if SUPABASE_MISSING or supabase is None:
         return {"dna": {}, "personas": [], "is_admin": False}
     try:
@@ -253,3 +237,238 @@ def rehydrate_session(user_hash: str) -> dict:
         }
     except Exception:
         return {"dna": {}, "personas": [], "is_admin": False}
+
+
+# ── VAULT (PROMPT STORAGE) ────────────────────────────────────────────────────
+
+def save_prompt(
+    user_hash: str,
+    title:     str,
+    tags:      str,
+    content:   str,
+    target:    str = "ChatGPT",
+    framework: str = "RACE",
+    score:     int = 0,
+    aesthetic: str = "Default",
+    intent:    str = "",
+) -> Tuple[Optional[Any], Optional[str]]:
+    """
+    Save a refined prompt to the vault table.
+
+    Hotfix-A: PGRST204-resilient.
+    Tries a full insert first. If Supabase returns PGRST204
+    (unknown column — happens when intent/aesthetic columns
+    haven't been added by the SQL migration yet), automatically
+    retries with only the guaranteed safe columns.
+
+    Run supabase_migration_vault_columns.sql to fix permanently.
+    """
+    if SUPABASE_MISSING or supabase is None:
+        return None, "Supabase not configured"
+
+    full_record = {
+        "user_hash": user_hash,
+        "title":     title[:200],
+        "tags":      tags[:100],
+        "content":   content,
+        "target":    target,
+        "framework": framework,
+        "score":     max(0, min(100, int(score))),
+        "aesthetic": aesthetic,
+        "intent":    intent[:500] if intent else None,
+        "created_at": _now_iso(),
+    }
+
+    try:
+        resp = supabase.table("vault").insert(full_record).execute()
+        if resp.data:
+            return resp.data[0], None
+        return None, "Insert returned no data"
+    except Exception as exc:
+        err_str = str(exc)
+        if "PGRST204" in err_str or (
+            "column" in err_str.lower() and "schema" in err_str.lower()
+        ):
+            print(
+                f"[InkOS WARNING] Vault insert failed — unknown column: {exc}\n"
+                "Retrying with safe columns. "
+                "Run supabase_migration_vault_columns.sql to fix permanently.",
+                file=sys.stderr,
+            )
+            return _save_safe_columns(
+                user_hash, title, tags, content, target, framework, score
+            )
+        return None, f"Save failed: {exc}"
+
+
+def _save_safe_columns(
+    user_hash: str,
+    title:     str,
+    tags:      str,
+    content:   str,
+    target:    str,
+    framework: str,
+    score:     int,
+) -> Tuple[Optional[Any], Optional[str]]:
+    """Fallback insert using only columns that have always existed."""
+    safe_record = {
+        "user_hash": user_hash,
+        "title":     title[:200],
+        "tags":      tags[:100],
+        "content":   content,
+        "target":    target,
+        "framework": framework,
+        "score":     max(0, min(100, int(score))),
+        "created_at": _now_iso(),
+    }
+    try:
+        resp = supabase.table("vault").insert(safe_record).execute()
+        if resp.data:
+            return resp.data[0], None
+        return None, "Safe insert returned no data"
+    except Exception as exc:
+        return None, f"Save failed: {exc}"
+
+
+def get_vault_items(
+    user_hash: str,
+    limit:     int = 50,
+    offset:    int = 0,
+) -> Tuple[list, Optional[str]]:
+    """Fetch vault items for a user, newest first."""
+    if SUPABASE_MISSING or supabase is None:
+        return [], "Supabase not configured"
+    try:
+        resp = (
+            supabase.table("vault")
+            .select("*")
+            .eq("user_hash", user_hash)
+            .order("created_at", desc=True)
+            .range(offset, offset + limit - 1)
+            .execute()
+        )
+        return resp.data or [], None
+    except Exception as exc:
+        return [], f"Fetch failed: {exc}"
+
+
+def delete_prompt(item_id: str, user_hash: str) -> Tuple[bool, str]:
+    """Delete a vault item. Requires ownership check."""
+    if SUPABASE_MISSING or supabase is None:
+        return False, "Supabase not configured"
+    try:
+        supabase.table("vault").delete().eq("id", item_id).eq(
+            "user_hash", user_hash
+        ).execute()
+        return True, "Deleted"
+    except Exception as exc:
+        return False, f"Delete failed: {exc}"
+
+
+# ── PERSONAS ──────────────────────────────────────────────────────────────────
+
+def save_persona(
+    user_hash: str,
+    persona:   dict,
+) -> Tuple[Optional[Any], Optional[str]]:
+    """Save or update a custom persona for a user."""
+    if SUPABASE_MISSING or supabase is None:
+        return None, "Supabase not configured"
+
+    record = {
+        "user_hash":  user_hash,
+        "name":       str(persona.get("name", "Unnamed"))[:100],
+        "ink_dna":    persona.get("ink_dna",    ""),
+        "intel_dna":  persona.get("intel_dna",  ""),
+        "hikmah_dna": persona.get("hikmah_dna", ""),
+        "target":     persona.get("target",     "ChatGPT"),
+        "created_at": _now_iso(),
+    }
+
+    try:
+        resp = supabase.table("personas").insert(record).execute()
+        if resp.data:
+            return resp.data[0], None
+        return None, "Persona save returned no data"
+    except Exception as exc:
+        return None, f"Save failed: {exc}"
+
+
+def get_personas(user_hash: str) -> Tuple[list, Optional[str]]:
+    """Fetch all custom personas for a user."""
+    if SUPABASE_MISSING or supabase is None:
+        return [], "Supabase not configured"
+    try:
+        resp = (
+            supabase.table("personas")
+            .select("*")
+            .eq("user_hash", user_hash)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return resp.data or [], None
+    except Exception as exc:
+        return [], f"Fetch failed: {exc}"
+
+
+def delete_persona(persona_id: str, user_hash: str) -> Tuple[bool, str]:
+    """Delete a custom persona. Requires ownership check."""
+    if SUPABASE_MISSING or supabase is None:
+        return False, "Supabase not configured"
+    try:
+        supabase.table("personas").delete().eq("id", persona_id).eq(
+            "user_hash", user_hash
+        ).execute()
+        return True, "Deleted"
+    except Exception as exc:
+        return False, f"Delete failed: {exc}"
+
+
+# ── ADMIN ─────────────────────────────────────────────────────────────────────
+
+def get_all_users(limit: int = 100) -> Tuple[list, Optional[str]]:
+    """Admin only: fetch all users."""
+    if SUPABASE_MISSING or supabase is None:
+        return [], "Supabase not configured"
+    try:
+        resp = (
+            supabase.table("users")
+            .select("id, is_admin, created_at, failed_attempts, lockout_until")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return resp.data or [], None
+    except Exception as exc:
+        return [], f"Fetch failed: {exc}"
+
+
+def delete_user(user_id: str) -> Tuple[bool, str]:
+    """Admin only: delete a user and their vault items."""
+    if SUPABASE_MISSING or supabase is None:
+        return False, "Supabase not configured"
+    try:
+        supabase.table("vault").delete().eq("user_hash", user_id).execute()
+        supabase.table("personas").delete().eq("user_hash", user_id).execute()
+        supabase.table("users").delete().eq("id", user_id).execute()
+        return True, f"User {user_id} deleted"
+    except Exception as exc:
+        return False, f"Delete failed: {exc}"
+
+
+def get_system_stats() -> dict:
+    """Admin only: basic system stats."""
+    if SUPABASE_MISSING or supabase is None:
+        return {"error": "Supabase not configured"}
+    try:
+        users    = supabase.table("users").select("id", count="exact").execute()
+        prompts  = supabase.table("vault").select("id", count="exact").execute()
+        personas = supabase.table("personas").select("id", count="exact").execute()
+        return {
+            "total_users":    users.count    or 0,
+            "total_prompts":  prompts.count  or 0,
+            "total_personas": personas.count or 0,
+            "db_status":      "online",
+        }
+    except Exception as exc:
+        return {"error": str(exc), "db_status": "error"}
