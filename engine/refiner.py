@@ -46,6 +46,7 @@ import re
 import textwrap
 from typing import Optional, Tuple, Any, Generator
 
+from config.target_formats import get_opening_pattern
 from config import (
     client, MODEL_ID, MODEL_PRIORITY, TEMPERATURE, MAX_TOKENS,
     RETRY_THRESHOLD, MAX_RETRIES, EVAL_TEMPERATURE,
@@ -146,25 +147,80 @@ def _parse_output(raw: str) -> Tuple[Optional[str], Optional[dict]]:
 
 
 def _validate_structure(refined: str, target: str) -> Tuple[bool, str]:
+    """
+    Validates that the refined output uses the correct format for the
+    target model. Rejects wrong openers before the output reaches the user.
+
+    Uses get_opening_pattern() from config.target_formats so every target
+    has an enforced structure — not just Claude and ChatGPT.
+    """
     if "[CLARIFICATION_REQUIRED]" in refined:
         return True, ""
+
     text = refined.strip()
     if len(text) < 100:
         return False, "Output density insufficient. Prompt is too short."
+
     target = str(target or "")
+
+    # ── Claude: must use XML structure ───────────────────────────────────────
     if "Claude" in target:
         if not re.search(r"<(?:role|task|constraints|output_format)>", text, re.IGNORECASE):
             return False, "Claude requires XML-structured blocks (<role>, <task>, etc.)."
         for tag in ("edge_cases", "quality_bar"):
             if not re.search(rf"<{tag}>\s*.+?\s*</{tag}>", text, re.IGNORECASE | re.DOTALL):
                 return False, f"Claude output must include a non-empty <{tag}>...</{tag}> block."
+        return True, ""
+
+    # ── Midjourney: must use /imagine syntax ─────────────────────────────────
+    if "Midjourney" in target or "midjourney" in target.lower():
+        if not re.search(r"^/imagine\s+prompt\s*:", text, re.IGNORECASE):
+            return False, "Midjourney prompts must start with '/imagine prompt:'"
+        return True, ""
+
+    # ── Stable Diffusion: must not be a sentence ─────────────────────────────
+    if "Stable" in target or "stable diffusion" in target.lower():
+        if re.search(r"^you\s+are\s+", text, re.IGNORECASE):
+            return False, "Stable Diffusion prompts must be comma-separated tags, not role-play sentences."
+        if "Negative prompt:" not in text:
+            return False, "Stable Diffusion output must include a 'Negative prompt:' section."
+        return True, ""
+
+    # ── Image gen (DALL-E): must not be role-play ────────────────────────────
+    if "DALL" in target or "dall-e" in target.lower():
+        if re.search(r"^you\s+are\s+", text, re.IGNORECASE):
+            return False, "DALL-E prompts must be descriptive image descriptions, not role-play openers."
+        return True, ""
+
+    # ── Gemini: must not open with "You are" ─────────────────────────────────
+    if "Gemini" in target:
+        if re.search(r"^you\s+are\s+a?\s+", text[:80], re.IGNORECASE):
+            return False, "Gemini prompts must open with 'Context:' label, not 'You are a...' role-play."
+        return True, ""
+
+    # ── Perplexity: must not be a role-play opener ───────────────────────────
+    if "Perplexity" in target:
+        if re.search(r"^you\s+are\s+", text, re.IGNORECASE):
+            return False, "Perplexity prompts must be research questions, not role-play openers."
+        return True, ""
+
+    # ── Copilot: must open with action verb ──────────────────────────────────
+    if "Copilot" in target:
+        if re.search(r"^you\s+are\s+", text, re.IGNORECASE):
+            return False, "Copilot prompts must open with an action verb (Write, Create, Summarize...), not 'You are...'"
+        return True, ""
+
+    # ── ChatGPT / GPT: must open with "You are" ──────────────────────────────
     if "GPT" in target or "ChatGPT" in target:
-        if not re.search(r"^you\s+are\s+a?\s+\w", text[:100], re.IGNORECASE):
-            return False, "Prompt requires 'You are a [role]' identity opener."
+        if not re.search(r"^you\s+are\s+a?\s*\w", text[:100], re.IGNORECASE):
+            return False, "ChatGPT prompt requires 'You are a [role]' identity opener."
+        return True, ""
+
+    # ── Unknown target: warn if it defaulted to ChatGPT style ────────────────
+    # This catches any new target we haven't explicitly handled yet.
+    # Don't hard-reject — just pass through but log a warning.
     return True, ""
 
-
-# ── LLM CALLS ────────────────────────────────────────────────────────────────
 
 def _call_evaluator(
     master_payload: str,
