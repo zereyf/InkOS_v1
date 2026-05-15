@@ -176,11 +176,15 @@ def _reset_failed_attempts(user_hash: str) -> None:
               file=sys.stderr)
 
 
-def authenticate_terminal(user_hash: str, pin: str) -> Tuple[bool, str]:
+def authenticate_terminal(user_hash: str, pin: str, is_new: bool = False) -> Tuple[bool, str]:
     """
-    Authenticate a user by PIN with lockout enforcement.
+    Authenticate an existing user, or register a new one.
     Returns (success, message).
     """
+    if is_new:
+        success, msg = register_user(user_hash, pin)
+        return success, msg
+
     if SUPABASE_MISSING or supabase is None:
         return False, "Database unavailable"
 
@@ -208,6 +212,27 @@ def authenticate_terminal(user_hash: str, pin: str) -> Tuple[bool, str]:
                     (lockout_dt - datetime.now(UTC)).total_seconds() / 60
                 ) + 1
                 return False, f"Account locked. Try again in {remaining} minute(s)."
+        except (ValueError, TypeError):
+            pass
+
+    salt     = data.get("salt", "")
+    pin_hash = _hash_pin(pin, salt)
+    stored   = data.get("pin_hash", "")
+
+    if secrets.compare_digest(pin_hash, stored):
+        _reset_failed_attempts(user_hash)
+        return True, "Authenticated"
+
+    _increment_failed_attempts(user_hash)
+    current   = data.get("failed_attempts", 0) or 0
+    remaining = _MAX_FAILED_ATTEMPTS - current - 1
+
+    if remaining <= 0:
+        return False, (
+            f"Too many failed attempts. "
+            f"Account locked for {_LOCKOUT_MINUTES} minutes."
+        )
+    return False, f"Incorrect PIN. {remaining} attempt(s) remaining."
         except (ValueError, TypeError):
             pass
 
