@@ -1,24 +1,6 @@
 """
 vault/vault_engine.py — Complete File
 =======================================
-All phases combined. This is the single source of truth.
-
-Phase 2 security (all applied):
-  - get_user_profile()       DB-driven admin flag, no username bypass
-  - authenticate_terminal()  PIN auth with lockout after 5 attempts
-  - _increment_failed_attempts() / _reset_failed_attempts()
-  - rehydrate_session()      returns is_admin from DB
-
-Hotfix-A (vault save):
-  - save_prompt()            PGRST204-resilient: retries with safe
-                             columns if intent/aesthetic missing from schema
-
-All original functions preserved:
-  - check_id_availability()
-  - get_vault_items()
-  - delete_prompt()
-  - save_persona() / get_personas() / delete_persona()
-  - get_all_users() / delete_user() / get_system_stats()
 """
 
 from __future__ import annotations
