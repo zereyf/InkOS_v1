@@ -1,6 +1,24 @@
 """
 vault/vault_engine.py — Complete File
 =======================================
+All phases combined. This is the single source of truth.
+
+Phase 2 security (all applied):
+  - get_user_profile()       DB-driven admin flag, no username bypass
+  - authenticate_terminal()  PIN auth with lockout after 5 attempts
+  - _increment_failed_attempts() / _reset_failed_attempts()
+  - rehydrate_session()      returns is_admin from DB
+
+Hotfix-A (vault save):
+  - save_prompt()            PGRST204-resilient: retries with safe
+                             columns if intent/aesthetic missing from schema
+
+All original functions preserved:
+  - check_id_availability()
+  - get_vault_items()
+  - delete_prompt()
+  - save_persona() / get_personas() / delete_persona()
+  - get_all_users() / delete_user() / get_system_stats()
 """
 
 from __future__ import annotations
@@ -472,3 +490,159 @@ def get_system_stats() -> dict:
         }
     except Exception as exc:
         return {"error": str(exc), "db_status": "error"}
+
+
+# ── VAULT SEARCH & UTILITIES ──────────────────────────────────────────────────
+
+def search_vault(
+    user_hash: str,
+    query:     str,
+    limit:     int = 50,
+) -> Tuple[list, Optional[str]]:
+    """
+    Search vault items by title, tags, target, or content keywords.
+    Falls back to get_vault_items() filtered in Python if the DB
+    doesn't support full-text search.
+    """
+    if SUPABASE_MISSING or supabase is None:
+        return [], "Supabase not configured"
+
+    q = (query or "").strip()
+    if not q:
+        return get_vault_items(user_hash, limit=limit)
+
+    try:
+        # Try Supabase ilike search on title and tags first
+        resp = (
+            supabase.table("vault")
+            .select("*")
+            .eq("user_hash", user_hash)
+            .or_(f"title.ilike.%{q}%,tags.ilike.%{q}%,target.ilike.%{q}%")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        results = resp.data or []
+
+        # If DB search returned nothing, fall back to Python-side filter
+        if not results:
+            all_items, err = get_vault_items(user_hash, limit=200)
+            if err:
+                return [], err
+            q_lower = q.lower()
+            results = [
+                item for item in all_items
+                if q_lower in str(item.get("title",   "")).lower()
+                or q_lower in str(item.get("tags",    "")).lower()
+                or q_lower in str(item.get("target",  "")).lower()
+                or q_lower in str(item.get("content", "")).lower()
+            ][:limit]
+
+        return results, None
+    except Exception as exc:
+        # If the DB query itself fails, fall back to Python-side filter
+        try:
+            all_items, err = get_vault_items(user_hash, limit=200)
+            if err:
+                return [], err
+            q_lower = q.lower()
+            results = [
+                item for item in all_items
+                if q_lower in str(item.get("title",   "")).lower()
+                or q_lower in str(item.get("tags",    "")).lower()
+                or q_lower in str(item.get("target",  "")).lower()
+                or q_lower in str(item.get("content", "")).lower()
+            ][:limit]
+            return results, None
+        except Exception as exc2:
+            return [], f"Search failed: {exc2}"
+
+
+def get_prompt_by_id(
+    item_id:   str,
+    user_hash: str,
+) -> Tuple[Optional[dict], Optional[str]]:
+    """Fetch a single vault item by ID. Ownership check enforced."""
+    if SUPABASE_MISSING or supabase is None:
+        return None, "Supabase not configured"
+    try:
+        resp = (
+            supabase.table("vault")
+            .select("*")
+            .eq("id", item_id)
+            .eq("user_hash", user_hash)
+            .single()
+            .execute()
+        )
+        return resp.data, None
+    except Exception as exc:
+        return None, f"Fetch failed: {exc}"
+
+
+def update_prompt(
+    item_id:   str,
+    user_hash: str,
+    updates:   dict,
+) -> Tuple[Optional[Any], Optional[str]]:
+    """
+    Update editable fields on a vault item.
+    Allowed fields: title, tags, content.
+    Ownership check enforced — user_hash must match.
+    """
+    if SUPABASE_MISSING or supabase is None:
+        return None, "Supabase not configured"
+
+    allowed = {"title", "tags", "content"}
+    safe_updates = {k: v for k, v in updates.items() if k in allowed}
+
+    if not safe_updates:
+        return None, "No valid fields to update"
+
+    try:
+        resp = (
+            supabase.table("vault")
+            .update(safe_updates)
+            .eq("id", item_id)
+            .eq("user_hash", user_hash)
+            .execute()
+        )
+        data = resp.data
+        if data:
+            return data[0], None
+        return None, "Update returned no data — item may not exist or wrong user"
+    except Exception as exc:
+        return None, f"Update failed: {exc}"
+
+
+def get_vault_stats(user_hash: str) -> dict:
+    """
+    Returns summary stats for the vault header display:
+    total items, average score, highest score, most used target.
+    """
+    if SUPABASE_MISSING or supabase is None:
+        return {"total": 0, "avg_score": 0, "top_score": 0, "top_target": "—"}
+
+    try:
+        resp = (
+            supabase.table("vault")
+            .select("score, target")
+            .eq("user_hash", user_hash)
+            .execute()
+        )
+        items = resp.data or []
+
+        if not items:
+            return {"total": 0, "avg_score": 0, "top_score": 0, "top_target": "—"}
+
+        scores     = [int(i.get("score") or 0) for i in items]
+        targets    = [str(i.get("target") or "") for i in items]
+        top_target = max(set(targets), key=targets.count) if targets else "—"
+
+        return {
+            "total":      len(items),
+            "avg_score":  round(sum(scores) / len(scores)),
+            "top_score":  max(scores),
+            "top_target": top_target,
+        }
+    except Exception:
+        return {"total": 0, "avg_score": 0, "top_score": 0, "top_target": "—"}
