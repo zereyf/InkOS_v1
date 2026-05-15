@@ -1,22 +1,6 @@
 """
 vault/vault_engine.py — Prompt Memory Vault Engine
 ====================================================
-Phase 2 Security Hardening:
-
-  SEC-1 FIXED: Admin status is now read from the `is_admin` column in the
-               Supabase `users` table. The username-string comparison
-               ("AMEERINK") in admin.py is removed. Admin privileges are
-               granted server-side only.
-
-  SEC-2 FIXED: PIN brute-force lockout is now implemented.
-               - 5 consecutive failures → 15-minute lockout.
-               - Lockout state persists in `failed_attempts` and
-                 `lockout_until` columns in the `users` table.
-               - Graceful degradation: if the columns don't exist yet
-                 (migration not run), the old behaviour is preserved and
-                 a warning is emitted to stderr so ops know to migrate.
-
-  MIGRATION REQUIRED — run supabase_migration_phase2.sql before deploying.
 """
 
 from __future__ import annotations
