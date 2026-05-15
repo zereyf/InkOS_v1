@@ -1,6 +1,24 @@
 """
 vault/vault_engine.py — Complete File
 =======================================
+All phases combined. This is the single source of truth.
+
+Phase 2 security (all applied):
+  - get_user_profile()       DB-driven admin flag, no username bypass
+  - authenticate_terminal()  PIN auth with lockout after 5 attempts
+  - _increment_failed_attempts() / _reset_failed_attempts()
+  - rehydrate_session()      returns is_admin from DB
+
+Hotfix-A (vault save):
+  - save_prompt()            PGRST204-resilient: retries with safe
+                             columns if intent/aesthetic missing from schema
+
+All original functions preserved:
+  - check_id_availability()
+  - get_vault_items()
+  - delete_prompt()
+  - save_persona() / get_personas() / delete_persona()
+  - get_all_users() / delete_user() / get_system_stats()
 """
 
 from __future__ import annotations
@@ -352,7 +370,7 @@ def get_vault_items(
         return [], f"Fetch failed: {exc}"
 
 
-def delete_prompt(item_id: str, user_hash: str) -> Tuple[bool, str]:
+def delete_prompt(user_hash: str, item_id: str) -> Tuple[bool, str]:
     """Delete a vault item. Requires ownership check."""
     if SUPABASE_MISSING or supabase is None:
         return False, "Supabase not configured"
@@ -477,9 +495,11 @@ def get_system_stats() -> dict:
 # ── VAULT SEARCH & UTILITIES ──────────────────────────────────────────────────
 
 def search_vault(
-    user_hash: str,
-    query:     str,
-    limit:     int = 50,
+    user_hash:     str,
+    query:         str,
+    limit:         int = 50,
+    tag_filter:    str = "",
+    target_filter: str = "",
 ) -> Tuple[list, Optional[str]]:
     """
     Search vault items by title, tags, target, or content keywords.
@@ -519,6 +539,13 @@ def search_vault(
                 or q_lower in str(item.get("target",  "")).lower()
                 or q_lower in str(item.get("content", "")).lower()
             ][:limit]
+
+        # Apply tag / target filters in Python
+        if tag_filter:
+            tl = tag_filter.lower()
+            results = [r for r in results if tl in str(r.get("tags", "")).lower()]
+        if target_filter:
+            results = [r for r in results if str(r.get("target", "")).lower() == target_filter.lower()]
 
         return results, None
     except Exception as exc:
@@ -614,17 +641,45 @@ def get_vault_stats(user_hash: str) -> dict:
         items = resp.data or []
 
         if not items:
-            return {"total": 0, "avg_score": 0, "top_score": 0, "top_target": "—"}
+            return {"count": 0, "total": 0, "avg_score": 0, "top_score": 0, "top_target": "—"}
 
         scores     = [int(i.get("score") or 0) for i in items]
         targets    = [str(i.get("target") or "") for i in items]
         top_target = max(set(targets), key=targets.count) if targets else "—"
 
         return {
-            "total":      len(items),
+            "count":      len(items),
+            "total":      len(items),  # alias
             "avg_score":  round(sum(scores) / len(scores)),
             "top_score":  max(scores),
             "top_target": top_target,
         }
     except Exception:
         return {"total": 0, "avg_score": 0, "top_score": 0, "top_target": "—"}
+
+
+def get_all_tags(user_hash: str) -> list:
+    """
+    Return a sorted list of unique tags for a user's vault items.
+    Used by vault.py to populate the tag filter dropdown.
+    """
+    if SUPABASE_MISSING or supabase is None:
+        return []
+    try:
+        resp = (
+            supabase.table("vault")
+            .select("tags")
+            .eq("user_hash", user_hash)
+            .execute()
+        )
+        raw   = resp.data or []
+        tags  = set()
+        for row in raw:
+            val = row.get("tags") or ""
+            for tag in val.split(","):
+                tag = tag.strip().lower()
+                if tag:
+                    tags.add(tag)
+        return sorted(tags)
+    except Exception:
+        return []
