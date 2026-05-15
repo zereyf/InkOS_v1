@@ -1,49 +1,41 @@
 """
 forge/prompt_assembler.py — Neural Prompt Assembler
 =====================================================
-Phase 3 Architecture (DnaContext, token budget guard) — fully retained.
+Phase 3 + Hotfix:
 
-Hotfix-C: TARGET FORMAT ENFORCEMENT
-─────────────────────────────────────
-Root cause of the "You are..." bug:
-  CIPHER received the target model name but had no explicit format
-  contract per model. With no clear structural rule, it defaulted
-  to the ChatGPT "You are a [role]..." pattern for everything.
+  ARC-2: DnaContext TypedDict.
+  ARC-3: Token budget guard.
 
-Fix:
-  TARGET_FORMAT_RULES maps every supported model to a precise,
-  non-negotiable format contract injected into the payload as a
-  [ ⚠ CRITICAL FORMAT DIRECTIVE ] block. CIPHER must follow it
-  or the output structure validation will reject the response.
+  HOTFIX — Per-model format directives:
+    Previously every target model received the same generic instruction,
+    so the LLM defaulted to ChatGPT "You are..." style for everything.
 
-Format contracts by model:
-  Claude           → XML tags: <role> <task> <constraints>
-                     <output_format> <edge_cases> <quality_bar>
-  ChatGPT / GPT-4  → "You are a [role]." system prompt opener
-  Gemini           → Context-first, objective-led, no "You are"
-  Midjourney       → /imagine prompt: ... --ar --v 6 --style raw
-  DALL-E           → Visual description paragraph, no instructions
-  Stable Diffusion → Comma-separated weighted tags, no sentences
-  Perplexity       → Research question framing, factual directives
-  Llama / Mistral  → [INST] ... [/INST] instruction wrapper
-  Default          → Clear task-first structure, no model assumptions
+    Fix: _TARGET_FORMAT_DIRECTIVES maps every supported model to its
+    correct prompt structure. Injected into the payload as a hard contract
+    block that overrides the LLM default behaviour.
+
+    ChatGPT        → "You are a [role]..." persona opener
+    Claude         → <role><task><context><constraints><output_format>
+                     <edge_cases><quality_bar> XML blocks
+    Gemini         → ## Objective / ## Context / ## Instructions headers
+    Midjourney     → Comma-separated descriptor chains + --param flags
+    DALL-E         → Rich single-paragraph visual description prose
+    Stable Diffusion → (tag:weight) positive + negative prompt blocks
+    Perplexity     → Direct research question + scope + source prefs
+    Grok           → Concise direct task, minimal preamble
 """
 
 from __future__ import annotations
 
-import sys
 import textwrap
 from typing import Optional, TypedDict
 
 from forge.persona_engine import inject_persona
 from config.prompts import CIPHER_IDENTITY
 
-# ── SOFT / HARD LIMITS ────────────────────────────────────────────────────────
 _PAYLOAD_SOFT_WARN   = 12_000
 _USER_INPUT_HARD_CAP = 48_000
 
-
-# ── TYPED DNA INTERFACE (Phase 3) ─────────────────────────────────────────────
 
 class DnaContext(TypedDict):
     ink:    str
@@ -51,11 +43,7 @@ class DnaContext(TypedDict):
     hikmah: str
 
 
-def make_dna_context(
-    ink:    str = "",
-    intel:  str = "",
-    hikmah: str = "",
-) -> DnaContext:
+def make_dna_context(ink="", intel="", hikmah="") -> DnaContext:
     return DnaContext(
         ink    = str(ink    or "").strip(),
         intel  = str(intel  or "").strip(),
@@ -65,292 +53,103 @@ def make_dna_context(
 
 def _dna_from_legacy(raw: dict) -> DnaContext:
     if "ink" in raw or "intel" in raw or "hikmah" in raw:
-        return make_dna_context(
-            ink    = raw.get("ink",    ""),
-            intel  = raw.get("intel",  ""),
-            hikmah = raw.get("hikmah", ""),
-        )
-    return make_dna_context(
-        ink    = raw.get("ink_dna",    ""),
-        intel  = raw.get("intel_dna",  ""),
-        hikmah = raw.get("hikmah_dna", ""),
-    )
+        return make_dna_context(raw.get("ink",""), raw.get("intel",""), raw.get("hikmah",""))
+    return make_dna_context(raw.get("ink_dna",""), raw.get("intel_dna",""), raw.get("hikmah_dna",""))
 
 
-# ── TARGET FORMAT RULES (Hotfix-C) ────────────────────────────────────────────
+_TARGET_FORMAT_DIRECTIVES: dict[str, str] = {
 
-TARGET_FORMAT_RULES: dict[str, str] = {
+    "ChatGPT": """STRUCTURE : Role > Context > Task > Constraints > Output format
+OPENER    : Begin with "You are a [specific role with expertise]..."
+STYLE     : Direct persona assignment. Conversational but precise.
+FORBIDDEN : XML tags, markdown section headers""",
 
-    "Claude": textwrap.dedent("""
-        OUTPUT FORMAT CONTRACT — TARGET: CLAUDE (Anthropic)
-        ─────────────────────────────────────────────────────
-        Claude uses XML-structured prompts. You MUST produce the
-        following tags in this exact order. No "You are" opener.
-        No system-prompt style. Only these XML blocks:
+    "Claude": """STRUCTURE : XML blocks in this exact order:
+            <role>, <task>, <context>, <constraints>,
+            <output_format>, <edge_cases>, <quality_bar>
+OPENER    : Begin directly with <role>...</role>
+            Do NOT write "You are" before or instead of the XML tags.
+REQUIRED  : <edge_cases> and <quality_bar> must be non-empty
+FORBIDDEN : "You are a...", markdown headers, unstructured paragraphs
+EXAMPLE   : <role>Expert curriculum designer specialising in adult learning...</role>
+            <task>Design a 4-week programme covering...</task>""",
 
-        <role>
-        [Define the assistant persona and domain expertise]
-        </role>
+    "Gemini": """STRUCTURE : Markdown headers: ## Objective, ## Context, ## Instructions,
+            ## Constraints, ## Output Format
+OPENER    : Begin with "## Objective" — state the goal as a task, not a persona
+STYLE     : Task-oriented. What should be done, not who the AI is.
+REQUIRED  : At least 4 of the 5 header sections
+FORBIDDEN : "You are a...", XML tags, unstructured prose
+EXAMPLE   : ## Objective
+            Generate a comprehensive market analysis of renewable energy...""",
 
-        <task>
-        [The specific task to perform, broken into numbered steps
-        if multi-part]
-        </task>
+    "Midjourney": """STRUCTURE : [Subject], [Art style], [Lighting], [Mood], [Camera], [Params]
+OPENER    : Start directly with the visual subject — NO sentences, NO "You are"
+STYLE     : Comma-separated visual descriptor chains ONLY.
+            End with parameter flags: --ar 16:9 --v 6.1 --style raw
+REQUIRED  : Subject + style reference + at least one technical param
+FORBIDDEN : Full sentences, "You are", "Please generate", instruction language
+EXAMPLE   : ancient Arabic library at golden hour, god rays through stained glass,
+            orientalist oil painting style, cinematic atmosphere, ultra-detailed
+            architecture, 8k --ar 16:9 --v 6.1 --style raw""",
 
-        <constraints>
-        [Hard rules the response must follow — format, length,
-        language, things to avoid]
-        </constraints>
+    "DALL-E": """STRUCTURE : Single descriptive paragraph — Subject + Style + Lighting +
+            Mood + Technical quality + Color palette + Composition
+OPENER    : Begin with "A [adjective] [subject]..." — pure visual description
+STYLE     : Prose only. Write what the IMAGE looks like. No instructions.
+FORBIDDEN : "You are", headers, bullet lists, meta-instruction language
+EXAMPLE   : A photorealistic aerial view of a futuristic Arabian city at dusk,
+            warm amber streetlights against a deep violet sky, hyper-detailed
+            Islamic geometric architecture fused with glass towers, 8k.""",
 
-        <output_format>
-        [Exact structure of the expected output — sections,
-        headers, length, code blocks if needed]
-        </output_format>
+    "Stable Diffusion": """STRUCTURE : POSITIVE PROMPT block then NEGATIVE PROMPT: block
+OPENER    : Start positive prompt with quality boosters
+STYLE     : Weighted tag syntax: (tag:weight). Comma-separated concepts.
+BOOSTERS  : (masterpiece:1.4), (best quality:1.3), (8k:1.2)
+REQUIRED  : Both positive AND negative prompt sections
+FORBIDDEN : Full sentences, "You are", markdown headers
+EXAMPLE   : (masterpiece:1.4), (best quality:1.3), arabic calligrapher, dramatic
+            studio lighting, (detailed hands:1.2), ink on parchment
+            NEGATIVE PROMPT: (low quality:1.4), blurry, watermark, deformed""",
 
-        <edge_cases>
-        [How to handle ambiguity, missing info, or out-of-scope
-        requests]
-        </edge_cases>
+    "Perplexity": """STRUCTURE : Research question + Context + Scope + Source preferences
+OPENER    : State the research question directly — no persona framing
+STYLE     : Research mode. Specify recency, source types, depth required.
+REQUIRED  : Clear scope and any recency constraints
+FORBIDDEN : "You are a researcher", roleplay framing, vague questions
+EXAMPLE   : What are the most recent peer-reviewed findings on LLM reasoning?
+            Focus on 2024-2025 papers. Prioritise academic sources.""",
 
-        <quality_bar>
-        [What a perfect response looks like — the standard
-        CIPHER is holding the output to]
-        </quality_bar>
-
-        CRITICAL: Do NOT start with "You are". Do NOT use markdown
-        headers. XML tags only.
-    """).strip(),
-
-    "ChatGPT": textwrap.dedent("""
-        OUTPUT FORMAT CONTRACT — TARGET: CHATGPT / GPT-4 (OpenAI)
-        ────────────────────────────────────────────────────────────
-        ChatGPT uses system-prompt style. You MUST open with:
-        "You are a [specific role description]."
-
-        Then follow with these sections in plain prose or
-        markdown — NOT XML tags:
-
-        1. Role definition ("You are a...")
-        2. Context or background the model needs
-        3. The specific task or question
-        4. Constraints and rules
-        5. Output format specification
-
-        CRITICAL: Must start with "You are a". No XML tags.
-    """).strip(),
-
-    "Gemini": textwrap.dedent("""
-        OUTPUT FORMAT CONTRACT — TARGET: GEMINI (Google DeepMind)
-        ────────────────────────────────────────────────────────────
-        Gemini responds best to context-first, objective-led prompts.
-        Do NOT start with "You are". Do NOT use XML tags.
-
-        Structure:
-        1. CONTEXT: [Background information and situation]
-        2. OBJECTIVE: [What needs to be accomplished — specific
-           and measurable]
-        3. REQUIREMENTS: [Bullet list of must-haves]
-        4. OUTPUT SPECIFICATION: [Exact format, length, structure
-           of the expected response]
-        5. CONSTRAINTS: [What to avoid or exclude]
-
-        CRITICAL: Context before task. No "You are" opener.
-        No XML. Use clear section labels.
-    """).strip(),
-
-    "Midjourney": textwrap.dedent("""
-        OUTPUT FORMAT CONTRACT — TARGET: MIDJOURNEY (Image AI)
-        ────────────────────────────────────────────────────────────
-        Midjourney is an image generation model. Prompts are NOT
-        instructions — they are visual descriptions fed directly
-        to the model. You MUST produce ONLY this structure:
-
-        /imagine prompt: [main subject and action], [art style
-        and medium], [lighting description], [color palette],
-        [mood and atmosphere], [camera angle or perspective if
-        relevant], [any specific artist style references]
-        --ar [aspect ratio e.g. 16:9 or 1:1] --v 6 --style raw
-        --q 2
-
-        EXAMPLE:
-        /imagine prompt: a lone astronaut standing on a red desert
-        planet at dusk, cinematic concept art, golden hour rim
-        lighting, deep crimson and burnt orange palette, epic and
-        solitary mood, wide-angle low shot, Greg Rutkowski style
-        --ar 16:9 --v 6 --style raw --q 2
-
-        CRITICAL: Output ONLY the /imagine command. No explanations.
-        No "You are". No prose. Just the prompt string.
-    """).strip(),
-
-    "DALL-E": textwrap.dedent("""
-        OUTPUT FORMAT CONTRACT — TARGET: DALL-E (OpenAI Image AI)
-        ────────────────────────────────────────────────────────────
-        DALL-E takes natural language visual descriptions.
-        Output a single descriptive paragraph — NOT instructions,
-        NOT a command, NOT "You are".
-
-        Structure the description as:
-        [Subject and action] + [Setting and environment] +
-        [Art style or medium] + [Lighting] + [Color palette] +
-        [Mood] + [Camera perspective or composition detail]
-
-        Write in plain descriptive prose. Be specific and visual.
-        Do not include meta-instructions or explanations.
-
-        CRITICAL: One descriptive paragraph only. No slashes,
-        no parameters, no "You are", no XML.
-    """).strip(),
-
-    "Stable Diffusion": textwrap.dedent("""
-        OUTPUT FORMAT CONTRACT — TARGET: STABLE DIFFUSION
-        ────────────────────────────────────────────────────────────
-        Stable Diffusion uses weighted tag-based prompts.
-        You MUST produce two blocks:
-
-        POSITIVE PROMPT:
-        [subject:1.4], [art style:1.3], [lighting type], [color
-        palette], [mood keywords], [detail tags], [quality boosters
-        like "masterpiece, best quality, ultra detailed"],
-        [artist style reference if needed]
-
-        NEGATIVE PROMPT:
-        [unwanted elements — e.g. "blurry, watermark, text,
-        deformed hands, extra limbs, low quality, jpeg artifacts"]
-
-        Use commas between tags. Use (word:weight) syntax for
-        emphasis. No sentences. No "You are". No XML.
-
-        CRITICAL: Two labeled blocks only — POSITIVE and NEGATIVE.
-    """).strip(),
-
-    "Perplexity": textwrap.dedent("""
-        OUTPUT FORMAT CONTRACT — TARGET: PERPLEXITY AI
-        ────────────────────────────────────────────────────────────
-        Perplexity is a research and search AI. Prompts should be
-        framed as precise research questions or investigation briefs.
-        Do NOT use "You are". Do NOT use XML.
-
-        Structure:
-        1. PRIMARY QUESTION: [The main research question, specific
-           and answerable]
-        2. CONTEXT: [Why this is being researched, what is
-           already known]
-        3. SCOPE: [Time range, geography, or domain to focus on]
-        4. REQUIRED SOURCES: [Types of sources preferred —
-           academic, news, official, etc.]
-        5. OUTPUT FORMAT: [How the answer should be structured —
-           summary, bullet points, comparison table, etc.]
-
-        CRITICAL: Question-first framing. Factual and specific.
-        No instruction-following prompts — Perplexity researches,
-        it doesn't role-play.
-    """).strip(),
-
-    "Llama": textwrap.dedent("""
-        OUTPUT FORMAT CONTRACT — TARGET: LLAMA / MISTRAL
-        (Open-source LLM)
-        ────────────────────────────────────────────────────────────
-        Llama and Mistral models use instruction-tuned format.
-        You MUST wrap the prompt in [INST] tags:
-
-        [INST]
-        [Clear, direct task description in one or two sentences.
-        Include role context inline if needed.
-        Specify output format explicitly within the instruction.]
-        [/INST]
-
-        Keep it concise. Llama performs best with direct,
-        unambiguous instructions. No lengthy preamble.
-        No XML structural tags. No "You are a" system-prompt style.
-
-        CRITICAL: [INST] ... [/INST] wrapper required.
-        Task description inside must be direct and complete.
-    """).strip(),
+    "Grok": """STRUCTURE : Direct task statement + Brief context + Tone (optional)
+OPENER    : State the task directly. Minimal preamble.
+STYLE     : Concise. Grok reasons natively — do not over-specify.
+FORBIDDEN : Long persona setups, excessive constraint lists, "You are" openers
+EXAMPLE   : Analyse the latest EU AI regulation announcements.
+            Focus on practical developer impact. Be direct and opinionated.""",
 }
 
-# Normalize key variants to canonical names
-_TARGET_ALIASES: dict[str, str] = {
-    "claude":             "Claude",
-    "claude 3":           "Claude",
-    "claude-3":           "Claude",
-    "claude sonnet":      "Claude",
-    "claude opus":        "Claude",
-    "chatgpt":            "ChatGPT",
-    "gpt-4":              "ChatGPT",
-    "gpt4":               "ChatGPT",
-    "gpt-3.5":            "ChatGPT",
-    "openai":             "ChatGPT",
-    "gemini":             "Gemini",
-    "gemini pro":         "Gemini",
-    "gemini ultra":       "Gemini",
-    "google gemini":      "Gemini",
-    "midjourney":         "Midjourney",
-    "mj":                 "Midjourney",
-    "dall-e":             "DALL-E",
-    "dalle":              "DALL-E",
-    "dall-e 3":           "DALL-E",
-    "stable diffusion":   "Stable Diffusion",
-    "sd":                 "Stable Diffusion",
-    "sdxl":               "Stable Diffusion",
-    "perplexity":         "Perplexity",
-    "perplexity ai":      "Perplexity",
-    "llama":              "Llama",
-    "llama 2":            "Llama",
-    "llama 3":            "Llama",
-    "mistral":            "Llama",
-    "mixtral":            "Llama",
-}
+_DEFAULT_FORMAT_DIRECTIVE = """STRUCTURE : Role > Context > Task > Constraints > Output
+OPENER    : Use the conventional prompt structure for this specific AI model.
+CRITICAL  : Do NOT default to ChatGPT "You are..." style for non-ChatGPT targets.
+            Research what format this model expects and use that."""
 
 
-def _get_format_rule(target: str) -> str:
-    """
-    Return the format contract for a given target model.
-    Normalises aliases (e.g. 'claude sonnet' → 'Claude').
-    Returns a generic contract if the target is unrecognised.
-    """
+def _get_format_directive(target: str) -> str:
     if not target:
-        return ""
+        return _DEFAULT_FORMAT_DIRECTIVE
+    if target in _TARGET_FORMAT_DIRECTIVES:
+        return _TARGET_FORMAT_DIRECTIVES[target]
+    for key in _TARGET_FORMAT_DIRECTIVES:
+        if key.lower() in target.lower() or target.lower() in key.lower():
+            return _TARGET_FORMAT_DIRECTIVES[key]
+    return _DEFAULT_FORMAT_DIRECTIVE
 
-    canonical = _TARGET_ALIASES.get(target.lower().strip())
-    if not canonical:
-        # Try direct match
-        for key in TARGET_FORMAT_RULES:
-            if key.lower() in target.lower():
-                canonical = key
-                break
-
-    if canonical and canonical in TARGET_FORMAT_RULES:
-        return TARGET_FORMAT_RULES[canonical]
-
-    # Generic fallback for unknown targets
-    return textwrap.dedent(f"""
-        OUTPUT FORMAT CONTRACT — TARGET: {target.upper()}
-        ─────────────────────────────────────────────────
-        Produce a well-structured prompt optimised for {target}.
-        Lead with the task objective. Specify constraints clearly.
-        Define the expected output format explicitly.
-        Do not assume ChatGPT formatting conventions.
-    """).strip()
-
-
-# ── ASSEMBLY ──────────────────────────────────────────────────────────────────
 
 def assemble_master_payload(
     user_input: str,
     config:     dict,
-    dna:        Optional[DnaContext | dict] = None,
+    dna:        "Optional[DnaContext | dict]" = None,
 ) -> str:
-    """
-    Synthesise Identity, Format Contract, Rhetoric, DNA, and user
-    intent into a single master compiler instruction for CIPHER.
-
-    Hotfix-C: TARGET_FORMAT_RULES block is now injected as a
-    critical directive — CIPHER must follow it or the response
-    fails structural validation.
-    """
-
-    # ── Normalise DNA ─────────────────────────────────────────────────────
     if dna is None:
         dna_ctx = make_dna_context()
     elif isinstance(dna, dict):
@@ -358,54 +157,45 @@ def assemble_master_payload(
     else:
         dna_ctx = dna
 
-    # ── Token budget guard (Phase 3) ──────────────────────────────────────
     if len(user_input) > _USER_INPUT_HARD_CAP:
         user_input = user_input[:_USER_INPUT_HARD_CAP]
         user_input += (
-            "\n\n[SYSTEM NOTE: Input truncated at token budget limit. "
+            "\n\n[SYSTEM NOTE: Input truncated at the token budget limit. "
             "Ask the user to shorten their input.]"
         )
 
-    # ── Specialist layer ──────────────────────────────────────────────────
     system_base = inject_persona(
         persona_input = config.get("active_persona"),
         target        = config.get("target_model", "ChatGPT"),
         hikmah_style  = config.get("hikmah_style", "None"),
     )
 
-    # ── DNA layer ─────────────────────────────────────────────────────────
     dna_block = ""
     has_dna   = any([dna_ctx["ink"], dna_ctx["intel"], dna_ctx["hikmah"]])
     if has_dna:
         dna_block = textwrap.dedent(f"""
-            [ ⚠ CRITICAL COMPILER DIRECTIVE: BRAND DNA INJECTION ]
-            Embed the following values directly into the generated prompt.
-            Do NOT use abstract placeholders. Expand them fully:
-
-            - VISUAL_AESTHETIC:      {dna_ctx['ink']    or 'Default Obsidian & Gold'}
-            - STRATEGIC_FOCUS:       {dna_ctx['intel']  or 'Default AI & Cyber'}
-            - PHILOSOPHICAL_BOUNDS:  {dna_ctx['hikmah'] or 'Default Academic Arabic'}
+            [ BRAND DNA INJECTION ]
+            - VISUAL_AESTHETIC:      {dna_ctx["ink"]   or "Default Obsidian & Gold"}
+            - STRATEGIC_FOCUS:       {dna_ctx["intel"] or "Default AI & Cyber"}
+            - PHILOSOPHICAL_BOUNDS:  {dna_ctx["hikmah"]or "Default Academic Arabic"}
         """).strip()
 
-    # ── Hotfix-C: Target format contract ─────────────────────────────────
-    target       = config.get("target_model", "ChatGPT")
-    format_block = _get_format_rule(target)
+    target_name      = config.get("target_model", "ChatGPT") or "ChatGPT"
+    format_directive = _get_format_directive(target_name)
 
-    format_directive = textwrap.dedent(f"""
-        [ ⚠ CRITICAL FORMAT DIRECTIVE — NON-NEGOTIABLE ]
-        The refined prompt MUST be formatted EXCLUSIVELY for: {target}
-        Ignore all default formatting assumptions.
-        Follow the contract below with zero deviation:
+    format_block = (
+        f"[ CRITICAL FORMAT CONTRACT — TARGET: {target_name.upper()} ]\n"
+        f"The refined prompt MUST follow these rules EXACTLY.\n"
+        f"This overrides any default formatting tendency.\n"
+        f"DO NOT use \"You are...\" unless the contract below explicitly requires it.\n\n"
+        f"{format_directive.strip()}"
+    )
 
-        {format_block}
-    """).strip()
-
-    # ── Assemble ──────────────────────────────────────────────────────────
     parts = [
         CIPHER_IDENTITY,
         "[PERSONA_AND_POLICY_LAYER]",
         system_base,
-        format_directive,        # ← Hotfix-C: injected here, before DNA
+        format_block,
     ]
     if dna_block:
         parts.append(dna_block)
@@ -414,6 +204,7 @@ def assemble_master_payload(
     payload = "\n\n".join(parts)
 
     if len(payload) > _PAYLOAD_SOFT_WARN:
+        import sys
         print(
             f"[InkOS WARNING] Assembled payload is {len(payload):,} chars "
             f"(>{_PAYLOAD_SOFT_WARN:,} soft limit).",
