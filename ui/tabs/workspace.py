@@ -1,17 +1,26 @@
 """
-workspace.py — Hotfix patch
+workspace.py — v2.0 fixes
 ============================
-BUG-1 FIXED: HTML comments (<!-- -->) inside f-strings passed to
-             st.markdown(unsafe_allow_html=True) cause Streamlit to
-             stop rendering HTML and emit everything after the comment
-             as raw text. Removed all comments from the audit strip.
+STREAM-1 FIXED: Removed st.rerun() after _run_stream() completes.
 
-BUG-2 FIXED: Save to Vault now shows the real Supabase error instead
-             of silently failing. Also added a session-state fallback
-             so if Supabase is unavailable the prompt is saved locally
-             and the user is told what happened.
+  Previous flow:
+    _run_stream(...)   ← streams output to screen
+    st.rerun()         ← immediately wipes the streamed text before user reads it
+    [output rendered from session state on next run — user sees a flash]
 
-All Phase 1, 3, and 4 logic intact.
+  The rerun was cargo-culted from pre-streaming code where the result had
+  to be committed to session state before it could appear. With write_stream(),
+  the tokens are already visible. The result IS in session state after
+  _run_stream() returns. No rerun needed.
+
+  Fixed flow:
+    _run_stream(...)   ← streams + commits to session state
+    [output panel renders below in the same run — no flash, no wipe]
+
+  NOTE: The Clear and Reset buttons still rerun correctly because they
+  wipe state that needs to be re-read. Only the post-stream rerun is removed.
+
+All Phase 1–4 logic intact. BUG-1 and BUG-2 fixes from original preserved.
 """
 
 from __future__ import annotations
@@ -97,11 +106,6 @@ def extract_clean_output(raw: str) -> str:
 # ── UI COMPONENTS ─────────────────────────────────────────────────────────────
 
 def _audit_score_component(audit: dict) -> None:
-    """
-    BUG-1 FIX: All HTML comments removed from the f-string.
-    Streamlit's markdown renderer stops processing HTML when it
-    encounters <!-- --> and emits everything after it as raw text.
-    """
     score      = audit.get("score",      0)
     precision  = audit.get("precision",  0)
     alignment  = audit.get("alignment",  0)
@@ -122,7 +126,6 @@ def _audit_score_component(audit: dict) -> None:
     align_pct = int((alignment  / 40) * 100)
     effic_pct = int((efficiency / 20) * 100)
 
-    # NO HTML COMMENTS inside this string — that was the bug
     audit_html = f"""
 <div style="display:flex;align-items:center;gap:16px;padding:10px 14px;
             background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.05);
@@ -233,24 +236,7 @@ def _copy_to_clipboard_btn(text: str, key: str) -> None:
     """, height=40)
 
 
-# ── VAULT SAVE — BUG-2 FIX ───────────────────────────────────────────────────
-
-def _save_to_vault(
-    user_hash: str,
-    output:    str,
-    audit:     dict,
-    cfg:       dict,
-) -> None:
-    """
-    BUG-2 FIX: Previously save_prompt() errors were silently swallowed.
-
-    Now:
-      1. We call save_prompt() and capture both return values.
-      2. If err is not None we show the real error message.
-      3. If Supabase is completely unavailable (exception), we fall back
-         to saving in st.session_state["local_vault_items"] so the
-         user doesn't lose their work, and we tell them clearly.
-    """
+def _save_to_vault(user_hash: str, output: str, audit: dict, cfg: dict) -> None:
     score = (audit or {}).get("score", 0)
     title = (st.session_state.get(K.LAST_INPUT) or "Untitled")[:80]
 
@@ -267,44 +253,36 @@ def _save_to_vault(
             intent    = st.session_state.get(K.LAST_INPUT, ""),
         )
     except Exception as exc:
-        # Supabase completely unreachable — save locally so work isn't lost
         _save_local_fallback(output, title, score)
         st.warning(
             f"Vault unreachable ({type(exc).__name__}: {exc}). "
-            "Prompt saved to local session instead. "
-            "It will be available in the Archive tab this session."
+            "Prompt saved to local session instead."
         )
         return
 
     if err:
-        # save_prompt() returned an error string — show it
-        st.error(
-            f"Vault save failed: {err}\n\n"
-            "Your prompt has been saved to local session as a fallback."
-        )
+        st.error(f"Vault save failed: {err}\n\nSaved to local session as fallback.")
         _save_local_fallback(output, title, score)
         return
 
-    # Success
     st.success("✓  Saved to Vault.")
     st.session_state["_archive_cache_dirty"] = True
 
 
 def _save_local_fallback(output: str, title: str, score: int) -> None:
-    """Store in session state as fallback when Supabase is unavailable."""
     items = st.session_state.get("local_vault_items", [])
     items.append({
-        "title":     title,
-        "content":   output,
-        "score":     score,
-        "target":    st.session_state.get(K.AUTO_TARGET, ""),
-        "saved_at":  datetime.now(UTC).isoformat(),
-        "local":     True,
+        "title":    title,
+        "content":  output,
+        "score":    score,
+        "target":   st.session_state.get(K.AUTO_TARGET, ""),
+        "saved_at": datetime.now(UTC).isoformat(),
+        "local":    True,
     })
     st.session_state["local_vault_items"] = items
 
 
-# ── CORE STREAMING PIPELINE ───────────────────────────────────────────────────
+# ── STREAMING PIPELINE ────────────────────────────────────────────────────────
 
 def _run_stream(
     intent_val: str,
@@ -337,20 +315,16 @@ def _run_stream(
         hikmah = str(st.session_state.get(K.HIKMAH_DNA) or ""),
     )
 
-    # ORDERING FIX: resolve target FIRST so the format contract is injected
-    # correctly into the payload. Previously payload was built before
-    # resolved_target existed, so get_format_contract() always received
-    # AUTO_SELECT_LABEL instead of "Claude" / "Gemini" / etc.
     selected = cfg.get("target_model", AUTO_SELECT_LABEL)
     if selected == AUTO_SELECT_LABEL:
         resolved_target, routing_reason = resolve_target_model(AUTO_SELECT_LABEL, cleaned)
     else:
         resolved_target = selected
         routing_reason  = "Manual selection"
+
     st.session_state[K.AUTO_TARGET] = resolved_target
     st.session_state[K.AUTO_REASON] = routing_reason
 
-    # Now build payload with the RESOLVED target so format contract is correct
     cfg_with_target = {**cfg, "target_model": resolved_target}
     payload = assemble_master_payload(
         f"{cleaned}\n\n{control_block}",
@@ -409,7 +383,7 @@ def _run_stream(
         "id":         run_id,
         "time":       datetime.now(UTC).strftime("%H:%M:%S"),
         "timestamp":  datetime.now(UTC).isoformat(),
-        "title":      cleaned[:40],
+        "title":      clean[:40],
         "input":      cleaned,
         "output":     clean,
         "intent":     cleaned,
@@ -427,6 +401,11 @@ def _run_stream(
         "palette":    [],
     })
     st.session_state[K.HISTORY] = history[-50:]
+
+    # STREAM-1 FIX: st.rerun() was called here in the original code.
+    # This wiped the streamed output immediately after it appeared.
+    # The output is already committed to session state above — no rerun needed.
+    # The output panel below renders from session state in the same run.
 
 
 # ── RENDERER ─────────────────────────────────────────────────────────────────
@@ -451,7 +430,6 @@ def render_workspace(cfg: dict) -> None:
     if "workspace_text" not in st.session_state:
         st.session_state["workspace_text"] = st.session_state.get(K.LAST_INPUT, "")
 
-    # Quick example chips
     st.markdown("""
     <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;
                 color:rgba(44,53,69,1);letter-spacing:0.15em;
@@ -481,7 +459,6 @@ def render_workspace(cfg: dict) -> None:
 
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    # Input panel label
     st.markdown("""
     <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;
                 color:rgba(44,53,69,1);letter-spacing:0.2em;
@@ -528,7 +505,6 @@ def render_workspace(cfg: dict) -> None:
         </div>
         """, unsafe_allow_html=True)
 
-    # Controls
     st.markdown("""
     <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;
                 color:rgba(44,53,69,1);letter-spacing:0.2em;
@@ -568,12 +544,13 @@ def render_workspace(cfg: dict) -> None:
             st.rerun()
 
     if run_clicked:
+        # STREAM-1 FIX: No st.rerun() after this call.
+        # The stream writes directly to the page; session state is committed
+        # inside _run_stream(). The output panel below reads it in the same run.
         _run_stream(source, cfg, tone, length, creativity, audience)
-        st.rerun()
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-    # Output panel
     output = st.session_state.get(K.LAST_RESULT)
     audit  = st.session_state.get(K.LAST_AUDIT, {})
 
@@ -594,7 +571,6 @@ def render_workspace(cfg: dict) -> None:
         """, unsafe_allow_html=True)
         return
 
-    # Output header
     st.markdown("""
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;
@@ -606,7 +582,6 @@ def render_workspace(cfg: dict) -> None:
     </div>
     """, unsafe_allow_html=True)
 
-    # BUG-1 FIX: audit component now has no HTML comments
     _audit_score_component(audit)
 
     st.text_area(
@@ -652,5 +627,4 @@ def render_workspace(cfg: dict) -> None:
             """, unsafe_allow_html=True)
         else:
             if st.button("💾  Save to Vault", use_container_width=True, key="vault_save_btn"):
-                # BUG-2 FIX: errors now surfaced, local fallback added
                 _save_to_vault(user_hash, output, audit, cfg)
