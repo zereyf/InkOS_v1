@@ -298,8 +298,7 @@ VISUAL_PROMPT_TEMPLATES = MappingProxyType({
             "3200K magenta underlighting electric blue rim, extreme foreshortening "
             "foreground figure, indigo #1a0a3d sky, orange #ff6b2b skin, "
             "Bleach TYBW aesthetic, Masashi Kudo style, cel-shaded clean linework, "
-            "masterpiece, best quality, highly detailed, sharp focus, 8k, studio key visual
-"
+            "masterpiece, best quality, highly detailed, sharp focus, 8k, studio key visual"
             "Negative prompt: ugly, blurry, low quality, watermark, text, signature, "
             "deformed, extra limbs, bad anatomy, bad hands, cropped, worst quality, "
             "jpeg artifacts, western cartoon, 3D render, CGI, realistic photograph, "
