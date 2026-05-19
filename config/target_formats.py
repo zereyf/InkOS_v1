@@ -1,21 +1,14 @@
 """
-config/target_formats.py — Target Model Format Contracts
-==========================================================
-v2.0: Upgraded to match elite compilation standards from CIPHER v14.0.
+config/target_formats.py — v3.0 — Creative Director Standard
+==============================================================
+Upgraded to match CIPHER v15.0.
 
-Each FORMAT_DIRECTIVE is injected verbatim into the assembled payload.
-These are the authoritative structural instructions CIPHER reads before
-generating any output. They must be specific enough that no default
-"You are a..." behavior can slip through.
-
-Changes from v1.0:
-  - Midjourney: added mandatory :: separator requirement and layer order
-  - DALL-E 3: added mandatory Avoid: closing sentence
-  - Stable Diffusion: strengthened Negative prompt: requirement
-  - Claude: added explicit anti "You are a..." prohibition
-  - ChatGPT: clarified it is the ONLY target that uses "You are a..."
-  - Gemini/Perplexity/Copilot: added explicit anti "You are a..." prohibition
-  - All: added example openers matching elite standard format
+Every FORMAT_DIRECTIVE now:
+  - Requires 3 named background zones for image targets
+  - Requires per-region style assignment for character images
+  - Requires Layer 10 Narrative Logic to appear in output
+  - Explicitly states which targets use "You are a..." and which never do
+  - Includes elite example openers at creative director standard
 """
 
 from __future__ import annotations
@@ -24,248 +17,358 @@ import re
 TARGET_FORMAT_CONTRACTS: dict[str, str] = {
 
     "ChatGPT": """
-[ FORMAT_DIRECTIVE: TARGET = ChatGPT / GPT-4 ]
-ChatGPT is the ONLY target that uses "You are a..." opener. All others do not.
+[ FORMAT_DIRECTIVE: TARGET = ChatGPT / GPT-4o ]
+ChatGPT is the ONLY target in this system that uses a "You are a..." opener.
+All other targets explicitly prohibit it.
 
 REQUIRED STRUCTURE:
-  Line 1:  "You are a [specific expert identity with domain + years + institution]."
-           NEVER generic: "You are a helpful assistant."
-           ALWAYS specific: "You are a senior data scientist at a Series B fintech
-           startup with 8 years building fraud detection models in Python and SQL."
-  Line 2:  Task description in second person ("Your task is to...", "You will...").
-  Body:    Prohibition clauses (minimum 2). Measurable output specs (numbers not adjectives).
-  End:     Explicit output format instruction ("Respond with...", "Return a...").
+  Line 1:  "You are a [specific expert identity]."
+           NEVER: "You are a helpful assistant."
+           ALWAYS: title + years of experience + domain + institutional context.
+           Example: "You are a principal product strategist with 11 years building
+           B2B SaaS products at Amplitude, Mixpanel, and two seed-stage startups."
+
+  Line 2:  Task description in second person.
+           "Your task is to..." or "You will..." — specific and measurable.
+
+  Body:    Minimum 2 prohibition clauses.
+           Measurable output specs (numbers, not adjectives).
+           Edge case handling.
+
+  End:     Explicit output format: structure, length, tone — all as numbers or rules.
 
 ELITE REQUIREMENTS:
-  - Role must include: title + years + domain + institutional context
-  - Minimum 2 prohibition clauses ("Do not...", "Never...", "Avoid...")
-  - All output specs must be numbers or binary rules, never adjectives
-  - No hedging in the prompt itself ("please", "try to", "make sure to")
+  - Role: title + years + domain + institution (all four, always)
+  - Prohibitions: minimum 2, each targeting a specific failure mode
+  - Specs: word counts, section counts, binary rules — never "medium length"
+  - No filler: "please", "try to", "make sure to" are banned from the prompt
 
-EXAMPLE OPENER:
-  "You are a principal product manager at a Series B SaaS company with 9 years
-   building B2B analytics products, previously at Amplitude and Mixpanel."
+EXAMPLE OPENER (copy this structure, not this content):
+  "You are a senior data journalist with 9 years covering technology policy
+   for The Guardian and MIT Technology Review, specializing in AI regulation
+   and algorithmic accountability investigations."
 """.strip(),
 
     "Claude": """
 [ FORMAT_DIRECTIVE: TARGET = Claude (Anthropic) ]
-Claude requires XML-structured output. DO NOT use "You are a..." opener.
-The absence of a <role> tag is an automatic format failure.
+Claude requires XML-structured output.
+DO NOT open with "You are a..." — that is ChatGPT format.
+DO NOT open with "Context:" — that is Gemini format.
+Missing <role> tag = automatic format failure. Alignment score = 0.
 
-REQUIRED STRUCTURE:
+REQUIRED XML STRUCTURE (all six tags mandatory):
+
   <role>
-    Expert identity: title + years + domain + institutional context.
-    Character traits that affect output style.
-    Never generic. Always specific.
+    Specific expert identity: title + years + domain + institutional context.
+    Character traits that directly affect output style and decisions.
+    Not generic. Never "helpful assistant." Always a named expert type.
   </role>
 
   <task>
-    Specific, measurable task description.
-    What the output is, not what it should feel like.
+    Specific measurable task. What the output IS, not what it should feel like.
+    Numbers only for length and structure specs.
   </task>
 
   <constraints>
-    Minimum 3 items. Each must be enforceable and testable.
-    Include at least 2 prohibition clauses ("Do not...", "Never...").
-    All format specs must be numbers or binary rules.
+    Minimum 3 items. All enforceable and testable.
+    At least 2 prohibition clauses: "Do not...", "Never...", "Avoid..."
+    All format specs as numbers or binary rules.
   </constraints>
 
   <edge_cases>
-    At least 2 specific edge cases the model must handle correctly.
-    Not generic ("if unclear, ask") but specific to this task domain.
+    Minimum 2 specific edge cases for this exact task domain.
+    Not generic "if unclear ask" — domain-specific failure scenarios.
   </edge_cases>
 
   <output_format>
-    Exact structure: section names, word counts, heading levels.
-    Binary rules only. No adjectives.
+    Exact structure: section names, heading levels, word counts per section.
+    Binary rules only. No adjectives. No "approximately."
   </output_format>
 
   <quality_bar>
     Name a specific human reviewer in a specific role who would approve this.
-    "A senior editor at [publication] would publish this without structural revision."
+    "A [role] at [institution] would [approve / publish / ship] this without
+    [requesting clarification / structural revision / fact-checking concerns]."
   </quality_bar>
 
-EXAMPLE OPENER: "<role>\\nYou are a principal security architect..."
-DO NOT open with "You are a..." outside of XML tags.
+EXAMPLE OPENER:
+  <role>
+  You are a principal security architect with 14 years in enterprise
+  infrastructure, previously at Cloudflare and Fastly...
+  </role>
+
+DO NOT write anything before the opening <role> tag.
 """.strip(),
 
     "Gemini": """
 [ FORMAT_DIRECTIVE: TARGET = Gemini (Google) ]
-Gemini uses labelled sections. DO NOT use "You are a..." opener.
-DO NOT use XML tags. The absence of "Context:" opener is a format failure.
+Gemini uses labelled section format.
+DO NOT open with "You are a..." — that is ChatGPT format.
+DO NOT use XML tags — that is Claude format.
+Missing "Context:" opener = format failure.
 
 REQUIRED STRUCTURE:
-  Context: [Background, expert framing, what this model is being asked to be]
-  Task: [Specific, measurable instruction — numbers not adjectives]
-  Constraints: [Minimum 2 prohibition clauses + measurable output specs]
-  Output: [Exact format: section names, word counts, heading levels]
+  Context:     Expert framing without "You are a..." syntax.
+               "Acting as a [expert type] with [years] in [domain]..."
+               Or: "From the perspective of a [expert type]..."
+
+  Task:        Specific, measurable. Numbers not adjectives.
+               Include multimodal context note if input contains images or data.
+
+  Constraints: Minimum 2 prohibition clauses.
+               All specs measurable.
+
+  Output:      Exact format — section names, word counts, heading levels.
+               State if response should include citations, tables, or code.
 
 ELITE REQUIREMENTS:
-  - Context must establish expert framing without "You are a..." syntax
-  - All specs must be measurable: word counts, section counts, binary rules
-  - Include data/multimodal context if input contains images or structured data
+  - Context establishes expert framing without role-play syntax
+  - Handles multimodal input explicitly when relevant
+  - All output specs are numbers or binary rules
 
 EXAMPLE OPENER:
-  "Context: Acting as a senior UX researcher with 10 years in enterprise software..."
+  "Context: Acting as a senior UX researcher with 10 years in enterprise
+   software, having led 200+ usability studies across B2B SaaS products..."
 """.strip(),
 
     "Midjourney": """
-[ FORMAT_DIRECTIVE: TARGET = Midjourney ]
-Midjourney requires /imagine prompt: syntax with :: weighted separators.
-DO NOT use "You are a..." opener. DO NOT use prose sentences.
-DO NOT use a single continuous tag list without :: separators.
-Missing /imagine prompt: opener is an automatic format failure.
-Missing :: separators is an automatic precision failure.
+[ FORMAT_DIRECTIVE: TARGET = Midjourney v6 ]
+Midjourney uses /imagine prompt: syntax with :: weighted layer separators.
+DO NOT open with "You are a..." — immediate format failure, alignment = 0.
+DO NOT write prose sentences — Midjourney is not a prose model.
+DO NOT use a flat tag list without :: separators — precision failure.
+Missing /imagine prompt: opener = automatic format failure, alignment = 0.
+Missing :: separators = precision capped at 15/40.
 
-REQUIRED STRUCTURE:
-  /imagine prompt: [SUBJECT layer] :: [ENVIRONMENT layer] :: [LIGHTING layer] :: [LENS layer] :: [COMPOSITION layer] :: [STYLE layer] :: [PALETTE layer] [parameters]
+REQUIRED LAYER ORDER (each separated by ::):
+  1. SUBJECT      — anatomy, joint angles, expression in behavioral terms
+  2. ZONE 1       — immediate background: color + opacity + role
+  3. ZONE 2       — mid background: specific location + depth structure
+  4. ZONE 3       — far background: depth elements + opacity range
+  5. LIGHTING     — Kelvin temp for each source, key/fill/rim, shadow quality
+  6. LENS         — focal length, aperture, camera height, angle in degrees
+  7. COMPOSITION  — named framing rule, subject position, negative space location
+  8. FACE         — specific render treatment for face/skin only
+  9. CLOTHING     — specific render treatment for clothing only
+  10. HANDS       — specific render treatment for hands only
+  11. PALETTE     — hex codes, max 4 colors, role of each, discipline statement
+  12. NARRATIVE   — WHY the key elements work (one sentence each)
 
-LAYER ORDER (mandatory):
-  1. SUBJECT      — anatomy, pose angles, expression, materials
-  2. ENVIRONMENT  — location + time of day + depth planes
-  3. LIGHTING     — Kelvin temp + key/fill/rim + shadow quality
-  4. LENS         — focal length + aperture + camera angle in degrees
-  5. COMPOSITION  — framing rule + subject placement + negative space location
-  6. STYLE        — specific studio + specific work/arc + specific director
-  7. PALETTE      — hex codes or named pigments, max 3 dominant, with use-case
+PARAMETERS (always at end, all required):
+  --ar [ratio]    16:9 / 3:2 / 1:1 / 9:16 / 3:1
+  --v 6
+  --style raw     (for realism or anime)
+  --q 2
+  --no [list]     specific named tropes being excluded, not generic "bad stuff"
 
-PARAMETERS (always at end):
-  --ar [ratio]     (required: 16:9 / 3:2 / 1:1 / 9:16 / 3:1)
-  --v 6            (required)
-  --style raw      (required for realism/anime)
-  --q 2            (required for max quality)
-  --no [list]      (required: specific exclusions, not generic "bad stuff")
-
-PALETTE RULE: Never use "vibrant", "neon", "colorful". Always hex codes.
-LIGHTING RULE: Never use "cinematic". Always Kelvin temperature.
-STYLE RULE: Never just studio name. Always studio + specific work + director.
+HARD RULES:
+  PALETTE: Never "vibrant" or "neon." Always hex codes with use-case stated.
+  LIGHTING: Never "cinematic." Always Kelvin temperature.
+  STYLE: Never studio name alone. Always studio + specific work + director name.
+  GLITCH: If present, each effect needs location + pixel magnitude + narrative purpose.
+  ZONES: All three zones mandatory. Each gets its own :: block.
+  PER-REGION: Face, clothing, hands each get their own :: block.
 
 EXAMPLE OPENER:
-  "/imagine prompt: protagonist mid-sprint 30deg forward :: rain-slicked Shibuya..."
+  "/imagine prompt: [SUBJECT: single male figure, seated upright...] :: ..."
+""".strip(),
+
+    "FLUX": """
+[ FORMAT_DIRECTIVE: TARGET = FLUX ]
+FLUX uses layered natural language — NOT /imagine syntax.
+DO NOT use :: separators.
+DO NOT open with "You are a..."
+DO NOT use /imagine prefix.
+FLUX handles typography and text better than any other diffusion model — exploit this.
+
+REQUIRED STRUCTURE (prose paragraphs, one per layer):
+  Paragraph 1: Subject with anatomy-level specificity and behavioral expression.
+  Paragraph 2: ZONE 1 (immediate) + ZONE 2 (mid) + ZONE 3 (far) — named explicitly.
+  Paragraph 3: Lighting — Kelvin temps, source names, shadow quality.
+  Paragraph 4: Lens — focal length, aperture, angle, depth of field behavior.
+  Paragraph 5: Per-region style — face treatment, clothing treatment, hands treatment.
+  Paragraph 6: Palette — hex codes, role of each color, discipline statement.
+  Paragraph 7: Narrative Logic — WHY each major element works.
+  Final line:  "Avoid: [specific comma-separated list]."
+
+FLUX STRENGTHS TO EXPLOIT:
+  - Text and typography within the image: specify exactly
+  - Fine structural detail: exploit at Layer 1 and Layer 6
+  - Natural language understanding: write complete sentences, not keyword fragments
+
+EXAMPLE OPENER:
+  "Single male figure seated in a minimal dark chair, posture completely relaxed..."
 """.strip(),
 
     "DALL-E": """
 [ FORMAT_DIRECTIVE: TARGET = DALL-E 3 ]
-DALL-E 3 requires descriptive prose. DO NOT use /imagine syntax.
-DO NOT use :: separators. DO NOT use "You are a..." opener.
-DO NOT use XML tags. Prose paragraph format only.
+DALL-E 3 requires descriptive prose paragraphs.
+DO NOT use /imagine syntax — immediate format failure.
+DO NOT use :: separators.
+DO NOT use XML tags.
+DO NOT open with "You are a..."
+Missing closing "Avoid:" sentence = precision failure.
 
-REQUIRED STRUCTURE:
-  Paragraph 1: Subject + action + exact pose description.
-  Paragraph 2: Environment + time of day + atmospheric conditions.
-  Paragraph 3: Lighting (Kelvin temps) + color palette (hex codes) + lens.
-  Paragraph 4: Style reference (specific work, not just genre) + composition.
-  Final line:  "Avoid: [specific comma-separated exclusion list]."
+REQUIRED PARAGRAPH STRUCTURE:
+  P1: Subject — anatomy, pose angles in degrees, behavioral expression (not emotional adjectives).
+  P2: Background — ZONE 1 immediate + ZONE 2 mid + ZONE 3 far. Name each zone explicitly.
+  P3: Lighting — Kelvin temps required. Source names. Shadow quality. What each light illuminates.
+  P4: Per-region style — face treatment separately from clothing separately from hands.
+      State the mixed media logic if multiple render modes are used.
+  P5: Palette — hex codes for all dominant colors, role of each, maximum 4 colors stated.
+  P6: Composition — framing rule, subject placement, negative space location and purpose,
+      eye movement path through the composition.
+  P7: Narrative Logic — WHY the major elements work. The theory of the composition.
+      "The single cable is powerful because there is only one."
+      This paragraph gives the model the reasoning to handle unspecified details correctly.
+  Final: "Avoid: [specific list of named aesthetic tropes, not generic terms]."
 
-ELITE REQUIREMENTS:
-  - Color palette: max 3 colors, all as hex codes, each with stated use-case
-  - Lighting: must include Kelvin temperature, not just quality adjectives
-  - Style: specific work + director, not just genre label
-  - Negative space: state location and purpose if banner/title format
-  - Closing Avoid: sentence is mandatory
-
-PALETTE RULE: Never "warm tones" or "vibrant". Always "#ff6b2b for skin tones".
-LIGHTING RULE: Never "cinematic lighting". Always "5600K key from low-left horizon".
-STYLE RULE: Never "anime style". Always "Makoto Shinkai background density + clean cel-shading".
+HARD RULES:
+  PALETTE: Never "warm tones." Always "#ff6b2b for skin tones and warm practicals."
+  LIGHTING: Never "cinematic." Always "5600K key from low-left horizon."
+  STYLE: Never "anime style." Always specific work + director + render treatment.
+  ZONES: All three background zones must be named and described.
+  PER-REGION: Face, clothing, hands described separately.
+  NARRATIVE: Layer 10 Narrative Logic paragraph is mandatory.
+  AVOID: Final "Avoid:" sentence is mandatory and must name specific tropes.
 
 EXAMPLE OPENER:
-  "Cinematic anime illustration of three teenage characters mid-sprint..."
+  "Premium mixed media cyberpunk editorial poster. Square 1:1 format.
+   SUBJECT: Young male figure seated in a sleek minimal dark chair..."
 """.strip(),
 
     "Stable Diffusion": """
 [ FORMAT_DIRECTIVE: TARGET = Stable Diffusion ]
-Stable Diffusion requires comma-separated keyword tags, NOT sentences.
-A "Negative prompt:" block is mandatory. Its absence is an automatic format failure.
-DO NOT use "You are a..." opener. DO NOT write prose sentences.
+Stable Diffusion uses comma-separated keyword tags — NOT prose sentences.
+DO NOT write paragraph sentences.
+DO NOT open with "You are a..."
+Missing "Negative prompt:" block = automatic format failure, alignment = 0.
 
 REQUIRED STRUCTURE:
-  Line 1+:  Positive tags — comma-separated, ordered by importance:
-            [subject tags], [environment tags], [lighting tags],
-            [style tags], [quality boosters]
 
-  Quality boosters (always include these):
-            masterpiece, best quality, highly detailed, sharp focus, 8k
+  POSITIVE TAGS (ordered by importance, comma-separated):
+    [subject tags] → [zone/environment tags] → [lighting tags] →
+    [per-region style tags] → [palette tags] → [quality boosters]
 
-  Blank line, then:
+  Quality boosters (always include at end of positive):
+    masterpiece, best quality, highly detailed, sharp focus, 8k
+
+  [blank line]
+
   Negative prompt: [comma-separated exclusion tags]
 
-  Standard negative tags (always include):
-            ugly, blurry, low quality, watermark, text, signature,
-            deformed, extra limbs, bad anatomy, bad hands, cropped,
-            worst quality, jpeg artifacts, motion blur
+  Standard negatives (always include):
+    ugly, blurry, low quality, watermark, text, signature,
+    deformed, extra limbs, bad anatomy, bad hands, cropped,
+    worst quality, jpeg artifacts, motion blur
 
-ADVANCED FEATURES (include when relevant):
-  LoRA weights: <lora:model_name:weight>
-  Token emphasis: (term:1.3) for boost, (term:0.7) for reduce
-  Embedding: embedding:bad_prompt_version2
+ADVANCED SYNTAX (use when relevant):
+  Token emphasis:   (term:1.4) to boost, (term:0.7) to reduce
+  LoRA weights:     <lora:model_name:0.8>
+  Embeddings:       embedding:bad_prompt_version2 in negative
 
-PALETTE RULE: Use hex codes as color reference tags: "electric blue #00cfff"
-STYLE RULE: Specific aesthetic + artist + quality context
+HARD RULES:
+  ZONES: Include zone-specific tags for immediate / mid / far background.
+  PER-REGION: Use separate style tags for face, clothing, hands.
+  PALETTE: Include hex code color reference tags.
+  NEGATIVES: Name specific aesthetic tropes, not just generic quality terms.
+  GLITCH: If applicable, include specific glitch effect tags.
 
 EXAMPLE OPENER:
-  "anime banner, three characters diagonal sprint, Shibuya rain night..."
-  Negative prompt: ugly, blurry, watermark, text...
+  "premium editorial poster, young male seated minimal chair,
+   eyes closed faint smirk, single emerald cable from head,..."
+  Negative prompt: ugly, blurry, watermark, text,...
 """.strip(),
 
     "Perplexity": """
 [ FORMAT_DIRECTIVE: TARGET = Perplexity AI ]
-Perplexity is a research AI. DO NOT use "You are a..." opener.
+Perplexity is a research model. DO NOT use "You are a..." opener.
 DO NOT use XML tags or /imagine syntax.
-The absence of a clear research question opener is a format failure.
+Missing research question opener = format failure.
 
 REQUIRED STRUCTURE:
-  Line 1:    Clear, specific research question or directive.
-  Scope:     "Focus on [time period / geography / domain]"
-  Sources:   "Prioritize [peer-reviewed / institutional / primary sources]"
-  Format:    "Summarize in [N bullet points / N paragraphs / table]"
-  Exclusions: "Do not include [X]. Avoid [Y]."
-  Depth:     State the target audience knowledge level explicitly.
+  Line 1:   Clear, specific research question or directive.
+  Scope:    Time period, geography, domain constraints.
+  Sources:  "Prioritize peer-reviewed / institutional / primary sources."
+  Format:   "Summarize in [N bullet points / N paragraphs / table format]."
+  Depth:    State target audience knowledge level explicitly.
+  Exclude:  "Do not include [X]. Avoid [Y]."
 
 EXAMPLE OPENER:
-  "Research and explain the latest peer-reviewed findings on [topic]..."
+  "Research and synthesize peer-reviewed findings published after 2022 on..."
 """.strip(),
 
     "Copilot": """
 [ FORMAT_DIRECTIVE: TARGET = Microsoft Copilot ]
-Copilot is task/productivity-oriented. DO NOT use "You are a..." opener.
-Open directly with an action verb. No role-play framing.
+Copilot is productivity-oriented. DO NOT use "You are a..." opener.
+Open with an action verb. No role-play framing. No XML tags.
+Missing action verb opener = format failure.
 
 REQUIRED STRUCTURE:
-  Line 1:    Action verb opener: "Write...", "Create...", "Summarize...",
-             "Draft...", "Analyze...", "Generate...", "List..."
-  Context:   "Based on [document/data/meeting/context]..."
-  Format:    Exact output format: "as a bulleted list", "in table format",
-             "as a professional email", "in exactly N paragraphs"
-  Audience:  "for a [specific audience] in a [formal/informal] tone"
-  Length:    Word count or paragraph count — numbers only.
+  Line 1:   Action verb: Write, Create, Summarize, Draft, Analyze, Generate, List.
+  Context:  "Based on [document / data / meeting notes / context]..."
+  Format:   Exact output structure — "as a bulleted list", "in table format",
+            "as a professional email", "in exactly N paragraphs."
+  Audience: Specific audience in specific context + tone.
+  Length:   Word count or paragraph count — numbers only.
 
 EXAMPLE OPENER:
-  "Summarize the following meeting transcript into 5 key action items..."
+  "Summarize the following meeting transcript into 5 key action items,
+   formatted as a bulleted list for a VP-level audience..."
+""".strip(),
+
+    "Manus AI": """
+[ FORMAT_DIRECTIVE: TARGET = Manus AI ]
+Manus handles agentic multi-step workflows.
+Structure as explicit sequential steps with tool references.
+DO NOT use "You are a..." opener.
+
+REQUIRED STRUCTURE:
+  OBJECTIVE:  Single clear goal statement.
+  STEPS:      Numbered sequential actions. Each step names the tool or action.
+  TOOLS:      List tools Manus should use (browser, code, files, APIs).
+  OUTPUT:     Exact deliverable format and location.
+  FALLBACK:   What to do if a step fails.
+
+EXAMPLE OPENER:
+  "OBJECTIVE: Research, compile, and format a competitive analysis report..."
 """.strip(),
 
 }
 
 _DEFAULT_CONTRACT = """
 [ FORMAT_DIRECTIVE: TARGET = {target} ]
-REQUIRED STRUCTURE:
-  Research and apply the correct prompt format for {target} specifically.
-  Do NOT default to ChatGPT "You are a..." style unless {target} explicitly uses it.
-  Match the structural conventions and opener style for {target}.
-  Apply ELITE COMPILATION STANDARDS: role specificity, prohibition clauses,
-  measurable output specs, quality bar.
-  The output must be immediately usable with {target} without modification.
+Apply the correct prompt format for {target} specifically.
+Do NOT default to ChatGPT "You are a..." style unless {target} explicitly uses it.
+Apply ELITE COMPILATION STANDARDS: role specificity, prohibition clauses,
+measurable output specs, quality bar definition.
+For image targets: use 3 named background zones, per-region style assignment,
+and Layer 10 Narrative Logic.
+Output must be immediately usable with {target} without modification.
 """.strip()
 
 
 OPENING_PATTERNS: dict[str, tuple[str, str]] = {
-    "ChatGPT":          (r"^you\s+are\s+a?\s*\w",           "Must open with 'You are a [specific role]'"),
-    "Claude":           (r"^<role>",                          "Must open with <role> XML tag"),
-    "Gemini":           (r"^context\s*:",                     "Must open with 'Context:' label"),
-    "Midjourney":       (r"^/imagine\s+prompt\s*:",           "Must open with '/imagine prompt:'"),
-    "DALL-E":           (r"^[A-Z\"]",                         "Must open with descriptive sentence"),
-    "Stable Diffusion": (r"^\w[\w\s,]+,",                     "Must open with comma-separated tags"),
-    "Perplexity":       (r"^(research|explain|what|how|why|find|analyze|compare)\b", "Must open with a research directive"),
-    "Copilot":          (r"^(write|create|summarize|draft|analyze|generate|list|make)\b", "Must open with an action verb"),
+    "ChatGPT":          (r"^you\s+are\s+a?\s*\w",
+                         "Must open with 'You are a [specific expert role]'"),
+    "Claude":           (r"^<role>",
+                         "Must open with <role> XML tag — no text before it"),
+    "Gemini":           (r"^context\s*:",
+                         "Must open with 'Context:' label"),
+    "Midjourney":       (r"^/imagine\s+prompt\s*:",
+                         "Must open with '/imagine prompt:'"),
+    "FLUX":             (r"^[A-Z][a-z]",
+                         "Must open with a capitalized prose sentence"),
+    "DALL-E":           (r"^[A-Z\"]",
+                         "Must open with a capitalized descriptive sentence"),
+    "Stable Diffusion": (r"^\w[\w\s,]+,",
+                         "Must open with comma-separated keyword tags"),
+    "Perplexity":       (r"^(research|explain|what|how|why|find|analyze|compare|synthesize)\b",
+                         "Must open with a research directive or question"),
+    "Copilot":          (r"^(write|create|summarize|draft|analyze|generate|list|make|compile)\b",
+                         "Must open with an action verb"),
+    "Manus AI":         (r"^OBJECTIVE\s*:",
+                         "Must open with 'OBJECTIVE:' statement"),
 }
 
 
