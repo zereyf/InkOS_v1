@@ -488,7 +488,7 @@ def _run_stream(
     t0     = time.time()
     result = {}
 
-  with st.spinner("❖ Refining..."):
+  with st.spinner("❖ Refining..."):   
 
     # Consume stream silently without rendering raw chunks
     for _ in stream_refinement(
