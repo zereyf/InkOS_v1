@@ -1,30 +1,39 @@
 """
-workspace.py — v2.0 fixes
-============================
-STREAM-1 FIXED: Removed st.rerun() after _run_stream() completes.
+workspace.py — v2.1
+=====================
+CLEAN-1 FIXED: extract_clean_output() was partially destroying Claude XML output.
 
-  Previous flow:
-    _run_stream(...)   ← streams output to screen
-    st.rerun()         ← immediately wipes the streamed text before user reads it
-    [output rendered from session state on next run — user sees a flash]
+  Root cause A: The tag-strip loop used hyphenated names ("quality-bar",
+  "edge-cases") but Claude outputs use underscores (<quality_bar>, <edge_cases>).
+  Those tags didn't match — their content was left as floating plain text.
 
-  The rerun was cargo-culted from pre-streaming code where the result had
-  to be committed to session state before it could appear. With write_stream(),
-  the tokens are already visible. The result IS in session state after
-  _run_stream() returns. No rerun needed.
+  Root cause B: Tags that DID match ("role", "task", "constraints") had their
+  entire content removed, not just their brackets. So the role description,
+  task, and constraints were wiped from the displayed output entirely.
 
-  Fixed flow:
-    _run_stream(...)   ← streams + commits to session state
-    [output panel renders below in the same run — no flash, no wipe]
+  Root cause C: The remaining <[^>]+> sweep stripped only the brackets,
+  leaving tag content as unstructured plain text with no XML framing.
 
-  NOTE: The Clear and Reset buttons still rerun correctly because they
-  wipe state that needs to be re-read. Only the post-stream rerun is removed.
+  Fix: Detect Claude XML structure (≥2 known block tags present).
+  If detected → it IS the correct output format. Format it cleanly with
+  consistent line breaks. Do NOT strip content.
+  If not detected → strip leaked tag brackets from non-Claude outputs only.
 
-All Phase 1–4 logic intact. BUG-1 and BUG-2 fixes from original preserved.
+CLEAN-2 FIXED: JSON audit block appearing in the copyable output text area.
+
+  Root cause: The regex  r"\\{\\s*\\"score\\"\\s*:[\\s\\S]*?\\}\\s*$"  uses a
+  non-greedy quantifier that stops at the FIRST } it encounters. If the
+  critique string contains a } character, the match terminates mid-JSON
+  and the remainder appears in the user's output.
+
+  Fix: Replaced with a balanced-brace scanner that correctly handles
+  nested structures and special characters inside string values.
+  The audit JSON is now reliably stripped regardless of critique content.
 """
 
 from __future__ import annotations
 
+import json
 import re
 import time
 from datetime import datetime, timezone
@@ -83,23 +92,153 @@ def _audience_instruction(a: str) -> str:
     }.get(a, "Use accessible, clear language")
 
 
+# ── BALANCED-BRACE JSON STRIPPER ──────────────────────────────────────────────
+
+def _find_audit_json_start(text: str) -> int:
+    """
+    Walk backwards through text to find the start of the audit JSON object.
+    Uses balanced-brace scanning so critique strings containing } don't
+    cause premature termination.
+    Returns the index of the opening { or -1 if not found.
+    """
+    search_from = len(text)
+    while search_from > 0:
+        idx = text.rfind("{", 0, search_from)
+        if idx == -1:
+            break
+        snippet = text[idx:]
+        # Quick pre-check before the expensive scan
+        if not re.match(r'\{\s*"score"\s*:', snippet):
+            search_from = idx
+            continue
+        # Balanced-brace scan
+        depth, in_string, escape = 0, False, False
+        end = -1
+        for i, ch in enumerate(snippet):
+            if in_string:
+                if escape:       escape = False
+                elif ch == "\\": escape = True
+                elif ch == '"':  in_string = False
+                continue
+            if ch == '"':    in_string = True
+            elif ch == "{":  depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+        if end == -1:
+            search_from = idx
+            continue
+        candidate = snippet[:end + 1]
+        try:
+            json.loads(candidate)
+            return idx          # valid audit JSON found at this position
+        except json.JSONDecodeError:
+            pass
+        search_from = idx
+    return -1
+
+
+def _strip_audit_json(text: str) -> str:
+    idx = _find_audit_json_start(text)
+    if idx == -1:
+        return text
+    return text[:idx].rstrip()
+
+
+# ── CLAUDE XML DETECTION & FORMATTING ────────────────────────────────────────
+
+_CLAUDE_BLOCK_TAGS = (
+    "role", "task", "constraints", "edge_cases",
+    "output_format", "quality_bar", "thinking",
+)
+
+_CLAUDE_TAG_RE = re.compile(
+    r"<(?:role|task|constraints|edge_cases|output_format|quality_bar|thinking)"
+    r"(?:\s[^>]*)?>",
+    re.IGNORECASE,
+)
+
+
+def _is_claude_xml(text: str) -> bool:
+    """True if the text contains ≥2 Claude block-level XML tags."""
+    return len(_CLAUDE_TAG_RE.findall(text)) >= 2
+
+
+def _format_claude_xml(text: str) -> str:
+    """
+    Return the Claude XML prompt with consistent line breaks between tags.
+    Does NOT strip any content — the XML structure is the correct output.
+    """
+    for tag in _CLAUDE_BLOCK_TAGS:
+        # Opening tag → ensure it starts on its own line
+        text = re.sub(
+            rf"(?<!\n)(<{tag}(?:\s[^>]*)?>)",
+            r"\n\1",
+            text,
+            flags=re.IGNORECASE,
+        )
+        # Closing tag → ensure it starts on its own line
+        text = re.sub(
+            rf"(?<!\n)(</{tag}>)",
+            r"\n\1",
+            text,
+            flags=re.IGNORECASE,
+        )
+    # Collapse excessive blank lines
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 # ── OUTPUT CLEANING ───────────────────────────────────────────────────────────
 
+_LABEL_PREFIX_RE = re.compile(
+    r"^(?:REFINED_PROMPT|System\s*Prompt|PROMPT|OUTPUT|thinking)\s*:\s*",
+    flags=re.IGNORECASE | re.MULTILINE,
+)
+_PART_HEADER_RE  = re.compile(r"\*\*\s*PART\s*\d+\s*:[^\n]*\**", re.IGNORECASE)
+_AIZEN_RE        = re.compile(r"A\.I\.Z\.E\.N\.[\s\S]*?(?=\n\n|$)", re.IGNORECASE)
+_CODE_FENCE_RE   = re.compile(r"```[\s\S]*?```")
+_HEADING_RE      = re.compile(r"^\s*#{1,6}\s.*$", re.MULTILINE)
+_MULTI_BLANK_RE  = re.compile(r"\n{3,}")
+_XML_TAG_RE      = re.compile(r"</?[a-zA-Z_][a-zA-Z0-9_\-]*(?:\s[^>]*)?>")
+
+
 def extract_clean_output(raw: str) -> str:
+    """
+    Clean a refined prompt for display and copy.
+
+    CLEAN-1: Claude XML is detected and returned with clean formatting.
+             The XML structure IS the correct Claude prompt format —
+             stripping it produces an unusable broken output.
+
+    CLEAN-2: Audit JSON stripped via balanced-brace scanner.
+             Handles critique strings containing } without early termination.
+    """
     t = str(raw or "")
+
+    # CLEAN-2: strip audit JSON block first
+    t = _strip_audit_json(t)
+
+    # Strip label prefixes
     m = re.search(r"REFINED_PROMPT\s*:\s*(.+)", t, flags=re.I | re.S)
-    if m: t = m.group(1)
-    t = re.sub(r"\*\*\s*PART\s*\d+\s*:[^\n]*\**", "", t, flags=re.I)
-    t = re.sub(r"(?:System\s*Prompt|PROMPT|OUTPUT|thinking)\s*:\s*", "", t, flags=re.I)
-    t = re.sub(r"A\.I\.Z\.E\.N\.[\s\S]*?(?=\n\n|$)", "", t, flags=re.I)
-    for tag in ("quality-bar", "constraints", "role", "task", "edge-cases"):
-        t = re.sub(rf"<{tag}[^>]*>.*?</{tag}>", "", t, flags=re.I | re.S)
-    t = re.sub(r"```[\s\S]*?```", "", t)
-    t = re.sub(r"<[^>]+>", "", t)
-    t = re.sub(r"^\s*#{1,6}\s.*$", "", t, flags=re.M)
-    t = re.sub(r"\{\s*\"score\"\s*:[\s\S]*?\}\s*$", "", t, flags=re.I)
-    t = re.sub(r"REFINED_PROMPT\s*:\s*", "", t, flags=re.I)
-    t = re.sub(r"\n{3,}", "\n\n", t)
+    if m:
+        t = m.group(1)
+    t = _LABEL_PREFIX_RE.sub("", t)
+    t = _PART_HEADER_RE.sub("", t)
+    t = _AIZEN_RE.sub("", t)
+    t = _CODE_FENCE_RE.sub("", t)
+
+    # CLEAN-1: detect and format Claude XML — do not strip
+    if _is_claude_xml(t):
+        return _format_claude_xml(t)
+
+    # Non-Claude: strip any accidentally leaked XML tag brackets
+    # (preserve content, remove only the < > brackets and tag names)
+    t = _XML_TAG_RE.sub("", t)
+    t = _HEADING_RE.sub("", t)
+    t = _MULTI_BLANK_RE.sub("\n\n", t)
     return t.strip()
 
 
@@ -113,18 +252,30 @@ def _audit_score_component(audit: dict) -> None:
     critique   = audit.get("critique",   "")
 
     if score >= 85:
-        score_color = "#4CAF9A"
-        score_label = "HIGH FIDELITY"
+        score_color, score_label = "#4CAF9A", "HIGH FIDELITY"
     elif score >= 70:
-        score_color = "var(--gold, #C9A84C)"
-        score_label = "ACCEPTABLE"
+        score_color, score_label = "var(--gold, #C9A84C)", "ACCEPTABLE"
     else:
-        score_color = "#E57373"
-        score_label = "NEEDS WORK"
+        score_color, score_label = "#E57373", "NEEDS WORK"
 
     prec_pct  = int((precision  / 40) * 100)
     align_pct = int((alignment  / 40) * 100)
     effic_pct = int((efficiency / 20) * 100)
+
+    def _bar(pct: int, color: str, val: int, ceiling: int) -> str:
+        return (
+            f'<div>'
+            f'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;'
+            f'color:rgba(93,109,126,1);letter-spacing:0.1em;text-transform:uppercase;'
+            f'margin-bottom:2px;">{["Precision","Alignment","Efficiency"][[40,40,20].index(ceiling)]}</div>'
+            f'<div style="height:3px;border-radius:1px;background:rgba(255,255,255,0.05);'
+            f'width:80px;overflow:hidden;">'
+            f'<div style="height:100%;width:{pct}%;border-radius:1px;background:{color};"></div>'
+            f'</div>'
+            f'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;'
+            f'color:{color};margin-top:2px;">{val}/{ceiling}</div>'
+            f'</div>'
+        )
 
     audit_html = f"""
 <div style="display:flex;align-items:center;gap:16px;padding:10px 14px;
@@ -187,14 +338,12 @@ def _audit_score_component(audit: dict) -> None:
     </div>
 </div>
 """
-
     if critique:
-        audit_html += f"""
-<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;
-            color:rgba(93,109,126,1);padding:8px 14px;
-            background:rgba(0,0,0,0.2);border-radius:4px;
-            margin-bottom:10px;">✦ {critique}</div>
-"""
+        audit_html += (
+            f'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;'
+            f'color:rgba(93,109,126,1);padding:8px 14px;background:rgba(0,0,0,0.2);'
+            f'border-radius:4px;margin-bottom:10px;">✦ {critique}</div>'
+        )
 
     st.markdown(audit_html, unsafe_allow_html=True)
 
@@ -236,6 +385,8 @@ def _copy_to_clipboard_btn(text: str, key: str) -> None:
     """, height=40)
 
 
+# ── VAULT SAVE ────────────────────────────────────────────────────────────────
+
 def _save_to_vault(user_hash: str, output: str, audit: dict, cfg: dict) -> None:
     score = (audit or {}).get("score", 0)
     title = (st.session_state.get(K.LAST_INPUT) or "Untitled")[:80]
@@ -256,7 +407,7 @@ def _save_to_vault(user_hash: str, output: str, audit: dict, cfg: dict) -> None:
         _save_local_fallback(output, title, score)
         st.warning(
             f"Vault unreachable ({type(exc).__name__}: {exc}). "
-            "Prompt saved to local session instead."
+            "Saved to local session instead."
         )
         return
 
@@ -296,7 +447,7 @@ def _run_stream(
     if violations:
         st.error(
             "Blocked by security policy. "
-            "Remove any injection or override patterns and try again."
+            "Remove injection or override patterns and try again."
         )
         return
 
@@ -317,7 +468,9 @@ def _run_stream(
 
     selected = cfg.get("target_model", AUTO_SELECT_LABEL)
     if selected == AUTO_SELECT_LABEL:
-        resolved_target, routing_reason = resolve_target_model(AUTO_SELECT_LABEL, cleaned)
+        resolved_target, routing_reason = resolve_target_model(
+            AUTO_SELECT_LABEL, cleaned
+        )
     else:
         resolved_target = selected
         routing_reason  = "Manual selection"
@@ -357,8 +510,7 @@ def _run_stream(
             )
         )
 
-    latency_ms = int((time.time() - t0) * 1000)
-
+    latency_ms  = int((time.time() - t0) * 1000)
     raw_refined = result.get("refined", "")
     audit       = result.get("audit",   {})
     error       = result.get("error")
@@ -402,11 +554,6 @@ def _run_stream(
     })
     st.session_state[K.HISTORY] = history[-50:]
 
-    # STREAM-1 FIX: st.rerun() was called here in the original code.
-    # This wiped the streamed output immediately after it appeared.
-    # The output is already committed to session state above — no rerun needed.
-    # The output panel below renders from session state in the same run.
-
 
 # ── RENDERER ─────────────────────────────────────────────────────────────────
 
@@ -438,7 +585,7 @@ def render_workspace(cfg: dict) -> None:
     </div>
     """, unsafe_allow_html=True)
 
-    chip_cols = st.columns(4)
+    chip_cols     = st.columns(4)
     example_texts = [
         "Write an article about AI in education",
         "اكتب مقالاً عن الذكاء الاصطناعي في التعليم",
@@ -544,9 +691,6 @@ def render_workspace(cfg: dict) -> None:
             st.rerun()
 
     if run_clicked:
-        # STREAM-1 FIX: No st.rerun() after this call.
-        # The stream writes directly to the page; session state is committed
-        # inside _run_stream(). The output panel below reads it in the same run.
         _run_stream(source, cfg, tone, length, creativity, audience)
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
@@ -587,7 +731,7 @@ def render_workspace(cfg: dict) -> None:
     st.text_area(
         "refined_output",
         value            = output,
-        height           = 280,
+        height           = 320,
         key              = "output_area",
         label_visibility = "collapsed",
     )
@@ -620,11 +764,14 @@ def render_workspace(cfg: dict) -> None:
         if is_guest:
             st.markdown("""
             <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;
-                        color:rgba(44,53,69,1);padding:5px 0;
-                        letter-spacing:0.06em;">
+                        color:rgba(44,53,69,1);padding:5px 0;">
                 Login to save to Vault
             </div>
             """, unsafe_allow_html=True)
         else:
-            if st.button("💾  Save to Vault", use_container_width=True, key="vault_save_btn"):
+            if st.button(
+                "💾  Save to Vault",
+                use_container_width = True,
+                key                 = "vault_save_btn",
+            ):
                 _save_to_vault(user_hash, output, audit, cfg)
