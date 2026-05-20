@@ -488,27 +488,20 @@ def _run_stream(
     t0     = time.time()
     result = {}
 
-    st.markdown("""
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;
-                color:rgba(44,53,69,1);letter-spacing:0.2em;
-                text-transform:uppercase;margin-bottom:8px;">
-        ❖ Refining...
-    </div>
-    """, unsafe_allow_html=True)
+  with st.spinner("❖ Refining..."):
 
-    with st.container():
-        st.write_stream(
-            stream_refinement(
-                master_payload   = payload,
-                target           = resolved_target,
-                framework        = cfg.get("framework", "RACE"),
-                lang             = cfg.get("source_lang", "English"),
-                aesthetic_choice = cfg.get("aesthetic_choice", "Default"),
-                hikmah_style     = str(cfg.get("hikmah_style") or "None"),
-                skip_security    = True,
-                result           = result,
-            )
-        )
+    # Consume stream silently without rendering raw chunks
+    for _ in stream_refinement(
+        master_payload   = payload,
+        target           = resolved_target,
+        framework        = cfg.get("framework", "RACE"),
+        lang             = cfg.get("source_lang", "English"),
+        aesthetic_choice = cfg.get("aesthetic_choice", "Default"),
+        hikmah_style     = str(cfg.get("hikmah_style") or "None"),
+        skip_security    = True,
+        result           = result,
+    ):
+        pass
 
     latency_ms  = int((time.time() - t0) * 1000)
     raw_refined = result.get("refined", "")
