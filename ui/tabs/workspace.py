@@ -488,20 +488,20 @@ def _run_stream(
     t0     = time.time()
     result = {}
 
-  with st.spinner("❖ Refining..."):   
+    with st.spinner("❖ Refining..."):
 
-    # Consume stream silently without rendering raw chunks
-    for _ in stream_refinement(
-        master_payload   = payload,
-        target           = resolved_target,
-        framework        = cfg.get("framework", "RACE"),
-        lang             = cfg.get("source_lang", "English"),
-        aesthetic_choice = cfg.get("aesthetic_choice", "Default"),
-        hikmah_style     = str(cfg.get("hikmah_style") or "None"),
-        skip_security    = True,
-        result           = result,
-    ):
-        pass
+        # Consume stream silently without rendering raw chunks
+        for _ in stream_refinement(
+            master_payload   = payload,
+            target           = resolved_target,
+            framework        = cfg.get("framework", "RACE"),
+            lang             = cfg.get("source_lang", "English"),
+            aesthetic_choice = cfg.get("aesthetic_choice", "Default"),
+            hikmah_style     = str(cfg.get("hikmah_style") or "None"),
+            skip_security    = True,
+            result           = result,
+        ):
+            pass
 
     latency_ms  = int((time.time() - t0) * 1000)
     raw_refined = result.get("refined", "")
