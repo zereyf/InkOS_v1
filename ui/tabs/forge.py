@@ -1,9 +1,7 @@
 """
 ui/tabs/forge.py — Persona Forge Tab
 ======================================
-v19.1: Zenith Edition — Two-Way Binding Patch.
-       - FIXED: Synchronized rehydration of Sidebar settings on 'Engage'.
-       - FIXED: Bulletproof label matching for programmatic widget control.
+v19.2: Indentation crash bug fixed.
 """
 
 import streamlit as st
@@ -19,61 +17,43 @@ from config import TARGET_GUIDES, AESTHETIC_PRESETS
 from i18n.translations import t
 
 
-# ── STREAMLIT CALLBACKS ───────────────────────────────────────────────────────
-
 def toggle_persona_callback(persona_data: dict, is_currently_active: bool):
-    """
-    Latches identity while synchronizing Behavioral DNA.
-    Forces the Sidebar to align its Rhetoric and Aesthetic to the Persona's Specs.
-    """
     MASTER_KEY = "sb_persona_global_widget"
-
     if is_currently_active:
         st.session_state[K.ACTIVE_PERSONA] = None
-        if MASTER_KEY in st.session_state: 
-            st.session_state[MASTER_KEY] = "None" 
-        if "p" in st.query_params: 
+        if MASTER_KEY in st.session_state:
+            st.session_state[MASTER_KEY] = "None"
+        if "p" in st.query_params:
             del st.query_params["p"]
         st.toast("🎭 Identity Matrix Reset.")
     else:
         st.session_state[K.ACTIVE_PERSONA] = persona_data
         p_name = persona_data.get("name", "Unknown")
         st.query_params["p"] = p_name
-        
-        # 🟢 BEHAVIORAL REHYDRATION
         if "style" in persona_data:
             st.session_state["sb_hikmah_style"] = persona_data["style"]
         if "aesthetic" in persona_data:
             st.session_state["sb_aesthetic"] = persona_data["aesthetic"]
-
-        # 🟢 BULLETPROOF LABEL MATCHING
-        # Guarantees the label matches the sidebar options exactly for Two-Way Binding
         target_label = f"{p_name} [C]"
         for k, v in STARTER_PERSONAS.items():
             if v and v.get("name") == p_name:
                 target_label = f"{k} [S]"
                 break
-        
         st.session_state[MASTER_KEY] = target_label
         st.toast(f"🎭 LATCHED: {p_name}")
 
 
 def toggle_preview_callback(pid: str):
-    """Toggles visibility of the XML system prompt payload."""
     key = f"show_preview_{pid}"
     st.session_state[key] = not st.session_state.get(key, False)
 
 
-# ── UI COMPONENTS ─────────────────────────────────────────────────────────────
-
 def _render_persona_card(persona: dict, is_active: bool, user_hash: str, is_starter: bool = False) -> None:
-    name = persona.get("name", "Unknown")
-    target = persona.get("target", "All")
-    pid = persona.get("id", name)
-    
+    name    = persona.get("name", "Unknown")
+    target  = persona.get("target", "All")
+    pid     = persona.get("id", name)
     h_style = persona.get("style", "None")
     a_style = persona.get("aesthetic", "Default")
-
     active_style = "border: 1px solid var(--gold); background:rgba(201,168,76,0.05);" if is_active else "border: 1px solid rgba(255,255,255,0.05);"
     indicator = "🟢" if is_active else "✦"
 
@@ -91,17 +71,20 @@ def _render_persona_card(persona: dict, is_active: bool, user_hash: str, is_star
 
         c1, c2, c3 = st.columns([2, 2, 1])
         with c1:
-            st.button("Deactivate" if is_active else "Engage", key=f"act_{pid}", on_click=toggle_persona_callback, args=(persona, is_active), use_container_width=True)
+            st.button("Deactivate" if is_active else "Engage", key=f"act_{pid}",
+                      on_click=toggle_persona_callback, args=(persona, is_active), use_container_width=True)
         with c2:
-            st.button(t("preview_injection", fallback="Preview Payload"), key=f"pre_{pid}", on_click=toggle_preview_callback, args=(pid,), use_container_width=True)
+            st.button(t("preview_injection", fallback="Preview Payload"), key=f"pre_{pid}",
+                      on_click=toggle_preview_callback, args=(pid,), use_container_width=True)
         with c3:
             if not is_starter:
                 if st.session_state.get(f"confirm_del_{pid}"):
                     if st.button("CONFIRM", key=f"real_del_{pid}", type="primary", use_container_width=True):
-                        # 🟢 SAFE DELETION: Detach identity before wiping from DB
-                        if is_active: toggle_persona_callback(persona, True)
+                        if is_active:
+                            toggle_persona_callback(persona, True)
                         ok, _ = delete_persona(user_hash, pid)
-                        if ok: st.rerun()
+                        if ok:
+                            st.rerun()
                 elif st.button("🗑️", key=f"del_{pid}", use_container_width=True):
                     st.session_state[f"confirm_del_{pid}"] = True
                     st.rerun()
@@ -111,13 +94,11 @@ def _render_persona_card(persona: dict, is_active: bool, user_hash: str, is_star
             st.code(inject_persona(persona, "Claude", hikmah_style=h_style), language="xml")
 
 
-# ── MAIN RENDERER ─────────────────────────────────────────────────────────────
-
 def render_forge() -> None:
     st.markdown('<div class="vc-header"><span class="status-dot"></span>IDENTITY_FORGE</div>', unsafe_allow_html=True)
-    
-    user_hash = st.session_state.get(K.USER_HASH, "")
-    active_persona = st.session_state.get(K.ACTIVE_PERSONA)
+
+    user_hash         = st.session_state.get(K.USER_HASH, "")
+    active_persona    = st.session_state.get(K.ACTIVE_PERSONA)
     active_short_name = get_persona_display_name(active_persona)
 
     tab_browse, tab_forge, tab_dna = st.tabs(["NEURAL_MATRIX", "FORGE_CONSTRUCT", "VISUAL_DNA"])
@@ -125,54 +106,53 @@ def render_forge() -> None:
     with tab_browse:
         st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
         for label, p in STARTER_PERSONAS.items():
-            if label != "None" and p: 
+            if label != "None" and p:
                 _render_persona_card(p, (active_short_name == p.get("name")), user_hash, is_starter=True)
-        
         st.markdown("---")
         user_personas, _ = list_personas(user_hash, target_filter="All")
-        for p in user_personas: 
+        for p in user_personas:
             _render_persona_card(p, (active_short_name == p.get("name")), user_hash)
 
     with tab_forge:
         st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
-        
-        f_name = st.text_input("Designation", placeholder="e.g. Shadow Auditor", key="f_p_name")
+        f_name   = st.text_input("Designation", placeholder="e.g. Shadow Auditor", key="f_p_name")
         f_target = st.selectbox("Alignment", ["All"] + list(TARGET_GUIDES.keys()), key="f_p_target")
-        
         c1, c2 = st.columns(2)
-        with c1: f_hikmah = st.selectbox("Hikmah Style (Rhetoric)", options=list(HIKMAH_PROFILES.keys()), key="f_p_hikmah")
-        with c2: f_aest = st.selectbox("Aesthetic Preset (Visual)", options=list(AESTHETIC_PRESETS.keys()), key="f_p_aest")
-            
-        f_role = st.text_area("Core Directive", height=120, key="f_p_role", help="Define the expert's behavior and knowledge boundaries.")
-        
+        with c1:
+            f_hikmah = st.selectbox("Hikmah Style (Rhetoric)", options=list(HIKMAH_PROFILES.keys()), key="f_p_hikmah")
+        with c2:
+            f_aest = st.selectbox("Aesthetic Preset (Visual)", options=list(AESTHETIC_PRESETS.keys()), key="f_p_aest")
+        f_role = st.text_area("Core Directive", height=120, key="f_p_role",
+                              help="Define the expert's behavior and knowledge boundaries.")
         if st.button("COMPILE & SECURE CONSTRUCT", use_container_width=True):
             if f_name and f_role:
                 saved, err = save_persona(user_hash, f_name, f_role, "", f_hikmah, f_aest, f_target, "")
                 if not err:
                     st.success(f"Construct Secured: {f_name}")
                     st.rerun()
-                else: 
+                else:
                     st.error(f"Persistence Fault: {err}")
 
     with tab_dna:
         st.markdown('<div style="font-family:var(--font-m); font-size:0.55rem; color:var(--gold); letter-spacing:2px; margin-bottom:15px;">[ ATHAR_DNA_SEQUENCING ]</div>', unsafe_allow_html=True)
-        
-        d_ink = st.text_area("Visual DNA (/ink)", value=st.session_state.get(K.INK_DNA, ""), height=80)
-        d_intel = st.text_area("Strategic DNA (/intel)", value=st.session_state.get(K.INTEL_DNA, ""), height=80)
+        d_ink    = st.text_area("Visual DNA (/ink)",           value=st.session_state.get(K.INK_DNA, ""),    height=80)
+        d_intel  = st.text_area("Strategic DNA (/intel)",      value=st.session_state.get(K.INTEL_DNA, ""),  height=80)
         d_hikmah = st.text_area("Philosophical DNA (/hikmah)", value=st.session_state.get(K.HIKMAH_DNA, ""), height=80)
 
         if st.button("💾 LOCK DNA SEQUENCES", use_container_width=True):
-            st.session_state[K.INK_DNA] = d_ink
-            st.session_state[K.INTEL_DNA] = d_intel
+            st.session_state[K.INK_DNA]    = d_ink
+            st.session_state[K.INTEL_DNA]  = d_intel
             st.session_state[K.HIKMAH_DNA] = d_hikmah
-            
-            from vault.supabase_client import supabase
-try:
-    supabase.table("users").update({
-        "ink_dna": d_ink,
-        "intel_dna": d_intel,
-        "hikmah_dna": d_hikmah
-    }).eq("id", user_hash).execute()
-    st.toast("DNA Locked.")
-except Exception as e:
-    st.error(f"Persistence Fault: {e}")
+            from vault.supabase_client import supabase, SUPABASE_MISSING
+            if not SUPABASE_MISSING and supabase is not None and user_hash:
+                try:
+                    supabase.table("users").update({
+                        "ink_dna":    d_ink,
+                        "intel_dna":  d_intel,
+                        "hikmah_dna": d_hikmah,
+                    }).eq("id", user_hash).execute()
+                    st.toast("DNA Locked & Persisted.")
+                except Exception as e:
+                    st.warning(f"Session saved. DB persistence failed: {e}")
+            else:
+                st.toast("DNA Locked to session.")
