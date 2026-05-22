@@ -2,8 +2,6 @@
 ui/tabs/guide.py — InkOS Documentation & Intelligence Briefing
 ===============================================================
 v22.1: The Premium Branding Sync.
-       - INTEGRATED: Terminal SVG Logo & Neon Wordmark.
-       - REFINED: Chiaroscuro Documentation Header.
 """
 
 import streamlit as st
@@ -12,7 +10,7 @@ from i18n.translations import t
 
 
 def _section(title: str, dot_color: str = "") -> None:
-    dot = f'<span class="status-dot{" " + dot_color if dot_color else ""}"></span>' 
+    dot = f'<span class="status-dot{" " + dot_color if dot_color else ""}"></span>'
     st.markdown(
         f'<div class="vc-header">{dot}{title}</div>',
         unsafe_allow_html=True,
@@ -49,13 +47,13 @@ def _step(number: str, title: str, body: str) -> None:
 
 
 def _feature_card(
-    icon:     str,
-    name:     str,
-    tab:      str,
-    what:     str,
-    how:      str,
-    tip:      str,
-    color:    str = "var(--gold)",
+    icon:  str,
+    name:  str,
+    tab:   str,
+    what:  str,
+    how:   str,
+    tip:   str,
+    color: str = "var(--gold)",
 ) -> None:
     st.markdown(f"""
     <div class="vc-card" style="margin-bottom:14px;">
@@ -115,7 +113,6 @@ def _arabic_pattern_row(arabic: str, paradigm: str, example: str, color: str) ->
 def render_guide() -> None:
     """Renders Tab 7 — InkOS Guide with Advanced Operations."""
 
-    # ── 🟢 PREMIUM HERO SYNC ──────────────────────────────────────────────────
     brand_html = textwrap.dedent(f"""
         <div style="text-align:center; margin-bottom: 40px; padding-top: 20px;">
             <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
@@ -134,17 +131,13 @@ def render_guide() -> None:
     """)
     st.markdown(brand_html, unsafe_allow_html=True)
 
-    # ── GUIDE TABS ─────────────────────────────────────────────────────────────
     g1, g2, g3, g4 = st.tabs([
-        "⚡ Deployment Brief", 
-        "📖 Core Matrix", 
-        "🗺️ Arabic Engine", 
+        "⚡ Deployment Brief",
+        "📖 Core Matrix",
+        "🗺️ Arabic Engine",
         "🛠️ Advanced Ops"
     ])
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # QUICK START
-    # ══════════════════════════════════════════════════════════════════════════
     with g1:
         _section("Uplink Protocol")
         _step("01", "Initialize Target Model", "Select your target model. Each selection triggers structural validation.")
@@ -154,19 +147,16 @@ def render_guide() -> None:
         _step("05", "Execute & Audit", "The A.I.Z.E.N. core compiles your prompt and runs an adversarial audit.")
         _step("06", "Secure to Vault (Identity Latch)", "Requires a verified Terminal Identity latched with a PIN. Guest sessions remain volatile.")
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # FEATURE GUIDE
-    # ══════════════════════════════════════════════════════════════════════════
     with g2:
         _section("System Modules")
         _feature_card("⚡", "Workspace", "WORKSPACE", "Primary refinement interface.", "Converts raw intent into command-grade AI instructions.", "Use Voice Input for rapid ideation.", "var(--gold)")
         _feature_card("🔒", "Memory Vault", "VAULT", "Persistent asset library.", "Requires Dual-Factor verification for decryption.", "Unlatched users see an encrypted view.", "#4CAF9A")
         _feature_card("🛡️", "Threat Intel", "SECURITY", "Real-time security auditing.", "Blocks hostile payloads before they reach the engine.", "NFKC normalization stops visually identical characters.", "#E53E3E")
-        
+
         _section("Identity & Defense", dot_color="red")
         _card("<strong style='color:var(--danger);'>Self-Destruct Protocol</strong> — Entering an incorrect PIN 5 times will trigger a 10-minute Terminal Lockout to prevent brute-force intrusion.")
 
-_feature_card(
+        _feature_card(
             icon  = "◈",
             name  = "Visual Director",
             tab   = "VISUAL DIRECTOR",
@@ -186,9 +176,6 @@ _feature_card(
             color = "var(--steel)",
         )
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # ARABIC ENGINE
-    # ══════════════════════════════════════════════════════════════════════════
     with g3:
         _section("Arabic Cognitive Mapping")
         _card("Utilizes the classical sciences of <strong>Balagha (علم البلاغة)</strong> to understand user intent. "
@@ -198,9 +185,6 @@ _feature_card(
         _arabic_pattern_row("الإيجاز", "Compression", "Enforces maximum token efficiency.", "#6EE7B7")
         _arabic_pattern_row("التفصيل", "Elaboration", "Expands concepts into academic frameworks.", "#F6AD55")
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # ADVANCED OPERATIONS (THE TRIFECTA MACROS)
-    # ══════════════════════════════════════════════════════════════════════════
     with g4:
         _section("Command Macros (The DNA Trifecta)")
         _card("InkOS utilizes a proprietary <b>Slash Command</b> architecture to instantly inject "
@@ -237,9 +221,8 @@ _feature_card(
             color = "#4CAF9A"
         )
 
-    # ── 🟢 FOOTER SIGNATURE ──────────────────────────────────────────────────
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown(f"""
+    st.markdown("""
         <div style="text-align:center; color:var(--text-dim); font-family:var(--font-m); font-size:0.6rem; letter-spacing:2px;">
             [ END OF INTELLIGENCE BRIEFING // INKOS v2026.4 ]
         </div>
