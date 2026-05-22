@@ -166,6 +166,26 @@ def render_guide() -> None:
         _section("Identity & Defense", dot_color="red")
         _card("<strong style='color:var(--danger);'>Self-Destruct Protocol</strong> — Entering an incorrect PIN 5 times will trigger a 10-minute Terminal Lockout to prevent brute-force intrusion.")
 
+_feature_card(
+    icon  = "◈",
+    name  = "Visual Director",
+    tab   = "VISUAL DIRECTOR",
+    what  = "10-layer structured image prompt compiler for all major image models.",
+    how   = (
+        "Walks through Subject, 3-zone Environment, Lighting (Kelvin temps), "
+        "Lens, Composition, Per-region Style (face/clothing/hands separately), "
+        "Palette (hex codes), Glitch effects, Exclusions, and Narrative Logic. "
+        "Compiles into model-specific syntax: Midjourney :: separators, "
+        "DALL-E prose paragraphs, Stable Diffusion keyword tags + Negative prompt."
+    ),
+    tip   = (
+        "Layer 10 (Narrative Logic) is the most important. "
+        "Explain WHY elements work, not just what they look like. "
+        "The model uses this reasoning to handle every unspecified detail correctly."
+    ),
+    color = "var(--steel)",
+)
+
     # ══════════════════════════════════════════════════════════════════════════
     # ARABIC ENGINE
     # ══════════════════════════════════════════════════════════════════════════
