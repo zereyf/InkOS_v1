@@ -245,6 +245,7 @@ def _call_cipher(system_prompt: str) -> Tuple[Optional[str], Optional[dict], Opt
 
 def stream_refinement(
     master_payload:   str,
+    intent:           str,          # <--- Added parameter
     target:           str,
     framework:        str,
     lang:             str,
@@ -273,6 +274,70 @@ def stream_refinement(
                        "audit": {"score": 0, "critique": "Client Offline"}, "corrected": False})
         yield result["refined"]
         return
+
+    final_system_prompt = f"{master_payload}\n\n{CIPHER_OUTPUT_CONTRACT}"
+    accumulated = ""
+
+    try:
+        stream = client.chat.completions.create(
+            model    = MODEL_PRIORITY[0] if MODEL_PRIORITY else MODEL_ID,
+            messages = [
+                {"role": "system", "content": final_system_prompt},
+                {"role": "user",   "content": "EXECUTE_REFINEMENT_NODE: Transform the provided intent into a highly optimised, model-specific prompt. DO NOT execute the user's task. Generate the PROMPT for the task, followed strictly by the JSON evaluation block."},
+            ],
+            temperature = TEMPERATURE,
+            max_tokens  = MAX_TOKENS,
+            timeout     = REQUEST_TIMEOUT_SECONDS,
+            stream      = True,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content or ""
+            if delta:
+                accumulated += delta
+                yield delta
+    except Exception as e:
+        error_msg = f"System Fault: {str(e)}"
+        result.update({"error": error_msg, "refined": error_msg,
+                       "audit": {"score": 0, "critique": str(e)[:80]}, "corrected": False})
+        yield error_msg
+        return
+
+    refined, audit = _parse_output(accumulated)
+    refined = refined or accumulated
+    passed, reason = _validate_structure(refined, target)
+
+    if not passed:
+        retry_prompt = (
+            f"{final_system_prompt}\n\n[ CORRECTION_REQUIRED ]\n"
+            + CIPHER_RETRY_INJECTION.format(critique=reason)
+        )
+        corrected_refined, corrected_audit, correction_error = _call_cipher(retry_prompt)
+        if corrected_refined and not correction_error:
+            result.update({"refined": corrected_refined, "audit": corrected_audit or audit or {},
+                           "error": None, "corrected": True})
+            final_audit = corrected_audit or {}
+            _store_pattern_if_worthy(target, framework, final_audit.get("score", 0),
+                                     corrected_refined, final_audit.get("critique", ""))
+        else:
+            if audit:
+                audit["alignment"] = 0
+                audit["score"]     = max(0, audit.get("score", 0) - 40)
+                audit["critique"]  = f"FORMAT ERROR: {reason}"
+            result.update({"refined": refined, "audit": audit or {"score": 0, "critique": f"FORMAT ERROR: {reason}"},
+                           "error": None, "corrected": False})
+            _store_pattern_if_worthy(target, framework, result["audit"].get("score", 0),
+                                     refined, result["audit"].get("critique", ""))
+    else:
+        result.update({"refined": refined, "audit": audit or {"score": 0, "critique": "Audit parse failed."},
+                       "error": None, "corrected": False})
+        final_score    = result["audit"].get("score", 0)
+        final_critique = result["audit"].get("critique", "")
+        
+        _store_pattern_if_worthy(target, framework, final_score, refined, final_critique)
+        
+        # Uses the clean intent variable directly instead of parsing the payload
+        intent_snippet = intent[:300].strip() if intent else master_payload.split("[MISSION_PAYLOAD]")[-1][:300].strip()
+        _run_meta_audit_async(intent_snippet, target, refined, final_score, final_critique)
 
     final_system_prompt = f"{master_payload}\n\n{CIPHER_OUTPUT_CONTRACT}"
     accumulated = ""
