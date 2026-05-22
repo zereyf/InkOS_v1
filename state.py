@@ -1,17 +1,15 @@
 """
 state.py — Hardened Session Contract
 ====================================
-v22.0: Phase 1 + Phase 2 combined.
+v23.0: Intelligence Layer Upgrade.
 
-  Phase 1:
-    - ADDED K.PROMPT_COUNT, K.BOOT_TIME (profile overlay crash fix)
-    - CONFIRMED K.AUTO_TARGET, K.AUTO_REASON in _DEFAULTS
+  Added:
+    - K.CIPHER_PATTERNS  — high-score prompt patterns stored per target
+    - K.CIPHER_FAILURES  — failed refinements stored for analysis
+    - K.META_INSIGHTS    — meta-auditor evolution recommendations
+    - K.LAST_META        — last meta-audit result
 
-  Phase 2 (SEC-4):
-    - get_global_memory() is now backed by a threading.Lock
-    - update_global_memory(key, value) helper added for all writes
-    - read_global_memory(key) helper for consistent snapshots
-    - Direct dict reads still work for backward compat
+  All existing keys and logic preserved.
 """
 
 import threading
@@ -47,9 +45,15 @@ class K:
     HIKMAH_STYLE     = "sb_hikmah_style"
     SHOW_PROFILE     = "show_profile"
 
-    # Profile & Session telemetry (Phase 1 addition)
+    # Profile & Session telemetry
     PROMPT_COUNT    = "prompt_count"
     BOOT_TIME       = "boot_time"
+
+    # ── INTELLIGENCE LAYER (v23.0) ────────────────────────────────────────────
+    CIPHER_PATTERNS = "cipher_patterns"
+    CIPHER_FAILURES = "cipher_failures"
+    META_INSIGHTS   = "meta_insights"
+    LAST_META       = "last_meta_audit"
 
 
 _DEFAULTS = {
@@ -75,23 +79,20 @@ _DEFAULTS = {
     K.SHOW_PROFILE:    False,
     K.PROMPT_COUNT:    0,
     K.BOOT_TIME:       None,
+    K.CIPHER_PATTERNS: [],
+    K.CIPHER_FAILURES: [],
+    K.META_INSIGHTS:   [],
+    K.LAST_META:       {},
 }
 
 
-# ── SEC-4: Thread-safe global memory ─────────────────────────────────────────
-
 @st.cache_resource
 def _gmem_lock() -> threading.Lock:
-    """Single Lock shared across all Streamlit worker threads."""
     return threading.Lock()
 
 
 @st.cache_resource
 def get_global_memory() -> dict:
-    """
-    Shared mutable state dict — same reference for all threads.
-    Read directly; write only via update_global_memory().
-    """
     return {
         "broadcast":        None,
         "maintenance_mode": False,
@@ -99,40 +100,35 @@ def get_global_memory() -> dict:
 
 
 def update_global_memory(key: str, value) -> None:
-    """Thread-safe write. Use this for all mutations."""
     with _gmem_lock():
         get_global_memory()[key] = value
 
 
 def read_global_memory(key: str, default=None):
-    """Thread-safe snapshot read."""
     with _gmem_lock():
         return get_global_memory().get(key, default)
 
 
-# ── Session state ─────────────────────────────────────────────────────────────
-
 def init_session_state() -> None:
-    """Safe against Streamlit hot-reloads."""
     for key, default in _DEFAULTS.items():
         if key not in st.session_state:
             st.session_state[key] = deepcopy(default)
-
     if st.session_state.get(K.BOOT_TIME) is None:
         st.session_state[K.BOOT_TIME] = datetime.now()
 
 
 def reset_session() -> None:
-    """Wipes transient history, preserves latch identity and DNA."""
     preserved = {
-        K.USER_HASH:      st.session_state.get(K.USER_HASH),
-        K.IS_ADMIN:       st.session_state.get(K.IS_ADMIN),
-        K.INK_DNA:        st.session_state.get(K.INK_DNA),
-        K.INTEL_DNA:      st.session_state.get(K.INTEL_DNA),
-        K.HIKMAH_DNA:     st.session_state.get(K.HIKMAH_DNA),
-        K.PERSONA_LIST:   st.session_state.get(K.PERSONA_LIST),
-        K.ACTIVE_PERSONA: st.session_state.get(K.ACTIVE_PERSONA),
-        K.BOOT_TIME:      st.session_state.get(K.BOOT_TIME),
+        K.USER_HASH:       st.session_state.get(K.USER_HASH),
+        K.IS_ADMIN:        st.session_state.get(K.IS_ADMIN),
+        K.INK_DNA:         st.session_state.get(K.INK_DNA),
+        K.INTEL_DNA:       st.session_state.get(K.INTEL_DNA),
+        K.HIKMAH_DNA:      st.session_state.get(K.HIKMAH_DNA),
+        K.PERSONA_LIST:    st.session_state.get(K.PERSONA_LIST),
+        K.ACTIVE_PERSONA:  st.session_state.get(K.ACTIVE_PERSONA),
+        K.BOOT_TIME:       st.session_state.get(K.BOOT_TIME),
+        K.CIPHER_PATTERNS: st.session_state.get(K.CIPHER_PATTERNS, []),
+        K.META_INSIGHTS:   st.session_state.get(K.META_INSIGHTS, []),
     }
     st.session_state.clear()
     init_session_state()
@@ -151,3 +147,57 @@ def get_remaining_calls(window: int = 60, max_calls: int = 10) -> int:
         return max(0, max_calls - len(st.session_state[K.TIMESTAMPS]))
     except Exception:
         return 0
+
+
+def store_cipher_pattern(target: str, framework: str, score: int, key_instruction: str) -> None:
+    try:
+        patterns = st.session_state.get(K.CIPHER_PATTERNS, [])
+        patterns.append({
+            "target":          target,
+            "framework":       framework,
+            "score":           score,
+            "key_instruction": key_instruction[:500],
+            "timestamp":       datetime.now(timezone.utc).isoformat(),
+        })
+        patterns = sorted(patterns, key=lambda x: x["score"], reverse=True)[:20]
+        st.session_state[K.CIPHER_PATTERNS] = patterns
+    except Exception:
+        pass
+
+
+def store_cipher_failure(target: str, critique: str, score: int) -> None:
+    try:
+        failures = st.session_state.get(K.CIPHER_FAILURES, [])
+        failures.append({
+            "target":    target,
+            "critique":  critique[:300],
+            "score":     score,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        st.session_state[K.CIPHER_FAILURES] = failures[-10:]
+    except Exception:
+        pass
+
+
+def store_meta_insight(insight: dict) -> None:
+    try:
+        insights = st.session_state.get(K.META_INSIGHTS, [])
+        insights.append({
+            **insight,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        st.session_state[K.META_INSIGHTS] = insights[-20:]
+        st.session_state[K.LAST_META] = insight
+    except Exception:
+        pass
+
+
+def get_best_pattern_for_target(target: str) -> dict | None:
+    try:
+        patterns = st.session_state.get(K.CIPHER_PATTERNS, [])
+        relevant = [p for p in patterns if p.get("target") == target]
+        if not relevant:
+            return None
+        return max(relevant, key=lambda x: x["score"])
+    except Exception:
+        return None
