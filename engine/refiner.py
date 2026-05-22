@@ -245,7 +245,7 @@ def _call_cipher(system_prompt: str) -> Tuple[Optional[str], Optional[dict], Opt
 
 def stream_refinement(
     master_payload:   str,
-    intent:           str,          # <--- Added parameter
+    intent:           str,
     target:           str,
     framework:        str,
     lang:             str,
@@ -253,8 +253,7 @@ def stream_refinement(
     hikmah_style:     str  = "None",
     skip_security:    bool = False,
     result:           dict = None,
-) -> Generator[str, None, None]:
-
+):
     if result is None:
         result = {}
 
@@ -332,8 +331,9 @@ def stream_refinement(
                        "error": None, "corrected": False})
         final_score    = result["audit"].get("score", 0)
         final_critique = result["audit"].get("critique", "")
-        
         _store_pattern_if_worthy(target, framework, final_score, refined, final_critique)
+        intent_snippet = intent[:300].strip() if intent else master_payload.split("[MISSION_PAYLOAD]")[-1][:300].strip()
+        _run_meta_audit_async(intent_snippet, target, refined, final_score, final_critique)
         
         # Uses the clean intent variable directly instead of parsing the payload
         intent_snippet = intent[:300].strip() if intent else master_payload.split("[MISSION_PAYLOAD]")[-1][:300].strip()
