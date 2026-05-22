@@ -205,26 +205,16 @@ def render_splash_screen() -> None:
 
     is_login = st.session_state["auth_mode"] == "login"
 
-    # Logo
+    # Logo & Identity
     st.markdown("""
         <div class="splash-logo-container">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
-                 style="width: 65px; height: 65px; fill: #4299E1;">
-                <path d="M539.3 64.1C549.2 63.3 558.9 67.1 565.9 74.1C572.9 81.1 576.7 90.8
-                575.9 100.7C571.9 150 558.5 226.9 529.6 300.4C527.8 304.9 524.1 308.3 519.4
-                309.7L438.5 334C434.6 335.2 432 338.7 432 342.8C432 347.9 436.1 352 441.2
-                352L479.8 352C491.8 352 499.5 364.8 493.3 375.1C489.3 381.8 485 388.3 480.6
-                394.7C478.6 397.6 475.6 399.7 472.2 400.8L374.5 430C370.6 431.2 368 434.7
-                368 438.8C368 443.9 372.1 448 377.2 448L393.2 448C407.8 448 414.2 465.4 402
-                473.4C334 518.4 264.3 516.7 219.6 504.7C206.9 501.3 195.6 494.8 185.2
-                486.8L112 560C103.2 568.8 88.8 568.8 80 560C71.2 551.2 71.2 536.8 80
-                528L160 448L160.5 448.5C161.2 447.2 162.1 446 163.2 444.9L320 288C328.8
-                279.2 328.8 264.8 320 256C311.2 247.2 296.8 247.2 288 256L153.7 390.2C144.8
-                399.1 129.7 394.6 128.7 382C124.4 328.8 138 258.9 201.3 195.6C292.4 104.5
-                455.5 70.9 539.2 64.1z"/>
+            <svg viewBox="0 0 100 100" style="width: 45px; height: 45px; fill: none; stroke: #C9A84C; stroke-width: 4px; margin-bottom: 15px;">
+                <polygon points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5" />
+                <circle cx="50" cy="50" r="10" fill="#C9A84C" />
+                <line x1="50" y1="5" x2="50" y2="95" stroke-width="2" stroke-dasharray="4" opacity="0.3"/>
             </svg>
             <div class="splash-logo-main">AmeerInk</div>
-            <div class="splash-logo-sub">I N K O S</div>
+            <div class="splash-logo-sub">حبر وفكرة</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -244,29 +234,30 @@ def render_splash_screen() -> None:
             st.rerun()
         return
 
-    with st.container(border=True):
+  with st.container(border=True):
         if is_login:
-            st.markdown('<div class="auth-title">Welcome back</div>', unsafe_allow_html=True)
-            st.markdown('<div class="auth-subtitle">Please login to your InkOS account</div>',
+            st.markdown('<div class="auth-title">SYSTEM_UPLINK</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-subtitle">Authenticate to access the InkOS intelligence vault</div>',
                         unsafe_allow_html=True)
         else:
-            st.markdown('<div class="auth-title">Create an Account</div>', unsafe_allow_html=True)
-            st.markdown('<div class="auth-subtitle">Register to secure your InkOS vault</div>',
+            st.markdown('<div class="auth-title">INITIALIZE_VAULT</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-subtitle">Register new administrator credentials</div>',
                         unsafe_allow_html=True)
 
         with st.form("auth_form", border=False):
-            uid = st.text_input("Username / Email",
-                                placeholder="Enter your username or email")
-            pin = st.text_input("Password", type="password",
-                                placeholder="Enter your password")
+            # Labels define the field, placeholders show the expected format
+            uid = st.text_input("System ID",
+                                placeholder="Guest_123")
+            pin = st.text_input("Security Passcode", type="password",
+                                placeholder="••••••••")
 
             if is_login:
-                st.checkbox("Remember me", value=True)
+                st.checkbox("Maintain active session", value=True)
             else:
-                pin_confirm = st.text_input("Confirm Password", type="password",
-                                            placeholder="Re-enter your password")
+                pin_confirm = st.text_input("Confirm Passcode", type="password",
+                                            placeholder="••••••••")
 
-            btn_label = "Login" if is_login else "Sign Up"
+            btn_label = "SECURE LOGIN" if is_login else "INITIALIZE"
             submit    = st.form_submit_button(btn_label, type="primary",
                                               use_container_width=True)
 
@@ -281,7 +272,7 @@ def render_splash_screen() -> None:
 
                     if is_login:
                         if available:
-                            st.error("Account not found. Please Sign Up.")
+                            st.error("Account not found. Please Register.")
                         else:
                             with st.spinner("Authenticating..."):
                                 success, err = authenticate_terminal(
@@ -295,7 +286,7 @@ def render_splash_screen() -> None:
                                 st.error(err or "Authentication failed.")
                     else:
                         if not available:
-                            st.error("Username already exists. Please Login.")
+                            st.error("ID Or Username already exists. Please Login.")
                         elif pin_clean != (pin_confirm or "").strip():
                             st.error("Passwords do not match.")
                         else:
@@ -310,15 +301,21 @@ def render_splash_screen() -> None:
                                 st.error(f"Registration failed: {err}")
 
     if is_login:
-        if st.button("Don't have an account? Sign Up",
+        if st.button("[ CREATE NEW UPLINK ]",
                      type="secondary", use_container_width=True):
             st.session_state["auth_mode"] = "signup"
             st.rerun()
     else:
-        if st.button("Already have an account? Login",
+        if st.button("[ RETURN TO LOGIN ]",
                      type="secondary", use_container_width=True):
             st.session_state["auth_mode"] = "login"
             st.rerun()
+
+    st.markdown("""
+        <div class="security-footer">
+            ❖ CONNECTION SECURED BY ENTERPRISE ENCRYPTION
+        </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("""
         <div class="security-footer">
