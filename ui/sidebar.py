@@ -62,6 +62,11 @@ def render_sidebar_brand() -> None:
     <div class='brand-ar'>حبر وفكرة</div>
     """, unsafe_allow_html=True)
 
+# ── Command deck ──────────────────────────────────────────────────────────
+st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+from ui.components.ghost_bar import render_ghost_bar
+render_ghost_bar()
+
 
 def render_sidebar() -> SidebarConfig:
 
