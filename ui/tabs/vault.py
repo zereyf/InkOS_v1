@@ -46,17 +46,18 @@ def _render_vault_locked() -> None:
 
 # ── 🟢 DEEP REHYDRATION CALLBACK ──────────────────────────────────────────
 
+# NEW — fixed
 def _vault_rehydrate_callback(content: str, target: str, framework: str, aesthetic: str, title: str) -> None:
     """Teleports saved mission settings back into the primary UI state."""
-    st.session_state["ta_input_widget"] = content
-    st.session_state[K.LAST_RESULT] = content
+    st.session_state["workspace_text"] = content   # FIX: was "ta_input_widget"
+    st.session_state[K.LAST_RESULT] = None         # clear so output panel doesn't show vault content
+    st.session_state[K.LAST_AUDIT] = {}
     st.session_state["sb_target"] = target
     st.session_state["sb_framework"] = framework
     st.session_state["sb_aesthetic"] = aesthetic
-    
-    # Set the pending toast message
     st.session_state["rehydrate_msg"] = f"VAULT_REHYDRATION: {title[:20]}..."
     st.session_state["_archive_cache_dirty"] = True
+    st.session_state["active_tab"] = "WORKSPACE"   # navigate user to workspace
 
 # ── 🟢 MAIN RENDERER ──────────────────────────────────────────────────────────
 
