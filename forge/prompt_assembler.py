@@ -21,7 +21,6 @@ from config.prompts import (
     CIPHER_CONTRADICTION_GUARD,
     CIPHER_OUTPUT_CONTRACT,
 )
-from config import VISUAL_TARGETS
 from engine.islamic_layer import ISLAMIC_CONTEXT_LAYER
 from engine.cognitive_map import detect_arabic_pattern, get_full_cipher_block
 
