@@ -310,6 +310,24 @@ div.stButton > button:hover {
 .stat-value  { display: block; font-family: var(--font-m); font-size: 1rem; color: var(--text); line-height: 1; margin-bottom: 4px; }
 .stat-label  { display: block; font-family: var(--font-m); font-size: 8px; color: var(--steel); letter-spacing: 0.1em; text-transform: uppercase; }
 
+/* ── SIDEBAR INTEL CARD ────────────────────────────────────────────────── */
+.intel-card {
+    background: rgba(0,0,0,0.2); 
+    border: var(--border-subtle);
+    border-top: 2px solid var(--gold-dim);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    padding: 12px 14px; 
+    margin-top: 10px;
+}
+.intel-title { 
+    font-family: var(--font-m); font-size: 9px; color: var(--text-muted); 
+    letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 10px; 
+    border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 6px; 
+}
+.intel-row   { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.intel-key   { font-family: var(--font-m); font-size: 9px; color: var(--steel); letter-spacing: 0.1em; }
+.intel-val   { font-family: var(--font-m); font-size: 10px; color: var(--text); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ── IDENTITY CARD ─────────────────────────────────────────────────────── */
 .identity-card {
     display: flex; align-items: center; gap: 12px;
