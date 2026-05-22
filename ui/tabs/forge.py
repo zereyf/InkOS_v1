@@ -166,7 +166,7 @@ def render_forge() -> None:
             st.session_state[K.INTEL_DNA] = d_intel
             st.session_state[K.HIKMAH_DNA] = d_hikmah
             
-            from vault.supabase_client import supabase, 
+            from vault.supabase_client import supabase 
 if supabase is None:
     st.warning("Vault offline — DNA saved to session only.")
 else:
