@@ -270,8 +270,8 @@ def _audit_score_component(audit: dict) -> None:
             border-radius:4px;margin-bottom:14px;flex-wrap:wrap;">
     <div style="display:flex;flex-direction:column;align-items:center;
                 padding-right:16px;border-right:1px solid rgba(255,255,255,0.06);">
-        <div style="font-family:'Cinzel',Georgia,serif;font-size:1.4rem;
-                    line-height:1;color:{score_color};">{score}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:1.6rem;font-weight:600;
+            line-height:1;color:{score_color};">{score}</div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;
                     color:{score_color};letter-spacing:0.15em;margin-top:2px;">
             {score_label}
