@@ -166,16 +166,13 @@ def render_forge() -> None:
             st.session_state[K.INTEL_DNA] = d_intel
             st.session_state[K.HIKMAH_DNA] = d_hikmah
             
-            from vault.supabase_client import supabase, SUPABASE_MISSING
-if SUPABASE_MISSING or supabase is None:
-    st.warning("Vault offline — DNA saved to session only.")
-else:
-    try:
-        supabase.table("users").update({
-            "ink_dna": d_ink,
-            "intel_dna": d_intel,
-            "hikmah_dna": d_hikmah
-        }).eq("id", user_hash).execute()
-        st.toast("DNA Locked.")
-    except Exception as e:
-        st.error(f"Persistence Fault: {e}")
+            from vault.supabase_client import supabase
+try:
+    supabase.table("users").update({
+        "ink_dna": d_ink,
+        "intel_dna": d_intel,
+        "hikmah_dna": d_hikmah
+    }).eq("id", user_hash).execute()
+    st.toast("DNA Locked.")
+except Exception as e:
+    st.error(f"Persistence Fault: {e}")
