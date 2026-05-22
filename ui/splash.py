@@ -19,15 +19,18 @@ from vault.supabase_client import SUPABASE_MISSING
 
 _SPLASH_CSS = """
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
 html, body, .stApp {
-    background-color: #1A202C !important;
-    overflow: hidden !important;
+    background-color: #050505 !important; /* Deep obsidian void */
+    background-image: radial-gradient(circle at 50% 0%, rgba(201, 168, 76, 0.05) 0%, transparent 50%);
+    overflow: hidden !important; /* Enforce stable, non-scrollable view */
 }
 header[data-testid="stHeader"] { display: none !important; }
 
 .main .block-container {
-    max-width: 420px !important;
-    padding: 0rem 1rem !important;
+    max-width: 440px !important;
+    padding: 0rem 2rem !important;
     margin: 0 auto !important;
     display: flex !important;
     flex-direction: column !important;
@@ -35,107 +38,143 @@ header[data-testid="stHeader"] { display: none !important; }
     min-height: 100vh !important;
 }
 
+/* Language Toggle - Minimalist */
 .lang-toggle {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 24px;
+    right: 24px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 12px;
-    color: #A8A095;
-    background: rgba(255, 255, 255, 0.03);
-    padding: 6px 14px;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    gap: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #5D6D7E;
     z-index: 99999;
 }
 .lang-toggle span { cursor: pointer; transition: color 0.2s; }
-.lang-toggle span:hover { color: #FFFFFF; }
-.lang-toggle .active { color: #4299E1; font-weight: 600; }
+.lang-toggle span:hover { color: #C9A84C; }
+.lang-toggle .active { color: #C9A84C; font-weight: 600; }
 
+/* Logo & Branding */
 .splash-logo-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin-bottom: 30px;
+    margin-bottom: 40px;
 }
 .splash-logo-main {
-    font-family: 'Playfair Display', serif;
-    font-size: 38px;
-    font-weight: 700;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
     color: #FFFFFF;
-    line-height: 1;
+    text-transform: uppercase;
     margin-top: 15px;
 }
 .splash-logo-sub {
-    font-family: 'Montserrat', sans-serif;
-    font-size: 12px;
-    color: #7A7A7A;
-    letter-spacing: 0.5em;
-    margin-top: 5px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 16px;
+    color: #C9A84C; /* Gold accent */
+    margin-top: 8px;
+    opacity: 0.9;
 }
 
+/* Auth Headers */
 .auth-title {
-    font-family: 'Montserrat', sans-serif;
-    font-size: 22px;
-    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 16px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     color: #FFFFFF;
     text-align: center;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
 }
 .auth-subtitle {
-    font-family: 'Montserrat', sans-serif;
-    font-size: 13px;
-    color: #7A7A7A;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: #5D6D7E;
     text-align: center;
-    margin-bottom: 24px;
+    letter-spacing: 0.05em;
+    margin-bottom: 30px;
 }
 
+/* Terminal-Style Inputs */
 .stTextInput label {
-    font-family: 'Montserrat', sans-serif !important;
-    font-size: 13px !important;
-    color: #F8F9FA !important;
-    font-weight: 500 !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 10px !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    color: #7C9EBF !important;
 }
-
-[data-testid="stCheckbox"] {
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-}
-[data-testid="stCheckbox"] label {
+.stTextInput > div > div > input {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #FFFFFF !important;
+    font-family: 'IBM Plex Mono', monospace !important;
     font-size: 14px !important;
-    color: #F8F9FA !important;
-    font-family: 'Montserrat', sans-serif !important;
+    border-radius: 4px !important;
+}
+.stTextInput > div > div > input:focus {
+    border-color: #C9A84C !important;
+    box-shadow: 0 0 8px rgba(201, 168, 76, 0.2) !important;
 }
 
+/* Checkbox */
+[data-testid="stCheckbox"] label {
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 11px !important;
+    color: #5D6D7E !important;
+}
+
+/* Primary CTA Button (Centered, Horizontal, Larger) */
+button[kind="primary"] {
+    background: #C9A84C !important;
+    color: #000000 !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.15em !important;
+    text-transform: uppercase !important;
+    border-radius: 2px !important;
+    padding: 12px 24px !important;
+    width: 100% !important;
+    border: none !important;
+    margin-top: 20px !important;
+    transition: all 0.3s ease !important;
+}
+button[kind="primary"]:hover {
+    background: #E2D5BC !important;
+    box-shadow: 0 0 15px rgba(201, 168, 76, 0.4) !important;
+}
+
+/* Secondary Toggle Button */
 button[kind="secondary"] {
     background: transparent !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: #FFFFFF !important;
-    font-family: 'Montserrat', sans-serif !important;
-    font-weight: 500 !important;
-    border-radius: 8px !important;
-    margin-top: 10px !important;
+    border: 1px dashed rgba(255, 255, 255, 0.15) !important;
+    color: #7C9EBF !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 10px !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    border-radius: 2px !important;
+    margin-top: 15px !important;
 }
 button[kind="secondary"]:hover {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(124, 158, 191, 0.5) !important;
+    color: #FFFFFF !important;
 }
 
 .security-footer {
     text-align: center;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 11px;
-    color: #7A7A7A;
-    margin-top: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    margin-top: 40px;
 }
 </style>
 """
