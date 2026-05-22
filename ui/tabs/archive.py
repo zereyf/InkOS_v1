@@ -19,14 +19,17 @@ def _escape(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+# NEW — fixed
 def _handle_rehydrate(target, framework, aesthetic, mission_id, output_text, input_text):
+    st.session_state["workspace_text"] = input_text   # FIX: was "ta_input_widget"
     st.session_state["sb_target"] = target
     st.session_state["sb_framework"] = framework
     st.session_state["sb_aesthetic"] = aesthetic
     st.session_state["rehydrate_msg"] = f"SYSTEM REHYDRATED: {mission_id}"
-    st.session_state["ta_input_widget"] = input_text
-    st.session_state[K.LAST_RESULT] = output_text
+    st.session_state[K.LAST_RESULT] = None            # clear output panel
+    st.session_state[K.LAST_AUDIT] = {}
     st.session_state[K.LAST_INPUT] = input_text
+    st.session_state["active_tab"] = "WORKSPACE"      # navigate to workspace
 
 
 def render_archive() -> None:
