@@ -70,5 +70,5 @@ def render_about():
     if is_guest:
         st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
         if st.button("[ INITIATE TERMINAL LATCH ]", use_container_width=True, key="about_tab_latch_btn"):
-    st.session_state["active_tab"] = "WORKSPACE"
-    st.rerun()
+            st.session_state["active_tab"] = "WORKSPACE"
+            st.rerun()
