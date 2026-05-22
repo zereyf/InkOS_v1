@@ -493,6 +493,7 @@ def _run_stream(
     with st.spinner(""):
         for _ in stream_refinement(
             master_payload   = payload,
+            intent           = cleaned,
             target           = resolved_target,
             framework        = cfg.get("framework", "RACE"),
             lang             = cfg.get("source_lang", "English"),
