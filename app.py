@@ -32,6 +32,15 @@ st.set_page_config(
 
 init_session_state()
 
+# ── Startup validation ────────────────────────────────────────────────────────
+from config import validate_config
+_config_errors = validate_config()
+if _config_errors:
+    for _err in _config_errors:
+        st.error(f"[CONFIG ERROR] {_err}")
+    st.stop()
+
+
 # ── URL Rehydration ───────────────────────────────────────────────────────────
 if "sid" in st.query_params and st.session_state.get(K.USER_HASH) is None:
     sid = st.query_params["sid"]
@@ -58,6 +67,7 @@ from ui.tabs.security_log import render_security_log
 from ui.tabs.cognitive_map import render_cognitive_map
 from ui.tabs.guide import render_guide
 from ui.tabs.about import render_about
+from ui.components.profile_overlay import render_profile_overlay
 
 if API_KEY_MISSING:
     st.error("[!] SYSTEM ERROR: GROQ_API_KEY not found.")
@@ -161,6 +171,9 @@ with st.sidebar:
     st.markdown("</div>", unsafe_allow_html=True)
     cfg = render_sidebar()
 
+
+# ── Profile overlay (rendered over current tab when /profile is active) ──────
+render_profile_overlay()
 
 # ── Tab routing ───────────────────────────────────────────────────────────────
 
