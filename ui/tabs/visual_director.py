@@ -369,26 +369,19 @@ def render_visual_director() -> None:
         t0 = time.time()
         result: dict = {}
 
-        st.markdown(
-            '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;'
-            'color:rgba(44,53,69,1);letter-spacing:0.2em;text-transform:uppercase;'
-            'margin:12px 0 8px;">❖ Compiling...</div>',
-            unsafe_allow_html=True,
-        )
-
-        with st.container():
-            st.write_stream(
-                stream_refinement(
-                    master_payload   = payload,
-                    target           = target,
-                    framework        = "Visual Director",
-                    lang             = "English",
-                    aesthetic_choice = cfg["aesthetic_choice"],
-                    hikmah_style     = "None",
-                    skip_security    = True,
-                    result           = result,
-                )
-            )
+        # Consume stream silently — user never sees raw tokens
+        with st.spinner("❖ Compiling..."):
+            for _ in stream_refinement(
+                master_payload   = payload,
+                target           = target,
+                framework        = "Visual Director",
+                lang             = "English",
+                aesthetic_choice = cfg["aesthetic_choice"],
+                hikmah_style     = "None",
+                skip_security    = True,
+                result           = result,
+            ):
+                pass
 
         latency_ms = int((time.time() - t0) * 1000)
         raw        = result.get("refined", "")
