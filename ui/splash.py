@@ -234,7 +234,7 @@ def render_splash_screen() -> None:
             st.rerun()
         return
 
-  with st.container(border=True):
+    with st.container(border=True):
         if is_login:
             st.markdown('<div class="auth-title">SYSTEM_UPLINK</div>', unsafe_allow_html=True)
             st.markdown('<div class="auth-subtitle">Authenticate to access the InkOS intelligence vault</div>',
@@ -314,11 +314,5 @@ def render_splash_screen() -> None:
     st.markdown("""
         <div class="security-footer">
             ❖ CONNECTION SECURED BY ENTERPRISE ENCRYPTION
-        </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-        <div class="security-footer">
-            🛡️ Your data is protected by enterprise-grade security
         </div>
     """, unsafe_allow_html=True)
