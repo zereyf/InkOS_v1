@@ -47,6 +47,7 @@ from engine.refiner import stream_refinement
 from forge.intelligence import resolve_target_model
 from forge.prompt_assembler import assemble_master_payload, make_dna_context
 from security.sanitizer import sanitize_input
+from security.rate_limiter import check_rate_limit
 from state import K
 from vault.vault_engine import save_prompt
 
@@ -262,20 +263,6 @@ def _audit_score_component(audit: dict) -> None:
     align_pct = int((alignment  / 40) * 100)
     effic_pct = int((efficiency / 20) * 100)
 
-    def _bar(pct: int, color: str, val: int, ceiling: int) -> str:
-        return (
-            f'<div>'
-            f'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;'
-            f'color:rgba(93,109,126,1);letter-spacing:0.1em;text-transform:uppercase;'
-            f'margin-bottom:2px;">{["Precision","Alignment","Efficiency"][[40,40,20].index(ceiling)]}</div>'
-            f'<div style="height:3px;border-radius:1px;background:rgba(255,255,255,0.05);'
-            f'width:80px;overflow:hidden;">'
-            f'<div style="height:100%;width:{pct}%;border-radius:1px;background:{color};"></div>'
-            f'</div>'
-            f'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;'
-            f'color:{color};margin-top:2px;">{val}/{ceiling}</div>'
-            f'</div>'
-        )
 
     audit_html = f"""
 <div style="display:flex;align-items:center;gap:16px;padding:10px 14px;
@@ -451,6 +438,14 @@ def _run_stream(
         )
         return
 
+    if not check_rate_limit():
+        remaining_secs = 60
+        st.warning(
+            f"Rate limit reached — maximum 10 refinements per minute. "
+            f"Please wait {remaining_secs}s before trying again."
+        )
+        return
+
     control_block = "\n".join([
         "[REFINEMENT CONTROLS]",
         _tone_instruction(tone),
@@ -488,9 +483,14 @@ def _run_stream(
     t0     = time.time()
     result = {}
 
-    with st.spinner("❖ Refining..."):
-
-        # Consume stream silently without rendering raw chunks
+    # ── Silent accumulation — user never sees raw tokens ──────────────────────
+    # stream_refinement() is a generator. We consume it silently here — tokens
+    # accumulate in the result dict but are never rendered to the page.
+    # After all tokens are consumed, we commit session state and call st.rerun().
+    # The rerun wipes the spinner and renders the clean output panel from state.
+    # This is the only approach that guarantees the user sees ONLY the final
+    # clean prompt — no XML tags, no JSON audit block, no partial output.
+    with st.spinner(""):
         for _ in stream_refinement(
             master_payload   = payload,
             target           = resolved_target,
@@ -501,7 +501,7 @@ def _run_stream(
             skip_security    = True,
             result           = result,
         ):
-            pass
+            pass   # tokens accumulate in result dict; not rendered
 
     latency_ms  = int((time.time() - t0) * 1000)
     raw_refined = result.get("refined", "")
@@ -517,6 +517,7 @@ def _run_stream(
     word_count = len(clean.split())
     density    = round(word_count / max(len(cleaned.split()), 1), 2)
 
+    # Commit all session state BEFORE rerun
     st.session_state[K.LAST_RESULT]  = clean
     st.session_state[K.LAST_AUDIT]   = audit or {}
     st.session_state[K.LAST_INPUT]   = cleaned
@@ -541,11 +542,14 @@ def _run_stream(
         "density":    str(density),
         "word_count": str(word_count),
         "tone":       _tone_label(tone),
-        "icon":       "❖",
+        "icon":       "\u2756",
         "pattern":    "RAW",
         "palette":    [],
     })
     st.session_state[K.HISTORY] = history[-50:]
+
+    # Rerun: wipes spinner, renders clean output panel from session state
+    st.rerun()
 
 
 # ── RENDERER ─────────────────────────────────────────────────────────────────
