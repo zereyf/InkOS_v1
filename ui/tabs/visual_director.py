@@ -373,6 +373,7 @@ def render_visual_director() -> None:
         with st.spinner("❖ Compiling..."):
             for _ in stream_refinement(
                 master_payload   = payload,
+                intent           = brief,
                 target           = target,
                 framework        = "Visual Director",
                 lang             = "English",
