@@ -18,26 +18,17 @@ def check_rate_limit(consume: int = 1) -> bool:
 
     Args:
         consume: Number of API call slots this operation consumes.
-                 Default 1 — VelvetCodex v7 uses single combined calls.
-                 Set to 2 if a future operation fires two separate requests.
+                 Default 1.
 
     Returns:
         True  — request is within limit, slots consumed.
         False — limit exceeded, no slots consumed.
-
-    WHY consume parameter:
-        Without it, the UI must know implementation details about how many
-        API calls each engine function makes. consume externalizes that
-        contract cleanly.
     """
-    # STRICT UTC ENFORCEMENT
-    now = datetime.now(timezone.utc)
+    now          = datetime.now(timezone.utc)
     window_start = now - timedelta(seconds=RATE_WINDOW_SECONDS)
 
-    # Safe array retrieval to prevent KeyErrors during hot-reloads
     current_timestamps = st.session_state.get(K.TIMESTAMPS, [])
-    
-    # Purge expired timestamps
+
     valid_timestamps = [
         t for t in current_timestamps
         if t > window_start
@@ -48,7 +39,6 @@ def check_rate_limit(consume: int = 1) -> bool:
     if current + consume > RATE_MAX_CALLS:
         return False
 
-    # Consume slots atomically
     for _ in range(consume):
         st.session_state[K.TIMESTAMPS].append(now)
 
