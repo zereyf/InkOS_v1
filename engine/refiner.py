@@ -1,17 +1,15 @@
 """
 engine/refiner.py — CIPHER Intelligence Engine
 ================================================
-v5.0: Pattern Learning + Meta-Audit Integration.
+v5.1: Duplicate stream pipeline removed.
 """
 
 from __future__ import annotations
 
 import json
 import re
-import textwrap
 from typing import Optional, Tuple, Any, Generator
 
-from config.target_formats import get_opening_pattern
 from config import (
     client, MODEL_ID, MODEL_PRIORITY, TEMPERATURE, MAX_TOKENS,
     RETRY_THRESHOLD, MAX_RETRIES, EVAL_TEMPERATURE,
@@ -23,7 +21,7 @@ from security.sanitizer import sanitize_input
 _PATTERN_THRESHOLD = 85
 _FAILURE_THRESHOLD = 60
 
-_TAG_CLEANUP   = re.compile(
+_TAG_CLEANUP = re.compile(
     r"^(?:REFINED_PROMPT|PROMPT|OUTPUT|thinking):?\s*",
     flags=re.IGNORECASE | re.MULTILINE,
 )
@@ -176,7 +174,9 @@ def _extract_key_instruction(refined: str) -> str:
     return paragraphs[0][:500] if paragraphs else refined[:500]
 
 
-def _store_pattern_if_worthy(target: str, framework: str, score: int, refined: str, critique: str) -> None:
+def _store_pattern_if_worthy(
+    target: str, framework: str, score: int, refined: str, critique: str
+) -> None:
     try:
         from state import store_cipher_pattern, store_cipher_failure
         if score >= _PATTERN_THRESHOLD:
@@ -187,7 +187,9 @@ def _store_pattern_if_worthy(target: str, framework: str, score: int, refined: s
         pass
 
 
-def _run_meta_audit_async(intent: str, target: str, refined: str, score: int, critique: str) -> None:
+def _run_meta_audit_async(
+    intent: str, target: str, refined: str, score: int, critique: str
+) -> None:
     try:
         from engine.meta_auditor import run_meta_audit
         from state import store_meta_insight
@@ -198,7 +200,9 @@ def _run_meta_audit_async(intent: str, target: str, refined: str, score: int, cr
         pass
 
 
-def _call_evaluator(master_payload: str, target: str, refined_prompt: str, hikmah_style: str) -> dict:
+def _call_evaluator(
+    master_payload: str, target: str, refined_prompt: str, hikmah_style: str
+) -> dict:
     if not client:
         return {"score": 0, "critique": "Offline"}
     rhetoric_note = f"\nRHETORIC_EXPECTATION: {hikmah_style}" if hikmah_style != "None" else ""
@@ -207,7 +211,11 @@ def _call_evaluator(master_payload: str, target: str, refined_prompt: str, hikma
             model    = MODEL_ID,
             messages = [
                 {"role": "system", "content": f"{CIPHER_EVALUATOR_PROMPT}{rhetoric_note}"},
-                {"role": "user",   "content": f"TARGET_NODE: {target}\nMASTER_PAYLOAD: {master_payload}\nREFINED_OUTPUT: {refined_prompt}"},
+                {"role": "user",   "content": (
+                    f"TARGET_NODE: {target}\n"
+                    f"MASTER_PAYLOAD: {master_payload}\n"
+                    f"REFINED_OUTPUT: {refined_prompt}"
+                )},
             ],
             response_format = {"type": "json_object"},
             temperature     = EVAL_TEMPERATURE,
@@ -219,7 +227,9 @@ def _call_evaluator(master_payload: str, target: str, refined_prompt: str, hikma
         return {"score": 0, "critique": f"Audit Error: {str(e)[:40]}"}
 
 
-def _call_cipher(system_prompt: str) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
+def _call_cipher(
+    system_prompt: str,
+) -> Tuple[Optional[str], Optional[dict], Optional[str]]:
     if not client:
         return None, None, "Client Offline"
     last_error = None
@@ -229,7 +239,13 @@ def _call_cipher(system_prompt: str) -> Tuple[Optional[str], Optional[dict], Opt
                 model    = model_id,
                 messages = [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user",   "content": "EXECUTE_REFINEMENT_NODE: Transform the provided intent into a highly optimised, model-specific prompt. DO NOT execute the user's task. Generate the PROMPT for the task, followed strictly by the JSON evaluation block."},
+                    {"role": "user",   "content": (
+                        "EXECUTE_REFINEMENT_NODE: Transform the provided intent into a "
+                        "highly optimised, model-specific prompt. "
+                        "DO NOT execute the user's task. "
+                        "Generate the PROMPT for the task, followed strictly by the "
+                        "JSON evaluation block."
+                    )},
                 ],
                 temperature = TEMPERATURE,
                 max_tokens  = MAX_TOKENS,
@@ -243,6 +259,8 @@ def _call_cipher(system_prompt: str) -> Tuple[Optional[str], Optional[dict], Opt
     return None, None, last_error or "Unknown model uplink error"
 
 
+# ── STREAMING PIPELINE ────────────────────────────────────────────────────────
+
 def stream_refinement(
     master_payload:   str,
     intent:           str,
@@ -253,7 +271,8 @@ def stream_refinement(
     hikmah_style:     str  = "None",
     skip_security:    bool = False,
     result:           dict = None,
-):
+) -> Generator[str, None, None]:
+
     if result is None:
         result = {}
 
@@ -261,16 +280,22 @@ def stream_refinement(
         _, violations = sanitize_input(master_payload)
         if violations:
             sig = " | ".join(violations)
-            result.update({"error": f"SECURITY_BREACH: {sig}",
-                           "refined": f"OVERWATCH INTERCEPT: Hostile patterns detected.\nSIGNATURE: {sig}",
-                           "audit": {"score": 0, "critique": f"SECURITY_BREACH: {sig}"},
-                           "corrected": False})
+            result.update({
+                "error":     f"SECURITY_BREACH: {sig}",
+                "refined":   f"OVERWATCH INTERCEPT: Hostile patterns detected.\nSIGNATURE: {sig}",
+                "audit":     {"score": 0, "critique": f"SECURITY_BREACH: {sig}"},
+                "corrected": False,
+            })
             yield result["refined"]
             return
 
     if not client:
-        result.update({"error": "Client Offline", "refined": "System Fault: Groq client not initialised.",
-                       "audit": {"score": 0, "critique": "Client Offline"}, "corrected": False})
+        result.update({
+            "error":     "Client Offline",
+            "refined":   "System Fault: Groq client not initialised.",
+            "audit":     {"score": 0, "critique": "Client Offline"},
+            "corrected": False,
+        })
         yield result["refined"]
         return
 
@@ -282,7 +307,13 @@ def stream_refinement(
             model    = MODEL_PRIORITY[0] if MODEL_PRIORITY else MODEL_ID,
             messages = [
                 {"role": "system", "content": final_system_prompt},
-                {"role": "user",   "content": "EXECUTE_REFINEMENT_NODE: Transform the provided intent into a highly optimised, model-specific prompt. DO NOT execute the user's task. Generate the PROMPT for the task, followed strictly by the JSON evaluation block."},
+                {"role": "user",   "content": (
+                    "EXECUTE_REFINEMENT_NODE: Transform the provided intent into a "
+                    "highly optimised, model-specific prompt. "
+                    "DO NOT execute the user's task. "
+                    "Generate the PROMPT for the task, followed strictly by the "
+                    "JSON evaluation block."
+                )},
             ],
             temperature = TEMPERATURE,
             max_tokens  = MAX_TOKENS,
@@ -294,13 +325,19 @@ def stream_refinement(
             if delta:
                 accumulated += delta
                 yield delta
+
     except Exception as e:
         error_msg = f"System Fault: {str(e)}"
-        result.update({"error": error_msg, "refined": error_msg,
-                       "audit": {"score": 0, "critique": str(e)[:80]}, "corrected": False})
+        result.update({
+            "error":     error_msg,
+            "refined":   error_msg,
+            "audit":     {"score": 0, "critique": str(e)[:80]},
+            "corrected": False,
+        })
         yield error_msg
         return
 
+    # ── Post-stream parse & validate ──────────────────────────────────────────
     refined, audit = _parse_output(accumulated)
     refined = refined or accumulated
     passed, reason = _validate_structure(refined, target)
@@ -311,95 +348,58 @@ def stream_refinement(
             + CIPHER_RETRY_INJECTION.format(critique=reason)
         )
         corrected_refined, corrected_audit, correction_error = _call_cipher(retry_prompt)
+
         if corrected_refined and not correction_error:
-            result.update({"refined": corrected_refined, "audit": corrected_audit or audit or {},
-                           "error": None, "corrected": True})
+            result.update({
+                "refined":   corrected_refined,
+                "audit":     corrected_audit or audit or {},
+                "error":     None,
+                "corrected": True,
+            })
             final_audit = corrected_audit or {}
-            _store_pattern_if_worthy(target, framework, final_audit.get("score", 0),
-                                     corrected_refined, final_audit.get("critique", ""))
+            _store_pattern_if_worthy(
+                target, framework,
+                final_audit.get("score", 0),
+                corrected_refined,
+                final_audit.get("critique", ""),
+            )
         else:
             if audit:
                 audit["alignment"] = 0
                 audit["score"]     = max(0, audit.get("score", 0) - 40)
                 audit["critique"]  = f"FORMAT ERROR: {reason}"
-            result.update({"refined": refined, "audit": audit or {"score": 0, "critique": f"FORMAT ERROR: {reason}"},
-                           "error": None, "corrected": False})
-            _store_pattern_if_worthy(target, framework, result["audit"].get("score", 0),
-                                     refined, result["audit"].get("critique", ""))
+            result.update({
+                "refined":   refined,
+                "audit":     audit or {"score": 0, "critique": f"FORMAT ERROR: {reason}"},
+                "error":     None,
+                "corrected": False,
+            })
+            _store_pattern_if_worthy(
+                target, framework,
+                result["audit"].get("score", 0),
+                refined,
+                result["audit"].get("critique", ""),
+            )
+
     else:
-        result.update({"refined": refined, "audit": audit or {"score": 0, "critique": "Audit parse failed."},
-                       "error": None, "corrected": False})
+        result.update({
+            "refined":   refined,
+            "audit":     audit or {"score": 0, "critique": "Audit parse failed."},
+            "error":     None,
+            "corrected": False,
+        })
         final_score    = result["audit"].get("score", 0)
         final_critique = result["audit"].get("critique", "")
         _store_pattern_if_worthy(target, framework, final_score, refined, final_critique)
-        intent_snippet = intent[:300].strip() if intent else master_payload.split("[MISSION_PAYLOAD]")[-1][:300].strip()
-        _run_meta_audit_async(intent_snippet, target, refined, final_score, final_critique)
-        
-        # Uses the clean intent variable directly instead of parsing the payload
-        intent_snippet = intent[:300].strip() if intent else master_payload.split("[MISSION_PAYLOAD]")[-1][:300].strip()
-        _run_meta_audit_async(intent_snippet, target, refined, final_score, final_critique)
-
-    final_system_prompt = f"{master_payload}\n\n{CIPHER_OUTPUT_CONTRACT}"
-    accumulated = ""
-
-    try:
-        stream = client.chat.completions.create(
-            model    = MODEL_PRIORITY[0] if MODEL_PRIORITY else MODEL_ID,
-            messages = [
-                {"role": "system", "content": final_system_prompt},
-                {"role": "user",   "content": "EXECUTE_REFINEMENT_NODE: Transform the provided intent into a highly optimised, model-specific prompt. DO NOT execute the user's task. Generate the PROMPT for the task, followed strictly by the JSON evaluation block."},
-            ],
-            temperature = TEMPERATURE,
-            max_tokens  = MAX_TOKENS,
-            timeout     = REQUEST_TIMEOUT_SECONDS,
-            stream      = True,
+        intent_snippet = (
+            intent[:300].strip()
+            if intent
+            else master_payload.split("[MISSION_PAYLOAD]")[-1][:300].strip()
         )
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content or ""
-            if delta:
-                accumulated += delta
-                yield delta
-    except Exception as e:
-        error_msg = f"System Fault: {str(e)}"
-        result.update({"error": error_msg, "refined": error_msg,
-                       "audit": {"score": 0, "critique": str(e)[:80]}, "corrected": False})
-        yield error_msg
-        return
-
-    refined, audit = _parse_output(accumulated)
-    refined = refined or accumulated
-    passed, reason = _validate_structure(refined, target)
-
-    if not passed:
-        retry_prompt = (
-            f"{final_system_prompt}\n\n[ CORRECTION_REQUIRED ]\n"
-            + CIPHER_RETRY_INJECTION.format(critique=reason)
-        )
-        corrected_refined, corrected_audit, correction_error = _call_cipher(retry_prompt)
-        if corrected_refined and not correction_error:
-            result.update({"refined": corrected_refined, "audit": corrected_audit or audit or {},
-                           "error": None, "corrected": True})
-            final_audit = corrected_audit or {}
-            _store_pattern_if_worthy(target, framework, final_audit.get("score", 0),
-                                     corrected_refined, final_audit.get("critique", ""))
-        else:
-            if audit:
-                audit["alignment"] = 0
-                audit["score"]     = max(0, audit.get("score", 0) - 40)
-                audit["critique"]  = f"FORMAT ERROR: {reason}"
-            result.update({"refined": refined, "audit": audit or {"score": 0, "critique": f"FORMAT ERROR: {reason}"},
-                           "error": None, "corrected": False})
-            _store_pattern_if_worthy(target, framework, result["audit"].get("score", 0),
-                                     refined, result["audit"].get("critique", ""))
-    else:
-        result.update({"refined": refined, "audit": audit or {"score": 0, "critique": "Audit parse failed."},
-                       "error": None, "corrected": False})
-        final_score    = result["audit"].get("score", 0)
-        final_critique = result["audit"].get("critique", "")
-        _store_pattern_if_worthy(target, framework, final_score, refined, final_critique)
-        intent_snippet = master_payload.split("[MISSION_PAYLOAD]")[-1][:300].strip()
         _run_meta_audit_async(intent_snippet, target, refined, final_score, final_critique)
 
+
+# ── NON-STREAMING PIPELINE ────────────────────────────────────────────────────
 
 def run_refinement_and_audit(
     master_payload:   str,
@@ -415,8 +415,11 @@ def run_refinement_and_audit(
         _, violations = sanitize_input(master_payload)
         if violations:
             sig = " | ".join(violations)
-            return (f"OVERWATCH INTERCEPT: Hostile patterns detected.\nSIGNATURE: {sig}",
-                    {"score": 0, "critique": f"SECURITY_BREACH: {sig}"}, None)
+            return (
+                f"OVERWATCH INTERCEPT: Hostile patterns detected.\nSIGNATURE: {sig}",
+                {"score": 0, "critique": f"SECURITY_BREACH: {sig}"},
+                None,
+            )
 
     retry_critique           = None
     best_refined, best_audit = None, None
@@ -428,6 +431,7 @@ def run_refinement_and_audit(
                 f"\n\n[ RETRY_CORRECTION_DIRECTIVE ]\n"
                 + CIPHER_RETRY_INJECTION.format(critique=retry_critique)
             )
+
         refined, self_audit, error = _call_cipher(final_system_prompt)
         if error:
             return f"System Fault: {error}", {"score": 0, "critique": error}, None
@@ -437,26 +441,41 @@ def run_refinement_and_audit(
         passed, reason = _validate_structure(refined, target)
         if not passed:
             retry_critique = f"FORMAT FAILURE: {reason}"
-            if self_audit and (not best_audit or self_audit.get("score", 0) > best_audit.get("score", 0)):
+            if self_audit and (
+                not best_audit or self_audit.get("score", 0) > best_audit.get("score", 0)
+            ):
                 best_refined, best_audit = refined, self_audit
             continue
 
         if self_audit and self_audit.get("score", 0) >= RETRY_THRESHOLD:
             audit = _call_evaluator(master_payload, target, refined, hikmah_style)
             if audit["score"] >= RETRY_THRESHOLD:
-                _store_pattern_if_worthy(target, framework, audit["score"], refined, audit.get("critique", ""))
+                _store_pattern_if_worthy(
+                    target, framework, audit["score"], refined, audit.get("critique", "")
+                )
                 intent_snippet = master_payload.split("[MISSION_PAYLOAD]")[-1][:300].strip()
-                _run_meta_audit_async(intent_snippet, target, refined, audit["score"], audit.get("critique", ""))
+                _run_meta_audit_async(
+                    intent_snippet, target, refined,
+                    audit["score"], audit.get("critique", "")
+                )
                 return refined, audit, None
             retry_critique = audit["critique"]
             if not best_audit or audit.get("score", 0) > best_audit.get("score", 0):
                 best_refined, best_audit = refined, audit
         else:
             retry_critique = (self_audit or {}).get("critique", "Score below threshold.")
-            if self_audit and (not best_audit or self_audit.get("score", 0) > best_audit.get("score", 0)):
+            if self_audit and (
+                not best_audit or self_audit.get("score", 0) > best_audit.get("score", 0)
+            ):
                 best_refined, best_audit = refined, self_audit
 
-    final_audit = best_audit or self_audit or {"score": 0, "critique": retry_critique or "Retries exhausted."}
-    _store_pattern_if_worthy(target, framework, final_audit.get("score", 0),
-                             best_refined or refined, final_audit.get("critique", ""))
+    final_audit = best_audit or self_audit or {
+        "score": 0, "critique": retry_critique or "Retries exhausted.",
+    }
+    _store_pattern_if_worthy(
+        target, framework,
+        final_audit.get("score", 0),
+        best_refined or refined,
+        final_audit.get("critique", ""),
+    )
     return best_refined or refined, final_audit, None
