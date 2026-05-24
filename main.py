@@ -4,8 +4,9 @@ from pydantic import BaseModel
 from typing import Optional
 
 from engine.refiner import run_refinement_and_audit
-from vault.vault_engine import authenticate_terminal, get_user_profile
-from security.token import create_access_token
+from vault.vault_engine import authenticate_terminal, get_user_profile, rehydrate_session
+from security.token import create_access_token, verify_token
+from forge.prompt_assembler import assemble_master_payload
 
 app = FastAPI(title="InkOS Intelligence API")
 
@@ -17,7 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Schemas ---
+# ── SCHEMAS ──
 class LoginRequest(BaseModel):
     user_hash: str
     pin: str
@@ -26,8 +27,8 @@ class LoginRequest(BaseModel):
 class RefinementRequest(BaseModel):
     intent: str
     target_model: str
-    framework: str
-    source_lang: str
+    framework: str = "Professional (RACE)"
+    source_lang: str = "English"
     aesthetic_choice: str = "Default"
     hikmah_style: str = "None"
     skip_security: bool = False
@@ -38,44 +39,56 @@ class RefinementResponse(BaseModel):
     audit: dict
     error: Optional[str] = None
 
-# --- Endpoints ---
+
+# ── ENDPOINTS ──
 @app.get("/health")
 def health_check():
     return {"status": "Uplink Active", "system": "InkOS Backend"}
 
 @app.post("/api/auth")
 def terminal_login(req: LoginRequest):
-    # Route directly into your custom PBKDF2 vault logic
     success, message = authenticate_terminal(req.user_hash, req.pin, is_new=req.is_new)
-    
     if not success:
         raise HTTPException(status_code=401, detail=message)
         
-    # If successful, pull their clearance level
     profile = get_user_profile(req.user_hash)
     is_admin = profile.get("is_admin", False)
-    
-    # Mint the keycard
     token = create_access_token(req.user_hash, is_admin)
     
-    return {
-        "status": "Authenticated", 
-        "token": token, 
-        "is_admin": is_admin,
-        "message": message
-    }
+    return {"status": "Authenticated", "token": token, "is_admin": is_admin, "message": message}
 
 @app.post("/api/refine", response_model=RefinementResponse)
 def refine_endpoint(req: RefinementRequest):
-    # Verify the keycard before spending any compute
-    from security.token import verify_token
+    # 1. Vault Check: Verify the Keycard
     user_data = verify_token(req.token)
-    
     if not user_data:
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid or expired uplink token.")
+    
+    user_hash = user_data.get("sub")
 
+    # 2. Context Rehydration: Fetch User DNA from Supabase
+    session_data = rehydrate_session(user_hash)
+    dna = session_data.get("dna", {})
+
+    # 3. Compile Master Payload (Arabic Cognitive Map + Persona Rules)
+    config = {
+        "target_model": req.target_model,
+        "hikmah_style": req.hikmah_style,
+        "islamic_mode": False # Maps to your old st.session_state["sb_islamic"]
+    }
+    
+    try:
+        master_payload = assemble_master_payload(
+            user_input=req.intent,
+            config=config,
+            dna=dna
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Assembler Fault: {str(e)}")
+
+    # 4. Intelligence Core: Fire payload to Groq/Llama-3
     refined, audit, error = run_refinement_and_audit(
-        master_payload=req.intent, 
+        master_payload=master_payload, 
         target=req.target_model,
         framework=req.framework,
         lang=req.source_lang,
