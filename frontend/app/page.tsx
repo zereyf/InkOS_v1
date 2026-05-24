@@ -300,10 +300,10 @@ export default function InkOS() {
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {archiveItems.map((item, idx) => {
-                // Smart fallback for database columns
-                const textToCopy = item.refined_prompt || item.prompt || item.content || item.output || item.result || "ERROR: Could not locate text.";
-                const displayIntent = item.intent || item.input || item.master_payload || "Unknown Intent";
-                const targetModel = item.target_model || item.target || "ChatGPT";
+               // Smart fallback mapped perfectly to the Supabase diagnostic
+                  const textToCopy = item.content || item.refined_prompt || "ERROR: Could not locate text.";
+                  const displayIntent = item.intent || item.title || "No original intent recorded.";
+                  const targetModel = item.target || item.target_model || "ChatGPT";
 
                 return (
                   <div key={idx} className="bg-black/40 border border-white/5 rounded-sm p-4 flex flex-col gap-3 hover:border-white/20 transition-colors">
