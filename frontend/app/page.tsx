@@ -40,15 +40,58 @@ export default function InkOS() {
   const [archiveItems, setArchiveItems] = useState<any[]>([]);
   const [isArchiveLoading, setIsArchiveLoading] = useState(false);
 
-  // --- PROFILE STATE (NEW) ---
+  // --- PROFILE STATE ---
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
-    alias: "Ameer",
-    age: "20",
-    role: "Tech Observer | Web Dev",
-    context: "University level 200. Focus on Cybersecurity, Tech trends, and Arabic linguistics. I prefer cold, forensic analysis and dark tech-noir aesthetics."
+    alias: "Unknown Operator",
+    age: "0",
+    role: "Awaiting Clearance",
+    context: "No DNA synced."
   });
+
+  // ── INITIALIZATION SEQUENCE (TERMINAL PERSISTENCE) ──
+  useEffect(() => {
+    // 1. Recover Auth State
+    const savedToken = localStorage.getItem("inkos_token");
+    const savedHash = localStorage.getItem("inkos_hash");
+    if (savedToken && savedHash) {
+      setToken(savedToken);
+      setUserHash(savedHash);
+    }
+
+    // 2. Recover Operator DNA
+    const savedProfile = localStorage.getItem("inkos_profile");
+    if (savedProfile) {
+      setProfileData(JSON.parse(savedProfile));
+    }
+
+    // 3. Recover Control Matrix Configuration
+    const savedSettings = localStorage.getItem("inkos_settings");
+    if (savedSettings) {
+      const s = JSON.parse(savedSettings);
+      if (s.targetModel) setTargetModel(s.targetModel);
+      if (s.framework) setFramework(s.framework);
+      if (s.sourceLang) setSourceLang(s.sourceLang);
+      if (s.aesthetic) setAesthetic(s.aesthetic);
+      if (s.hikmahStyle) setHikmahStyle(s.hikmahStyle);
+      if (s.aspectRatio) setAspectRatio(s.aspectRatio);
+      if (s.camera) setCamera(s.camera);
+      if (s.lighting) setLighting(s.lighting);
+      if (s.filmStock) setFilmStock(s.filmStock);
+    }
+  }, []);
+
+  // ── SETTINGS AUTOSAVE ──
+  // Whenever a setting changes, silently push it to browser storage
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem("inkos_settings", JSON.stringify({
+        targetModel, framework, sourceLang, aesthetic, hikmahStyle, 
+        aspectRatio, camera, lighting, filmStock
+      }));
+    }
+  }, [targetModel, framework, sourceLang, aesthetic, hikmahStyle, aspectRatio, camera, lighting, filmStock, token]);
 
   // ── THE VAULT GATE (LOGIN / LOGOUT / REGISTER) ──
   const handleLogin = async (e: React.FormEvent) => {
@@ -65,7 +108,14 @@ export default function InkOS() {
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Authentication sequence failed.");
+      
+      // Save clearance to persistent storage
       setToken(data.token);
+      localStorage.setItem("inkos_token", data.token);
+      localStorage.setItem("inkos_hash", userHash);
+
+      // Fetch user's profile from DB on fresh login (if not new)
+      // For now, we rely on local cache, but this is where you'd trigger a GET /api/profile
     } catch (err: any) {
       setAuthError(err.message);
     } finally {
@@ -74,6 +124,9 @@ export default function InkOS() {
   };
 
   const handleLogout = () => {
+    // Purge terminal memory
+    localStorage.removeItem("inkos_token");
+    localStorage.removeItem("inkos_hash");
     setToken(null);
     setPin("");
     setActiveTab("workspace");
@@ -150,14 +203,38 @@ export default function InkOS() {
     }
   };
 
-  // ── PROFILE SAVE SIMULATION (Frontend Only for now) ──
-  const handleSaveProfile = () => {
+  // ── PROFILE DNA SYNC (REAL BACKEND CALL) ──
+  const handleSaveProfile = async () => {
     setIsSavingProfile(true);
-    // Simulate network delay for the UI before we wire the backend
-    setTimeout(() => {
-      setIsSavingProfile(false);
+    try {
+      const response = await fetch("https://inkos-engine.onrender.com/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_hash: userHash,
+          token: token,
+          alias: profileData.alias,
+          age: profileData.age,
+          role: profileData.role,
+          context: profileData.context
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to sync DNA to backend vault.");
+      }
+
+      // Persist to browser cache so it survives a hard refresh
+      localStorage.setItem("inkos_profile", JSON.stringify(profileData));
       setIsEditingProfile(false);
-    }, 800);
+    } catch (err) {
+      console.error("Profile Sync Error:", err);
+      // Fallback: Save to local cache anyway to protect user input
+      localStorage.setItem("inkos_profile", JSON.stringify(profileData));
+      setIsEditingProfile(false);
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   // ── SECURE CLIPBOARD ──
@@ -383,7 +460,6 @@ export default function InkOS() {
 
                 {targetModel === "Midjourney" ? (
                   <div className="flex flex-col gap-5 animate-in fade-in duration-300">
-                    {/* Visual Controls Omitted for Brevity in code block viewing, preserved functionally */}
                     <div className="flex flex-col gap-2">
                       <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Aspect Ratio</label>
                       <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]"><option value="--ar 16:9">Cinematic Wide (16:9)</option><option value="--ar 9:16">Vertical Portrait (9:16)</option><option value="--ar 1:1">Square Grid (1:1)</option></select>
@@ -426,7 +502,7 @@ export default function InkOS() {
           </div>
         )}
 
-        {/* VIEW: ARCHIVE (Omitted unmodified code block for focus) */}
+        {/* VIEW: ARCHIVE */}
         {activeTab === "archive" && (
           <section className="flex flex-col gap-4 animate-in fade-in duration-500 max-w-5xl mx-auto">
              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
@@ -464,7 +540,7 @@ export default function InkOS() {
           </section>
         )}
 
-        {/* VIEW: SYSTEM PROFILE (DYNAMIC) */}
+        {/* VIEW: SYSTEM PROFILE */}
         {activeTab === "profile" && (
           <section className="flex flex-col gap-6 animate-in fade-in duration-500 max-w-3xl mx-auto">
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
@@ -483,7 +559,6 @@ export default function InkOS() {
             </div>
 
             {isEditingProfile ? (
-              /* DYNAMIC EDIT FORM */
               <div className="bg-black/60 border border-[var(--color-gold)]/30 rounded-sm p-6 md:p-8 flex flex-col gap-6 shadow-[0_0_20px_rgba(201,168,76,0.05)] animate-in slide-in-from-bottom-4 duration-500">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex flex-col gap-2">
@@ -517,7 +592,6 @@ export default function InkOS() {
                 </div>
               </div>
             ) : (
-              /* STATIC ID CARD */
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-300">
                 <div className="bg-black/60 border border-white/10 rounded-sm p-6 flex flex-col gap-6 shadow-lg">
                   <div className="flex flex-col gap-1 overflow-hidden">
