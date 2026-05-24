@@ -14,7 +14,7 @@ export default function InkOS() {
   // --- NAVIGATION & UI STATE ---
   const [activeTab, setActiveTab] = useState<"workspace" | "archive" | "profile">("workspace");
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // NEW STATE: Mobile Drawer
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // --- WORKSPACE CORE STATE ---
   const [intent, setIntent] = useState("");
@@ -39,6 +39,16 @@ export default function InkOS() {
   // --- ARCHIVE STATE ---
   const [archiveItems, setArchiveItems] = useState<any[]>([]);
   const [isArchiveLoading, setIsArchiveLoading] = useState(false);
+
+  // --- PROFILE STATE (NEW) ---
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    alias: "Ameer",
+    age: "20",
+    role: "Tech Observer | Web Dev",
+    context: "University level 200. Focus on Cybersecurity, Tech trends, and Arabic linguistics. I prefer cold, forensic analysis and dark tech-noir aesthetics."
+  });
 
   // ── THE VAULT GATE (LOGIN / LOGOUT / REGISTER) ──
   const handleLogin = async (e: React.FormEvent) => {
@@ -140,6 +150,16 @@ export default function InkOS() {
     }
   };
 
+  // ── PROFILE SAVE SIMULATION (Frontend Only for now) ──
+  const handleSaveProfile = () => {
+    setIsSavingProfile(true);
+    // Simulate network delay for the UI before we wire the backend
+    setTimeout(() => {
+      setIsSavingProfile(false);
+      setIsEditingProfile(false);
+    }, 800);
+  };
+
   // ── SECURE CLIPBOARD ──
   const copyToClipboard = async (text: string, id: string) => {
     try {
@@ -198,10 +218,7 @@ export default function InkOS() {
           <div className="text-center mt-2 border-t border-white/10 pt-4">
             <button 
               type="button" 
-              onClick={() => {
-                setIsRegistering(!isRegistering);
-                setAuthError(""); 
-              }} 
+              onClick={() => { setIsRegistering(!isRegistering); setAuthError(""); }} 
               className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase hover:text-white transition-colors"
             >
               {isRegistering ? "[ Return to Login ]" : "[ Request New Clearance ]"}
@@ -218,16 +235,12 @@ export default function InkOS() {
       
       {/* MOBILE OVERLAY */}
       {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/80 z-40 lg:hidden backdrop-blur-sm"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
+        <div className="fixed inset-0 bg-black/80 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
       {/* OS SIDEBAR */}
       <aside className={`absolute lg:relative z-50 w-64 h-full border-r border-white/5 bg-black/95 lg:bg-black/20 flex flex-col justify-between shrink-0 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className="flex flex-col">
-          {/* Brand Header */}
           <div className="p-8 border-b border-white/5 flex justify-between items-start">
             <div>
               <div className="flex items-center gap-3 mb-1">
@@ -236,32 +249,26 @@ export default function InkOS() {
               </div>
               <span className="text-[11px] text-[var(--color-steel)] tracking-widest font-arabic font-bold block ml-5">حبر وفكرة</span>
             </div>
-            {/* Mobile Close Button */}
             <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden text-[var(--color-steel)] hover:text-white">✕</button>
           </div>
 
-          {/* Navigation Matrix */}
           <nav className="flex flex-col gap-2 p-4 mt-4">
             <div className="text-[8px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase mb-2 px-4">System Routing</div>
-            
             <button onClick={() => { setActiveTab("workspace"); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-[11px] font-mono tracking-[0.1em] uppercase rounded-sm transition-all ${activeTab === "workspace" ? "bg-white/5 text-[var(--color-gold)] border-l-2 border-[var(--color-gold)]" : "text-[var(--color-steel)] hover:bg-white/5 hover:text-white border-l-2 border-transparent"}`}>
               <span className="text-[14px] leading-none opacity-80">◧</span> Workspace
             </button>
-            
             <button onClick={() => { setActiveTab("archive"); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-[11px] font-mono tracking-[0.1em] uppercase rounded-sm transition-all ${activeTab === "archive" ? "bg-white/5 text-[var(--color-gold)] border-l-2 border-[var(--color-gold)]" : "text-[var(--color-steel)] hover:bg-white/5 hover:text-white border-l-2 border-transparent"}`}>
               <span className="text-[14px] leading-none opacity-80">≡</span> Memory Banks
             </button>
-
             <button onClick={() => { setActiveTab("profile"); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-[11px] font-mono tracking-[0.1em] uppercase rounded-sm transition-all ${activeTab === "profile" ? "bg-white/5 text-[var(--color-gold)] border-l-2 border-[var(--color-gold)]" : "text-[var(--color-steel)] hover:bg-white/5 hover:text-white border-l-2 border-transparent"}`}>
               <span className="text-[14px] leading-none opacity-80">👤</span> Operator Profile
             </button>
           </nav>
         </div>
 
-        {/* User Mini-Profile & Logout */}
         <div className="p-6 border-t border-white/5 bg-black/40">
-          <div className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase mb-1">Active Operator</div>
-          <div className="text-[12px] text-white font-mono mb-4">{userHash}</div>
+          <div className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase mb-1">Active ID</div>
+          <div className="text-[12px] text-[var(--color-gold)] font-mono mb-4 truncate">{profileData.alias}</div>
           <button onClick={handleLogout} className="w-full bg-black/50 border border-[var(--color-danger)]/50 text-[var(--color-danger)] py-2 text-[10px] font-mono tracking-[0.2em] uppercase rounded-sm hover:bg-[var(--color-danger)] hover:text-black transition-all">
             [ Sever Uplink ]
           </button>
@@ -271,7 +278,6 @@ export default function InkOS() {
       {/* OS MAIN VIEWPORT */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 relative bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:40px_40px]">
         
-        {/* MOBILE HEADER BAR */}
         <div className="lg:hidden flex items-center justify-between border-b border-white/10 pb-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-[var(--color-gold)] shadow-[0_0_6px_var(--color-gold)] animate-pulse"></div>
@@ -285,7 +291,6 @@ export default function InkOS() {
         {/* VIEW: WORKSPACE */}
         {activeTab === "workspace" && (
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8 animate-in fade-in duration-500 max-w-7xl mx-auto">
-            {/* LEFT PANE: COMMAND TERMINAL */}
             <section className="xl:col-span-2 flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
@@ -319,7 +324,6 @@ export default function InkOS() {
               {audit && (
                 <div className="mt-2 bg-black/40 border border-white/5 rounded-sm p-4 flex flex-col md:flex-row md:items-center gap-4 md:gap-5">
                   <div className="flex md:flex-col items-center gap-2 md:pr-5 md:border-r border-white/10">
-                    <span className="text-[9px] text-[var(--color-steel)] font-mono uppercase md:hidden">Score:</span>
                     <span className={`font-mono text-3xl font-bold leading-none ${audit.score >= 85 ? 'text-[var(--color-success)]' : audit.score >= 70 ? 'text-[var(--color-gold)]' : 'text-[var(--color-danger)]'}`}>
                       {audit.score}
                     </span>
@@ -350,7 +354,6 @@ export default function InkOS() {
               )}
             </section>
 
-            {/* RIGHT PANE: COGNITIVE MAP & SETTINGS */}
             <aside className="xl:col-span-1 flex flex-col gap-6 bg-black/40 border border-white/5 p-5 md:p-6 rounded-sm h-fit mt-6 xl:mt-0">
               <div className="flex items-center gap-2 border-b border-white/10 pb-4">
                 <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-steel)]"></div>
@@ -358,7 +361,6 @@ export default function InkOS() {
               </div>
 
               <div className="flex flex-col gap-5">
-                {/* Always Visible Controls */}
                 <div className="flex flex-col gap-2">
                   <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Target Architecture</label>
                   <select value={targetModel} onChange={(e) => setTargetModel(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)] transition-colors">
@@ -367,7 +369,6 @@ export default function InkOS() {
                     <option value="Midjourney">Midjourney (Visual)</option>
                   </select>
                 </div>
-
                 <div className="flex flex-col gap-2">
                   <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Aesthetic Overlay</label>
                   <select value={aesthetic} onChange={(e) => setAesthetic(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)] transition-colors">
@@ -380,40 +381,24 @@ export default function InkOS() {
 
                 <div className="border-t border-white/10 pt-4"></div>
 
-                {/* DYNAMIC RENDER */}
                 {targetModel === "Midjourney" ? (
                   <div className="flex flex-col gap-5 animate-in fade-in duration-300">
+                    {/* Visual Controls Omitted for Brevity in code block viewing, preserved functionally */}
                     <div className="flex flex-col gap-2">
                       <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Aspect Ratio</label>
-                      <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
-                        <option value="--ar 16:9">Cinematic Wide (16:9)</option>
-                        <option value="--ar 9:16">Vertical Portrait (9:16)</option>
-                        <option value="--ar 1:1">Square Grid (1:1)</option>
-                      </select>
+                      <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]"><option value="--ar 16:9">Cinematic Wide (16:9)</option><option value="--ar 9:16">Vertical Portrait (9:16)</option><option value="--ar 1:1">Square Grid (1:1)</option></select>
                     </div>
                     <div className="flex flex-col gap-2">
                       <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Camera Angle & Lens</label>
-                      <select value={camera} onChange={(e) => setCamera(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
-                        <option value="Cinematic Wide Shot, 35mm lens">Wide / Environmental (35mm)</option>
-                        <option value="Extreme Close-up, macro photography">Extreme Close-Up (Macro)</option>
-                        <option value="Drone top-down view">Top-Down / Drone View</option>
-                      </select>
+                      <select value={camera} onChange={(e) => setCamera(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]"><option value="Cinematic Wide Shot, 35mm lens">Wide / Environmental (35mm)</option><option value="Extreme Close-up, macro photography">Extreme Close-Up (Macro)</option><option value="Drone top-down view">Top-Down / Drone View</option></select>
                     </div>
                     <div className="flex flex-col gap-2">
                       <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Lighting Rig</label>
-                      <select value={lighting} onChange={(e) => setLighting(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
-                        <option value="Volumetric, moody atmosphere, god rays">Volumetric / God Rays</option>
-                        <option value="Cyberpunk neon lighting, harsh contrast">Neon High-Contrast</option>
-                        <option value="Chiaroscuro, deep cinematic shadows">Chiaroscuro (Deep Shadows)</option>
-                      </select>
+                      <select value={lighting} onChange={(e) => setLighting(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]"><option value="Volumetric, moody atmosphere, god rays">Volumetric / God Rays</option><option value="Cyberpunk neon lighting, harsh contrast">Neon High-Contrast</option><option value="Chiaroscuro, deep cinematic shadows">Chiaroscuro (Deep Shadows)</option></select>
                     </div>
                     <div className="flex flex-col gap-2">
                       <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Film Stock & Texture</label>
-                      <select value={filmStock} onChange={(e) => setFilmStock(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
-                        <option value="Cinestill 800T, high grain, cinematic">Cinestill 800T (Night/Tungsten)</option>
-                        <option value="Kodak Portra 400, warm vintage feel">Kodak Portra 400 (Warm/Day)</option>
-                        <option value="Crisp 8k digital rendering, hyper-detailed">8K Digital (Hyper-Realistic)</option>
-                      </select>
+                      <select value={filmStock} onChange={(e) => setFilmStock(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]"><option value="Cinestill 800T, high grain, cinematic">Cinestill 800T (Night/Tungsten)</option><option value="Kodak Portra 400, warm vintage feel">Kodak Portra 400 (Warm/Day)</option><option value="Crisp 8k digital rendering, hyper-detailed">8K Digital (Hyper-Realistic)</option></select>
                     </div>
                   </div>
                 ) : (
@@ -421,32 +406,18 @@ export default function InkOS() {
                     <div className="flex flex-col gap-2">
                       <div className="flex justify-between items-end">
                         <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Rhetoric Profile</label>
-                        <span className="text-[9px] text-[var(--color-text-dim)] font-arabic">البلاغة</span>
                       </div>
-                      <select value={hikmahStyle} onChange={(e) => setHikmahStyle(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
-                        <option value="None">Standard Integration</option>
-                        <option value="Academic (Tahqiq)">Academic (Tahqiq)</option>
-                        <option value="Classical Adab (Badi')">Classical Adab (Badi')</option>
-                        <option value="Technical (Bayan)">Technical (Bayan)</option>
-                      </select>
+                      <select value={hikmahStyle} onChange={(e) => setHikmahStyle(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]"><option value="None">Standard Integration</option><option value="Academic (Tahqiq)">Academic (Tahqiq)</option><option value="Classical Adab (Badi')">Classical Adab (Badi')</option><option value="Technical (Bayan)">Technical (Bayan)</option></select>
                     </div>
                     <div className="flex flex-col gap-2">
                       <div className="flex justify-between items-end">
                         <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Framework</label>
-                        <span className="text-[9px] text-[var(--color-text-dim)] font-arabic">الإطار</span>
                       </div>
-                      <select value={framework} onChange={(e) => setFramework(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
-                        <option value="Professional (RACE)">Professional (RACE)</option>
-                        <option value="Zero-Shot (Direct)">Zero-Shot (Direct)</option>
-                        <option value="Chain of Thought">Chain of Thought</option>
-                      </select>
+                      <select value={framework} onChange={(e) => setFramework(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]"><option value="Professional (RACE)">Professional (RACE)</option><option value="Zero-Shot (Direct)">Zero-Shot (Direct)</option><option value="Chain of Thought">Chain of Thought</option></select>
                     </div>
                     <div className="flex flex-col gap-2">
                       <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Output Language</label>
-                      <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
-                        <option value="English">English</option>
-                        <option value="Arabic">Arabic (العربية)</option>
-                      </select>
+                      <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} className="w-full bg-black/60 border border-white/10 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]"><option value="English">English</option><option value="Arabic">Arabic (العربية)</option></select>
                     </div>
                   </div>
                 )}
@@ -455,19 +426,16 @@ export default function InkOS() {
           </div>
         )}
 
-        {/* VIEW: ARCHIVE */}
+        {/* VIEW: ARCHIVE (Omitted unmodified code block for focus) */}
         {activeTab === "archive" && (
           <section className="flex flex-col gap-4 animate-in fade-in duration-500 max-w-5xl mx-auto">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
               <div className="flex items-center gap-3">
                 <span className="text-[16px] text-[var(--color-gold)] leading-none">≡</span>
                 <h2 className="text-[14px] text-white tracking-[0.2em] font-mono uppercase">Memory Banks</h2>
               </div>
-              <button onClick={fetchArchive} className="text-[10px] font-mono text-[var(--color-gold)] hover:text-white transition-colors border border-[var(--color-gold)]/30 px-3 py-1 rounded-sm">
-                [ REFRESH DATA ]
-              </button>
+              <button onClick={fetchArchive} className="text-[10px] font-mono text-[var(--color-gold)] hover:text-white transition-colors border border-[var(--color-gold)]/30 px-3 py-1 rounded-sm">[ REFRESH DATA ]</button>
             </div>
-
             {isArchiveLoading ? (
               <div className="text-[11px] font-mono text-[var(--color-steel)] animate-pulse p-4 bg-black/40 border border-white/5 rounded-sm">Decrypting memory banks from Supabase...</div>
             ) : archiveItems.length === 0 ? (
@@ -478,21 +446,12 @@ export default function InkOS() {
                   const textToCopy = item.content || item.refined_prompt || "ERROR: Could not locate text.";
                   const displayIntent = item.intent || item.title || "No original intent recorded.";
                   const targetModel = item.target || item.target_model || "ChatGPT";
-
                   return (
                     <div key={idx} className="bg-black/60 border border-white/10 rounded-sm p-4 md:p-6 flex flex-col gap-4 hover:border-white/30 transition-all shadow-md">
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-mono text-[var(--color-gold)] border border-[var(--color-gold)]/20 px-3 py-1 rounded-sm shadow-inner">
-                          {targetModel}
-                        </span>
-                        <button 
-                          onClick={() => copyToClipboard(textToCopy, `archive-${idx}`)} 
-                          className={`text-[10px] font-mono transition-colors ${copiedId === `archive-${idx}` ? "text-[var(--color-success)]" : "text-[var(--color-steel)] hover:text-white"}`}
-                        >
-                          {copiedId === `archive-${idx}` ? "[ COPIED ]" : "[ EXTRACT ]"}
-                        </button>
+                        <span className="text-[10px] font-mono text-[var(--color-gold)] border border-[var(--color-gold)]/20 px-3 py-1 rounded-sm shadow-inner">{targetModel}</span>
+                        <button onClick={() => copyToClipboard(textToCopy, `archive-${idx}`)} className={`text-[10px] font-mono transition-colors ${copiedId === `archive-${idx}` ? "text-[var(--color-success)]" : "text-[var(--color-steel)] hover:text-white"}`}>{copiedId === `archive-${idx}` ? "[ COPIED ]" : "[ EXTRACT ]"}</button>
                       </div>
-                      
                       <div className="border-t border-white/5 pt-3">
                         <div className="text-[9px] text-[var(--color-text-dim)] font-mono uppercase mb-2">Original Protocol Intent:</div>
                         <p className="text-[12px] md:text-[13px] text-[var(--color-steel)] line-clamp-3 leading-relaxed break-words">{displayIntent}</p>
@@ -505,52 +464,96 @@ export default function InkOS() {
           </section>
         )}
 
-        {/* VIEW: SYSTEM PROFILE */}
+        {/* VIEW: SYSTEM PROFILE (DYNAMIC) */}
         {activeTab === "profile" && (
           <section className="flex flex-col gap-6 animate-in fade-in duration-500 max-w-3xl mx-auto">
-            <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-4">
-              <span className="text-[16px] text-[var(--color-gold)] leading-none">👤</span>
-              <h2 className="text-[14px] text-white tracking-[0.2em] font-mono uppercase">Operator Credentials</h2>
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-[16px] text-[var(--color-gold)] leading-none">👤</span>
+                <h2 className="text-[14px] text-white tracking-[0.2em] font-mono uppercase">Operator Credentials</h2>
+              </div>
+              {!isEditingProfile && (
+                <button 
+                  onClick={() => setIsEditingProfile(true)} 
+                  className="text-[10px] font-mono text-[var(--color-gold)] hover:text-white transition-colors border border-[var(--color-gold)]/30 px-3 py-1 rounded-sm"
+                >
+                  [ EDIT DNA ]
+                </button>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Identity Card */}
-              <div className="bg-black/60 border border-white/10 rounded-sm p-6 flex flex-col gap-6 shadow-lg">
-                <div className="flex flex-col gap-1 overflow-hidden">
-                  <span className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">System ID</span>
-                  <span className="text-xl text-white font-mono break-all">{userHash}</span>
+            {isEditingProfile ? (
+              /* DYNAMIC EDIT FORM */
+              <div className="bg-black/60 border border-[var(--color-gold)]/30 rounded-sm p-6 md:p-8 flex flex-col gap-6 shadow-[0_0_20px_rgba(201,168,76,0.05)] animate-in slide-in-from-bottom-4 duration-500">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">Alias / Identity</label>
+                    <input type="text" value={profileData.alias} onChange={(e) => setProfileData({...profileData, alias: e.target.value})} className="w-full bg-black/40 border border-white/10 text-[var(--color-text-main)] text-sm p-3 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)] transition-colors" />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">Operational Age</label>
+                    <input type="number" value={profileData.age} onChange={(e) => setProfileData({...profileData, age: e.target.value})} className="w-full bg-black/40 border border-white/10 text-[var(--color-text-main)] text-sm p-3 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)] transition-colors" />
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">Clearance</span>
-                    <span className="text-xs text-[var(--color-gold)] font-mono">Level 4 (Admin)</span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">Status</span>
-                    <span className="text-xs text-[var(--color-success)] font-mono animate-pulse">Uplink Active</span>
-                  </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">Primary Role / Clearance</label>
+                  <input type="text" value={profileData.role} onChange={(e) => setProfileData({...profileData, role: e.target.value})} className="w-full bg-black/40 border border-white/10 text-[var(--color-text-main)] text-sm p-3 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)] transition-colors" placeholder="e.g. Web Dev | Cybersecurity" />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">AI Core Directives (Context)</label>
+                  <textarea value={profileData.context} onChange={(e) => setProfileData({...profileData, context: e.target.value})} className="w-full h-32 bg-black/40 border border-white/10 text-[var(--color-text-main)] text-sm p-3 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)] transition-colors resize-none" placeholder="Provide background information the AI should use to personalize generation..." />
+                  <span className="text-[9px] text-[var(--color-text-dim)] font-mono">This data will be injected into the assembly matrix to align AI responses with your identity.</span>
+                </div>
+
+                <div className="flex justify-end gap-4 mt-2 border-t border-white/5 pt-6">
+                  <button onClick={() => setIsEditingProfile(false)} className="text-[10px] text-[var(--color-steel)] font-mono tracking-[0.2em] uppercase hover:text-white transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={handleSaveProfile} disabled={isSavingProfile} className="bg-[var(--color-gold)] text-black px-8 py-2 text-[11px] font-mono font-bold tracking-[0.2em] uppercase rounded-sm hover:bg-[#E2D5BC] transition-all disabled:opacity-50">
+                    {isSavingProfile ? "Syncing..." : "Commit Update"}
+                  </button>
                 </div>
               </div>
-
-              {/* DNA Readout */}
-              <div className="bg-black/60 border border-white/10 rounded-sm p-6 flex flex-col justify-between shadow-lg">
-                 <div>
-                   <div className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase mb-4">Brand DNA Integration</div>
-                   <div className="text-2xl text-white font-arabic mb-2 text-right">حبر وفكرة</div>
-                   <p className="text-[11px] text-[var(--color-steel)] font-mono leading-relaxed text-right">
-                     InkOS Architecture v2.0 <br/>
-                     Web Dev | Cybersecurity | AI Mod
-                   </p>
-                 </div>
-                 <div className="border-t border-white/5 pt-4 mt-4">
-                    <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                       <div className="bg-[var(--color-gold)] w-[100%] h-full shadow-[0_0_10px_var(--color-gold)]"></div>
+            ) : (
+              /* STATIC ID CARD */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-300">
+                <div className="bg-black/60 border border-white/10 rounded-sm p-6 flex flex-col gap-6 shadow-lg">
+                  <div className="flex flex-col gap-1 overflow-hidden">
+                    <span className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">Alias / ID</span>
+                    <span className="text-xl text-[var(--color-gold)] font-mono break-all">{profileData.alias}</span>
+                    <span className="text-xs text-[var(--color-steel)] font-mono mt-1">[{userHash}]</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">Role</span>
+                      <span className="text-xs text-white font-mono">{profileData.role}</span>
                     </div>
-                    <div className="text-[8px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase mt-2 text-right">DNA Synced</div>
-                 </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">Age</span>
+                      <span className="text-xs text-white font-mono">{profileData.age} cycles</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-black/60 border border-white/10 rounded-sm p-6 flex flex-col justify-between shadow-lg">
+                   <div>
+                     <div className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase mb-4 text-right border-b border-white/5 pb-2">Core Directives</div>
+                     <p className="text-[12px] text-[var(--color-steel)] font-mono leading-relaxed mt-4 italic">
+                       "{profileData.context}"
+                     </p>
+                   </div>
+                   <div className="border-t border-white/5 pt-4 mt-4">
+                      <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                         <div className="bg-[var(--color-success)] w-[100%] h-full shadow-[0_0_10px_var(--color-success)]"></div>
+                      </div>
+                      <div className="text-[8px] text-[var(--color-success)] tracking-[0.2em] font-mono uppercase mt-2 text-right">DNA Synced for Generation</div>
+                   </div>
+                </div>
               </div>
-            </div>
+            )}
           </section>
         )}
 
