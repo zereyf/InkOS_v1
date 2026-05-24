@@ -10,8 +10,9 @@ export default function InkOS() {
   const [authError, setAuthError] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  // --- NAVIGATION STATE ---
+  // --- NAVIGATION & UI STATE ---
   const [activeTab, setActiveTab] = useState<"workspace" | "archive">("workspace");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // --- WORKSPACE STATE ---
   const [intent, setIntent] = useState("");
@@ -73,7 +74,6 @@ export default function InkOS() {
     }
   };
 
-  // Auto-fetch archive when tab switches
   useEffect(() => {
     if (activeTab === "archive" && archiveItems.length === 0) {
       fetchArchive();
@@ -117,8 +117,6 @@ export default function InkOS() {
 
       setRefinedPrompt(data.refined_prompt);
       setAudit(data.audit);
-      
-      // Clear archive cache so it forces a refresh next time we open the tab
       setArchiveItems([]); 
     } catch (err: any) {
       setSystemError(err.message || "Failed to establish uplink with the CIPHER engine.");
@@ -127,8 +125,30 @@ export default function InkOS() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  // ── SECURE CLIPBOARD WITH FALLBACK ──
+  const copyToClipboard = async (text: string, id: string) => {
+    try {
+      // Modern Secure API
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      // Fallback for strict browser environments
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed"; 
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+      } catch (fallbackErr) {
+        console.error("Clipboard bypass failed.", fallbackErr);
+      }
+      document.body.removeChild(textArea);
+    }
   };
 
   // ── RENDER: VAULT LOGIN ──
@@ -244,8 +264,11 @@ export default function InkOS() {
             <div className="mt-4 flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <div className="text-[10px] text-[var(--color-gold)] tracking-[0.2em] font-mono uppercase">[ 03 ] Refined Output</div>
-                <button onClick={() => copyToClipboard(refinedPrompt)} className="text-[10px] font-mono text-[var(--color-steel)] hover:text-white transition-colors">
-                  [ COPY ]
+                <button 
+                  onClick={() => copyToClipboard(refinedPrompt, "workspace")} 
+                  className={`text-[10px] font-mono transition-colors ${copiedId === "workspace" ? "text-[var(--color-success)]" : "text-[var(--color-steel)] hover:text-white"}`}
+                >
+                  {copiedId === "workspace" ? "[ COPIED ]" : "[ COPY ]"}
                 </button>
               </div>
               <textarea
@@ -282,8 +305,11 @@ export default function InkOS() {
                     <span className="text-[10px] font-mono text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-0.5 rounded-sm">
                       {item.target_model || "ChatGPT"}
                     </span>
-                    <button onClick={() => copyToClipboard(item.refined_prompt)} className="text-[10px] font-mono text-[var(--color-steel)] hover:text-white">
-                      [ COPY COMPILED ]
+                    <button 
+                      onClick={() => copyToClipboard(item.refined_prompt, `archive-${idx}`)} 
+                      className={`text-[10px] font-mono transition-colors ${copiedId === `archive-${idx}` ? "text-[var(--color-success)]" : "text-[var(--color-steel)] hover:text-white"}`}
+                    >
+                      {copiedId === `archive-${idx}` ? "[ COPIED ]" : "[ COPY COMPILED ]"}
                     </button>
                   </div>
                   
