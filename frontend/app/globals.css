@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── DARK THEME (OBSIDIAN TERMINAL) ── */
+  --color-void: #050505;
+  --color-deep: #0A0A0C;
+  --color-card: #0D0D12;
+  --color-raised: #121218;
+  --color-input: #08080A;
+
+  --color-gold: #C9A84C;
+  --color-gold-dim: #8A6E2E;
+  
+  --color-steel: #5D6D7E;
+  --color-danger: #A93226;
+  --color-success: #4CAF9A;
+  --color-info: #4299E1;
+
+  --color-text-main: #E2D5BC;
+  --color-text-muted: #7C9EBF;
+  --color-text-dim: #2C3545;
+
+  --color-border-subtle: rgba(255,255,255,0.06);
+  --color-border-gold: rgba(201,168,76,0.3);
+
+  --font-mono: "IBM Plex Mono", monospace;
+  --font-arabic: "Cairo", sans-serif;
+}
+
+/* Core Application Styles */
+body {
+  background-color: var(--color-void);
+  background-image: radial-gradient(circle at 50% 0%, rgba(201, 168, 76, 0.03) 0%, transparent 70%);
+  color: var(--color-text-main);
+  font-family: var(--font-mono);
+  overflow-x: hidden; 
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--color-void); }
+::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-gold-dim); }
