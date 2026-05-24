@@ -48,4 +48,4 @@ def health_check():
 
 @app.post("/api/auth")
 def terminal_login(req: LoginRequest):
-    success, message = authenticate_terminal(req
+    success, message = authenticate_terminal(req)
