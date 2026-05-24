@@ -1,36 +1,24 @@
 """
-vault/supabase_client.py — Supabase Connection Layer
-======================================================
-Creates a Supabase client when credentials are present without requiring
-Streamlit secrets to exist in non-Streamlit contexts such as tests and scripts.
+vault/supabase_client.py — Supabase Connection Layer (FastAPI Optimized)
+========================================================================
+Creates a Supabase client using standard environment variables.
+Completely decoupled from Streamlit.
 """
 
 from __future__ import annotations
-
 import os
 
-import streamlit as st
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "").strip()
 
-
-def _get_secret_or_env(name: str) -> str:
-    try:
-        value = st.secrets.get(name, "")
-    except Exception:
-        value = ""
-    return str(value or os.getenv(name, "")).strip()
-
-
-_url = _get_secret_or_env("SUPABASE_URL")
-_key = _get_secret_or_env("SUPABASE_KEY")
-
-SUPABASE_MISSING = not (_url and _key)
+SUPABASE_MISSING = not (SUPABASE_URL and SUPABASE_KEY)
 supabase = None
 
 if not SUPABASE_MISSING:
     try:
         from supabase import create_client
-
-        supabase = create_client(_url, _key)
-    except Exception:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        print(f"[InkOS Vault] Supabase initialization failed: {e}")
         SUPABASE_MISSING = True
         supabase = None

@@ -9,7 +9,6 @@ from __future__ import annotations
 import textwrap
 from typing import Optional, TypedDict
 
-import streamlit as st
 
 from forge.persona_engine import inject_persona
 from config.prompts import (
@@ -149,7 +148,7 @@ def assemble_master_payload(
 
     islamic_block = ""
     try:
-        if st.session_state.get("sb_islamic", False):
+        if config.get("islamic_mode", False):
             islamic_block = textwrap.dedent(f"""
                 [ ACTIVE COMPLIANCE PROTOCOL: ISLAMIC ETHICAL LAYER ]
                 MANDATORY for this refinement. Apply to every output decision:
