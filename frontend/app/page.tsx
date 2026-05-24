@@ -21,12 +21,18 @@ export default function InkOS() {
   const [isLoading, setIsLoading] = useState(false);
   const [systemError, setSystemError] = useState("");
 
-  // --- COGNITIVE MAP STATE (NEW) ---
+  // --- COGNITIVE MAP STATE (TEXT) ---
   const [targetModel, setTargetModel] = useState("ChatGPT");
   const [framework, setFramework] = useState("Professional (RACE)");
   const [sourceLang, setSourceLang] = useState("English");
   const [aesthetic, setAesthetic] = useState("Default");
   const [hikmahStyle, setHikmahStyle] = useState("None");
+
+  // --- VISUAL DIRECTOR STATE (NEW) ---
+  const [aspectRatio, setAspectRatio] = useState("--ar 16:9");
+  const [camera, setCamera] = useState("Cinematic Wide Shot, 35mm lens");
+  const [lighting, setLighting] = useState("Volumetric, moody atmosphere");
+  const [filmStock, setFilmStock] = useState("Cinestill 800T, high grain");
 
   // --- ARCHIVE STATE ---
   const [archiveItems, setArchiveItems] = useState<any[]>([]);
@@ -83,17 +89,23 @@ export default function InkOS() {
     setRefinedPrompt("");
     setAudit(null);
 
+    // Dynamic Payload Compiler
+    let finalIntent = intent;
+    if (targetModel === "Midjourney") {
+      finalIntent = `[VISUAL DIRECTIVES]\nCamera: ${camera}\nLighting: ${lighting}\nFilm Stock: ${filmStock}\nAspect Ratio: ${aspectRatio}\n\n[SCENE DESCRIPTION]\n${intent}`;
+    }
+
     try {
       const response = await fetch("https://inkos-engine.onrender.com/api/refine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          intent: intent,
+          intent: finalIntent,
           target_model: targetModel,
-          framework: framework,
-          source_lang: sourceLang,
+          framework: targetModel === "Midjourney" ? "Zero-Shot (Direct)" : framework,
+          source_lang: targetModel === "Midjourney" ? "English" : sourceLang,
           aesthetic_choice: aesthetic,
-          hikmah_style: hikmahStyle,
+          hikmah_style: targetModel === "Midjourney" ? "None" : hikmahStyle,
           skip_security: false,
           token: token, 
         }),
@@ -272,40 +284,11 @@ export default function InkOS() {
           <aside className="lg:col-span-1 flex flex-col gap-6 border-l border-white/5 pl-8">
             <div className="flex items-center gap-2 border-b border-white/5 pb-2">
               <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-steel)]"></div>
-              <h2 className="text-[10px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">Cognitive Map</h2>
+              <h2 className="text-[10px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">Control Matrix</h2>
             </div>
 
-            <div className="flex flex-col gap-4">
-              {/* Hikmah Style */}
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-end">
-                  <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Rhetoric Profile</label>
-                  <span className="text-[9px] text-[var(--color-text-dim)] font-arabic">البلاغة</span>
-                </div>
-                <select value={hikmahStyle} onChange={(e) => setHikmahStyle(e.target.value)} className="w-full bg-[var(--color-input)] border border-white/5 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)] transition-colors">
-                  <option value="None">Standard Integration</option>
-                  <option value="Academic (Tahqiq)">Academic (Tahqiq)</option>
-                  <option value="Classical Adab (Badi')">Classical Adab (Badi')</option>
-                  <option value="Concise Wisdom (I'jaz)">Concise Wisdom (I'jaz)</option>
-                  <option value="Technical (Bayan)">Technical (Bayan)</option>
-                </select>
-              </div>
-
-              {/* Framework */}
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-end">
-                  <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Framework</label>
-                  <span className="text-[9px] text-[var(--color-text-dim)] font-arabic">الإطار</span>
-                </div>
-                <select value={framework} onChange={(e) => setFramework(e.target.value)} className="w-full bg-[var(--color-input)] border border-white/5 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)] transition-colors">
-                  <option value="Professional (RACE)">Professional (RACE)</option>
-                  <option value="Zero-Shot (Direct)">Zero-Shot (Direct)</option>
-                  <option value="Chain of Thought">Chain of Thought</option>
-                  <option value="Creative (Story)">Creative (Story)</option>
-                </select>
-              </div>
-
-              {/* Target Model */}
+            <div className="flex flex-col gap-5">
+              {/* Target Model (Always Visible) */}
               <div className="flex flex-col gap-2">
                 <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Target Architecture</label>
                 <select value={targetModel} onChange={(e) => setTargetModel(e.target.value)} className="w-full bg-[var(--color-input)] border border-white/5 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)] transition-colors">
@@ -315,7 +298,7 @@ export default function InkOS() {
                 </select>
               </div>
 
-              {/* Aesthetic */}
+              {/* Aesthetic Overlay (Always Visible) */}
               <div className="flex flex-col gap-2">
                 <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Aesthetic Overlay</label>
                 <select value={aesthetic} onChange={(e) => setAesthetic(e.target.value)} className="w-full bg-[var(--color-input)] border border-white/5 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)] transition-colors">
@@ -326,14 +309,90 @@ export default function InkOS() {
                 </select>
               </div>
 
-              {/* Source Language */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Output Language</label>
-                <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} className="w-full bg-[var(--color-input)] border border-white/5 text-[var(--color-text-main)] text-xs p-2.5 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)] transition-colors">
-                  <option value="English">English</option>
-                  <option value="Arabic">Arabic (العربية)</option>
-                </select>
-              </div>
+              <div className="border-t border-white/5 pt-4"></div>
+
+              {/* DYNAMIC RENDER: VISUAL CONTROLS */}
+              {targetModel === "Midjourney" ? (
+                <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Aspect Ratio</label>
+                    <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="w-full bg-black/40 border border-white/10 text-[var(--color-text-main)] text-xs p-2 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
+                      <option value="--ar 16:9">Cinematic Wide (16:9)</option>
+                      <option value="--ar 9:16">Vertical Portrait (9:16)</option>
+                      <option value="--ar 1:1">Square Grid (1:1)</option>
+                      <option value="--ar 21:9">Ultra-Wide (21:9)</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Camera Angle & Lens</label>
+                    <select value={camera} onChange={(e) => setCamera(e.target.value)} className="w-full bg-black/40 border border-white/10 text-[var(--color-text-main)] text-xs p-2 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
+                      <option value="Cinematic Wide Shot, 35mm lens">Wide / Environmental (35mm)</option>
+                      <option value="Extreme Close-up, macro photography">Extreme Close-Up (Macro)</option>
+                      <option value="Drone top-down view, satellite aesthetic">Top-Down / Drone View</option>
+                      <option value="Dutch Angle, 14mm ultra-wide">Dutch Angle (Dynamic 14mm)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Lighting Rig</label>
+                    <select value={lighting} onChange={(e) => setLighting(e.target.value)} className="w-full bg-black/40 border border-white/10 text-[var(--color-text-main)] text-xs p-2 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
+                      <option value="Volumetric, moody atmosphere, god rays">Volumetric / God Rays</option>
+                      <option value="Cyberpunk neon lighting, harsh contrast">Neon High-Contrast</option>
+                      <option value="Soft studio lighting, highly diffused">Soft Studio Rim Light</option>
+                      <option value="Chiaroscuro, deep cinematic shadows">Chiaroscuro (Deep Shadows)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Film Stock & Texture</label>
+                    <select value={filmStock} onChange={(e) => setFilmStock(e.target.value)} className="w-full bg-black/40 border border-white/10 text-[var(--color-text-main)] text-xs p-2 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
+                      <option value="Cinestill 800T, high grain, cinematic">Cinestill 800T (Night/Tungsten)</option>
+                      <option value="Kodak Portra 400, warm vintage feel">Kodak Portra 400 (Warm/Day)</option>
+                      <option value="Crisp 8k digital rendering, hyper-detailed">8K Digital (Hyper-Realistic)</option>
+                      <option value="Polaroid SX-70, light leaks, instant film">Polaroid SX-70 (Retro)</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                /* DYNAMIC RENDER: TEXT / RHETORIC CONTROLS */
+                <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-left-4 duration-300">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-end">
+                      <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Rhetoric Profile</label>
+                      <span className="text-[9px] text-[var(--color-text-dim)] font-arabic">البلاغة</span>
+                    </div>
+                    <select value={hikmahStyle} onChange={(e) => setHikmahStyle(e.target.value)} className="w-full bg-black/40 border border-white/10 text-[var(--color-text-main)] text-xs p-2 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
+                      <option value="None">Standard Integration</option>
+                      <option value="Academic (Tahqiq)">Academic (Tahqiq)</option>
+                      <option value="Classical Adab (Badi')">Classical Adab (Badi')</option>
+                      <option value="Concise Wisdom (I'jaz)">Concise Wisdom (I'jaz)</option>
+                      <option value="Technical (Bayan)">Technical (Bayan)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-end">
+                      <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Framework</label>
+                      <span className="text-[9px] text-[var(--color-text-dim)] font-arabic">الإطار</span>
+                    </div>
+                    <select value={framework} onChange={(e) => setFramework(e.target.value)} className="w-full bg-black/40 border border-white/10 text-[var(--color-text-main)] text-xs p-2 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
+                      <option value="Professional (RACE)">Professional (RACE)</option>
+                      <option value="Zero-Shot (Direct)">Zero-Shot (Direct)</option>
+                      <option value="Chain of Thought">Chain of Thought</option>
+                      <option value="Creative (Story)">Creative (Story)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[9px] text-[var(--color-steel)] tracking-[0.1em] font-mono uppercase">Output Language</label>
+                    <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} className="w-full bg-black/40 border border-white/10 text-[var(--color-text-main)] text-xs p-2 rounded-sm font-mono focus:outline-none focus:border-[var(--color-gold)]">
+                      <option value="English">English</option>
+                      <option value="Arabic">Arabic (العربية)</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           </aside>
         </div>
