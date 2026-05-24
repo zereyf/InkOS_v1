@@ -1,45 +1,46 @@
 """
-security/rate_limiter.py — Sliding Window Rate Limiter
-========================================================
-v4.0: UTC Timezone enforcement and memory-safe initialization.
-Decoupled from UI. Reads/writes session state via K keys from state.py.
-consume parameter makes multi-call operations declare their true cost.
+security/rate_limiter.py — API Rate Limiter (FastAPI Optimized)
+===============================================================
+Decoupled from Streamlit. Uses in-memory thread-safe tracking per client ID.
 """
 
-import streamlit as st
+import threading
 from datetime import datetime, timedelta, timezone
-from state import K
 from config import RATE_WINDOW_SECONDS, RATE_MAX_CALLS
 
+_rate_lock = threading.Lock()
 
-def check_rate_limit(consume: int = 1) -> bool:
+# Dictionary to store timestamps per user/IP.
+# Key: str (client_id), Value: list of datetime objects
+_CLIENT_HISTORY = {}
+
+def check_rate_limit(client_id: str = "global", consume: int = 1) -> bool:
     """
-    Sliding window rate limiter.
-
+    Sliding window rate limiter for the API.
+    
     Args:
+        client_id: The IP address or Auth Token of the user making the request.
         consume: Number of API call slots this operation consumes.
-                 Default 1.
-
-    Returns:
-        True  — request is within limit, slots consumed.
-        False — limit exceeded, no slots consumed.
     """
-    now          = datetime.now(timezone.utc)
-    window_start = now - timedelta(seconds=RATE_WINDOW_SECONDS)
+    with _rate_lock:
+        now = datetime.now(timezone.utc)
+        window_start = now - timedelta(seconds=RATE_WINDOW_SECONDS)
 
-    current_timestamps = st.session_state.get(K.TIMESTAMPS, [])
+        history = _CLIENT_HISTORY.get(client_id, [])
 
-    valid_timestamps = [
-        t for t in current_timestamps
-        if t > window_start
-    ]
-    st.session_state[K.TIMESTAMPS] = valid_timestamps
+        # Filter valid timestamps within the 60-second window
+        valid_timestamps = [t for t in history if t > window_start]
 
-    current = len(valid_timestamps)
-    if current + consume > RATE_MAX_CALLS:
-        return False
+        current = len(valid_timestamps)
+        
+        # If adding this call exceeds the limit, reject it
+        if current + consume > RATE_MAX_CALLS:
+            _CLIENT_HISTORY[client_id] = valid_timestamps
+            return False
 
-    for _ in range(consume):
-        st.session_state[K.TIMESTAMPS].append(now)
+        # Otherwise, log the timestamps and approve
+        for _ in range(consume):
+            valid_timestamps.append(now)
 
-    return True
+        _CLIENT_HISTORY[client_id] = valid_timestamps
+        return True
