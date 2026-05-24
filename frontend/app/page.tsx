@@ -19,7 +19,7 @@ export default function Workspace() {
     setAudit(null);
 
     try {
-      const response = await fetch("http://localhost:8000/api/refine", {
+      const response = await fetch("https://inkos-engine.onrender.com/api/refine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
