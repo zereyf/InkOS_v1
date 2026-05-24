@@ -7,6 +7,7 @@ from engine.refiner import run_refinement_and_audit
 from vault.vault_engine import authenticate_terminal, get_user_profile, rehydrate_session
 from security.token import create_access_token, verify_token
 from forge.prompt_assembler import assemble_master_payload
+from security.sanitizer import sanitize_input
 
 app = FastAPI(title="InkOS Intelligence API")
 
@@ -70,11 +71,22 @@ def refine_endpoint(req: RefinementRequest):
     session_data = rehydrate_session(user_hash)
     dna = session_data.get("dna", {})
 
-    # 3. Compile Master Payload (Arabic Cognitive Map + Persona Rules)
+    # 3. Overwatch Security Intercept: Sanitize raw input BEFORE assembly
+    if not req.skip_security:
+        cleaned_intent, violations = sanitize_input(req.intent)
+        if violations:
+            sig = " | ".join(violations)
+            return RefinementResponse(
+                refined_prompt=f"OVERWATCH INTERCEPT: Hostile patterns detected.\nSIGNATURE: {sig}",
+                audit={"score": 0, "critique": f"SECURITY_BREACH: {sig}"}
+            )
+        req.intent = cleaned_intent
+
+    # 4. Compile Master Payload (Arabic Cognitive Map + Persona Rules)
     config = {
         "target_model": req.target_model,
         "hikmah_style": req.hikmah_style,
-        "islamic_mode": False # Maps to your old st.session_state["sb_islamic"]
+        "islamic_mode": False 
     }
     
     try:
@@ -86,7 +98,7 @@ def refine_endpoint(req: RefinementRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Assembler Fault: {str(e)}")
 
-    # 4. Intelligence Core: Fire payload to Groq/Llama-3
+    # 5. Intelligence Core: Fire payload to Groq/Llama-3
     refined, audit, error = run_refinement_and_audit(
         master_payload=master_payload, 
         target=req.target_model,
@@ -94,7 +106,7 @@ def refine_endpoint(req: RefinementRequest):
         lang=req.source_lang,
         aesthetic_choice=req.aesthetic_choice,
         hikmah_style=req.hikmah_style,
-        skip_security=req.skip_security
+        skip_security=True # Bypass inner check to avoid auto-immune crash
     )
     
     if error:
