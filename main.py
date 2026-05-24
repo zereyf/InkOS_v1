@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from engine.refiner import run_refinement_and_audit
-from vault.vault_engine import authenticate_terminal, get_user_profile, rehydrate_session
+from vault.vault_engine import authenticate_terminal, get_user_profile, rehydrate_session, get_vault_items
 from security.token import create_access_token, verify_token
 from forge.prompt_assembler import assemble_master_payload
 from security.sanitizer import sanitize_input
@@ -116,3 +116,20 @@ def refine_endpoint(req: RefinementRequest):
         refined_prompt=refined,
         audit=audit
     )
+
+    @app.get("/api/vault")
+def fetch_vault_history(token: str):
+    # 1. Verify the Keycard
+    user_data = verify_token(token)
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid or expired uplink token.")
+    
+    user_hash = user_data.get("sub")
+
+    # 2. Retrieve history from Supabase
+    items, error = get_vault_items(user_hash, limit=50)
+    
+    if error:
+        raise HTTPException(status_code=500, detail=f"Database Fault: {error}")
+        
+    return {"status": "success", "items": items}
