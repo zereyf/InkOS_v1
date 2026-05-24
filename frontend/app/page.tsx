@@ -306,7 +306,15 @@ export default function InkOS() {
                       {item.target_model || "ChatGPT"}
                     </span>
                     <button 
-                      onClick={() => copyToClipboard(item.refined_prompt, `archive-${idx}`)} 
+                      onClick={() => {
+                   // Gracefully fall back through the most common Supabase column names
+                      const textToCopy = item.refined_prompt || item.prompt || item.content || item.output || item.result || "ERROR: Could not locate text in database row.";
+  
+                    // Log the raw database row to your browser console so we can see its true shape
+                    console.log("Raw Vault Item:", item);
+  
+                    copyToClipboard(textToCopy, `archive-${idx}`);
+                  }}
                       className={`text-[10px] font-mono transition-colors ${copiedId === `archive-${idx}` ? "text-[var(--color-success)]" : "text-[var(--color-steel)] hover:text-white"}`}
                     >
                       {copiedId === `archive-${idx}` ? "[ COPIED ]" : "[ COPY COMPILED ]"}
