@@ -9,6 +9,7 @@ export default function InkOS() {
   const [pin, setPin] = useState("");
   const [authError, setAuthError] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false); // NEW STATE: Toggle Registration
 
   // --- NAVIGATION & UI STATE ---
   const [activeTab, setActiveTab] = useState<"workspace" | "archive" | "profile">("workspace");
@@ -38,7 +39,7 @@ export default function InkOS() {
   const [archiveItems, setArchiveItems] = useState<any[]>([]);
   const [isArchiveLoading, setIsArchiveLoading] = useState(false);
 
-  // ── THE VAULT GATE (LOGIN / LOGOUT) ──
+  // ── THE VAULT GATE (LOGIN / LOGOUT / REGISTER) ──
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAuthenticating(true);
@@ -48,7 +49,8 @@ export default function InkOS() {
       const response = await fetch("https://inkos-engine.onrender.com/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_hash: userHash, pin: pin, is_new: false }),
+        // Dynamically sends is_new based on UI toggle
+        body: JSON.stringify({ user_hash: userHash, pin: pin, is_new: isRegistering }), 
       });
 
       const data = await response.json();
@@ -161,7 +163,7 @@ export default function InkOS() {
     }
   };
 
-  // ── RENDER: VAULT LOGIN ──
+  // ── RENDER: VAULT GATE (LOGIN / REGISTER) ──
   if (!token) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6 bg-[var(--color-void)] relative overflow-hidden">
@@ -171,18 +173,39 @@ export default function InkOS() {
             <h1 className="text-[var(--color-gold)] tracking-[0.3em] text-xl font-mono uppercase mb-2 shadow-gold">InkOS</h1>
             <p className="text-[12px] text-[var(--color-steel)] tracking-widest font-arabic font-bold">حبر وفكرة</p>
           </div>
+          
           <div className="flex flex-col gap-1">
-            <label className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">System ID</label>
+            <label className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">
+              {isRegistering ? "Create System ID" : "System ID"}
+            </label>
             <input suppressHydrationWarning type="text" value={userHash} onChange={(e) => setUserHash(e.target.value)} className="bg-[var(--color-input)] border border-[var(--color-border-subtle)] text-[var(--color-text-main)] text-sm p-3 font-mono focus:outline-none focus:border-[var(--color-gold)] transition-colors rounded-sm" autoComplete="off" required />
           </div>
+          
           <div className="flex flex-col gap-1">
-            <label className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">Passcode</label>
+            <label className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">
+              {isRegistering ? "Create Passcode" : "Passcode"}
+            </label>
             <input suppressHydrationWarning type="password" value={pin} onChange={(e) => setPin(e.target.value)} className="bg-[var(--color-input)] border border-[var(--color-border-subtle)] text-[var(--color-text-main)] text-sm p-3 font-mono tracking-widest focus:outline-none focus:border-[var(--color-gold)] transition-colors rounded-sm" required />
           </div>
+          
           {authError && <div className="text-[10px] text-[var(--color-danger)] font-mono border-l-2 border-[var(--color-danger)] pl-2">[!] {authError}</div>}
+          
           <button suppressHydrationWarning type="submit" disabled={isAuthenticating} className="mt-4 bg-[var(--color-gold)] text-black py-3 text-[11px] font-mono font-bold tracking-[0.2em] uppercase rounded-sm hover:bg-[#E2D5BC] hover:shadow-[0_0_15px_rgba(201,168,76,0.3)] transition-all disabled:opacity-50">
-            {isAuthenticating ? "Verifying..." : "Initialize Uplink"}
+            {isAuthenticating ? "Processing..." : isRegistering ? "Register Operator" : "Initialize Uplink"}
           </button>
+
+          <div className="text-center mt-2 border-t border-white/10 pt-4">
+            <button 
+              type="button" 
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setAuthError(""); // Clear errors when toggling modes
+              }} 
+              className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase hover:text-white transition-colors"
+            >
+              {isRegistering ? "[ Return to Login ]" : "[ Request New Clearance ]"}
+            </button>
+          </div>
         </form>
       </main>
     );
