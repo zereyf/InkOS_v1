@@ -299,34 +299,36 @@ export default function InkOS() {
             <div className="text-[11px] font-mono text-[var(--color-text-dim)]">No records found in the vault.</div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
-              {archiveItems.map((item, idx) => (
-                <div key={idx} className="bg-black/40 border border-white/5 rounded-sm p-4 flex flex-col gap-3 hover:border-white/20 transition-colors">
-                  <div className="flex justify-between items-start">
-                    <span className="text-[10px] font-mono text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-0.5 rounded-sm">
-                      {item.target_model || "ChatGPT"}
-                    </span>
-                    <button 
-                      onClick={() => {
-                   // Gracefully fall back through the most common Supabase column names
-                      const textToCopy = item.refined_prompt || item.prompt || item.content || item.output || item.result || "ERROR: Could not locate text in database row.";
-  
-                    // Log the raw database row to your browser console so we can see its true shape
-                    console.log("Raw Vault Item:", item);
-  
-                    copyToClipboard(textToCopy, `archive-${idx}`);
-                  }}
-                      className={`text-[10px] font-mono transition-colors ${copiedId === `archive-${idx}` ? "text-[var(--color-success)]" : "text-[var(--color-steel)] hover:text-white"}`}
-                    >
-                      {copiedId === `archive-${idx}` ? "[ COPIED ]" : "[ COPY COMPILED ]"}
-                    </button>
+              {archiveItems.map((item, idx) => {
+                // Smart fallback for database columns
+                const textToCopy = item.refined_prompt || item.prompt || item.content || item.output || item.result || "ERROR: Could not locate text.";
+                const displayIntent = item.intent || item.input || item.master_payload || "Unknown Intent";
+                const targetModel = item.target_model || item.target || "ChatGPT";
+
+                return (
+                  <div key={idx} className="bg-black/40 border border-white/5 rounded-sm p-4 flex flex-col gap-3 hover:border-white/20 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] font-mono text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-0.5 rounded-sm">
+                        {targetModel}
+                      </span>
+                      <button 
+                        onClick={() => {
+                          console.log("Raw Vault Item:", item);
+                          copyToClipboard(textToCopy, `archive-${idx}`);
+                        }} 
+                        className={`text-[10px] font-mono transition-colors ${copiedId === `archive-${idx}` ? "text-[var(--color-success)]" : "text-[var(--color-steel)] hover:text-white"}`}
+                      >
+                        {copiedId === `archive-${idx}` ? "[ COPIED ]" : "[ COPY COMPILED ]"}
+                      </button>
+                    </div>
+                    
+                    <div>
+                      <div className="text-[9px] text-[var(--color-text-dim)] font-mono uppercase mb-1">Original Intent:</div>
+                      <p className="text-[12px] text-[var(--color-steel)] line-clamp-2">{displayIntent}</p>
+                    </div>
                   </div>
-                  
-                  <div>
-                    <div className="text-[9px] text-[var(--color-text-dim)] font-mono uppercase mb-1">Original Intent:</div>
-                    <p className="text-[12px] text-[var(--color-steel)] line-clamp-2">{item.intent}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
