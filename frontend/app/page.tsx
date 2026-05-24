@@ -9,11 +9,12 @@ export default function InkOS() {
   const [pin, setPin] = useState("");
   const [authError, setAuthError] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false); // NEW STATE: Toggle Registration
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // --- NAVIGATION & UI STATE ---
   const [activeTab, setActiveTab] = useState<"workspace" | "archive" | "profile">("workspace");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // NEW STATE: Mobile Drawer
 
   // --- WORKSPACE CORE STATE ---
   const [intent, setIntent] = useState("");
@@ -49,7 +50,6 @@ export default function InkOS() {
       const response = await fetch("https://inkos-engine.onrender.com/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Dynamically sends is_new based on UI toggle
         body: JSON.stringify({ user_hash: userHash, pin: pin, is_new: isRegistering }), 
       });
 
@@ -68,6 +68,7 @@ export default function InkOS() {
     setPin("");
     setActiveTab("workspace");
     setArchiveItems([]);
+    setIsMobileMenuOpen(false);
   };
 
   // ── FETCH ARCHIVE ──
@@ -199,7 +200,7 @@ export default function InkOS() {
               type="button" 
               onClick={() => {
                 setIsRegistering(!isRegistering);
-                setAuthError(""); // Clear errors when toggling modes
+                setAuthError(""); 
               }} 
               className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase hover:text-white transition-colors"
             >
@@ -213,33 +214,45 @@ export default function InkOS() {
 
   // ── RENDER: MAIN OS APPLICATION ──
   return (
-    <div className="flex h-screen bg-[var(--color-void)] text-[var(--color-text-main)] overflow-hidden">
+    <div className="flex h-[100dvh] bg-[var(--color-void)] text-[var(--color-text-main)] overflow-hidden relative">
       
+      {/* MOBILE OVERLAY */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/80 z-40 lg:hidden backdrop-blur-sm"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* OS SIDEBAR */}
-      <aside className="w-64 border-r border-white/5 bg-black/20 flex flex-col justify-between shrink-0">
+      <aside className={`absolute lg:relative z-50 w-64 h-full border-r border-white/5 bg-black/95 lg:bg-black/20 flex flex-col justify-between shrink-0 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className="flex flex-col">
           {/* Brand Header */}
-          <div className="p-8 border-b border-white/5">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-2 h-2 rounded-full bg-[var(--color-gold)] shadow-[0_0_6px_var(--color-gold)] shrink-0 animate-pulse"></div>
-              <h1 className="text-[var(--color-gold)] tracking-[0.3em] text-sm font-mono uppercase shadow-gold">InkOS</h1>
+          <div className="p-8 border-b border-white/5 flex justify-between items-start">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-2 h-2 rounded-full bg-[var(--color-gold)] shadow-[0_0_6px_var(--color-gold)] shrink-0 animate-pulse"></div>
+                <h1 className="text-[var(--color-gold)] tracking-[0.3em] text-sm font-mono uppercase shadow-gold">InkOS</h1>
+              </div>
+              <span className="text-[11px] text-[var(--color-steel)] tracking-widest font-arabic font-bold block ml-5">حبر وفكرة</span>
             </div>
-            <span className="text-[11px] text-[var(--color-steel)] tracking-widest font-arabic font-bold block ml-5">حبر وفكرة</span>
+            {/* Mobile Close Button */}
+            <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden text-[var(--color-steel)] hover:text-white">✕</button>
           </div>
 
           {/* Navigation Matrix */}
           <nav className="flex flex-col gap-2 p-4 mt-4">
             <div className="text-[8px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase mb-2 px-4">System Routing</div>
             
-            <button onClick={() => setActiveTab("workspace")} className={`flex items-center gap-3 px-4 py-3 text-[11px] font-mono tracking-[0.1em] uppercase rounded-sm transition-all ${activeTab === "workspace" ? "bg-white/5 text-[var(--color-gold)] border-l-2 border-[var(--color-gold)]" : "text-[var(--color-steel)] hover:bg-white/5 hover:text-white border-l-2 border-transparent"}`}>
+            <button onClick={() => { setActiveTab("workspace"); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-[11px] font-mono tracking-[0.1em] uppercase rounded-sm transition-all ${activeTab === "workspace" ? "bg-white/5 text-[var(--color-gold)] border-l-2 border-[var(--color-gold)]" : "text-[var(--color-steel)] hover:bg-white/5 hover:text-white border-l-2 border-transparent"}`}>
               <span className="text-[14px] leading-none opacity-80">◧</span> Workspace
             </button>
             
-            <button onClick={() => setActiveTab("archive")} className={`flex items-center gap-3 px-4 py-3 text-[11px] font-mono tracking-[0.1em] uppercase rounded-sm transition-all ${activeTab === "archive" ? "bg-white/5 text-[var(--color-gold)] border-l-2 border-[var(--color-gold)]" : "text-[var(--color-steel)] hover:bg-white/5 hover:text-white border-l-2 border-transparent"}`}>
+            <button onClick={() => { setActiveTab("archive"); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-[11px] font-mono tracking-[0.1em] uppercase rounded-sm transition-all ${activeTab === "archive" ? "bg-white/5 text-[var(--color-gold)] border-l-2 border-[var(--color-gold)]" : "text-[var(--color-steel)] hover:bg-white/5 hover:text-white border-l-2 border-transparent"}`}>
               <span className="text-[14px] leading-none opacity-80">≡</span> Memory Banks
             </button>
 
-            <button onClick={() => setActiveTab("profile")} className={`flex items-center gap-3 px-4 py-3 text-[11px] font-mono tracking-[0.1em] uppercase rounded-sm transition-all ${activeTab === "profile" ? "bg-white/5 text-[var(--color-gold)] border-l-2 border-[var(--color-gold)]" : "text-[var(--color-steel)] hover:bg-white/5 hover:text-white border-l-2 border-transparent"}`}>
+            <button onClick={() => { setActiveTab("profile"); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-[11px] font-mono tracking-[0.1em] uppercase rounded-sm transition-all ${activeTab === "profile" ? "bg-white/5 text-[var(--color-gold)] border-l-2 border-[var(--color-gold)]" : "text-[var(--color-steel)] hover:bg-white/5 hover:text-white border-l-2 border-transparent"}`}>
               <span className="text-[14px] leading-none opacity-80">👤</span> Operator Profile
             </button>
           </nav>
@@ -256,11 +269,22 @@ export default function InkOS() {
       </aside>
 
       {/* OS MAIN VIEWPORT */}
-      <main className="flex-1 overflow-y-auto p-8 lg:p-12 relative bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:40px_40px]">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 relative bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:40px_40px]">
         
+        {/* MOBILE HEADER BAR */}
+        <div className="lg:hidden flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-[var(--color-gold)] shadow-[0_0_6px_var(--color-gold)] animate-pulse"></div>
+            <h1 className="text-[var(--color-gold)] tracking-[0.3em] text-sm font-mono uppercase shadow-gold">InkOS Terminal</h1>
+          </div>
+          <button onClick={() => setIsMobileMenuOpen(true)} className="text-[var(--color-gold)] border border-[var(--color-gold)]/30 rounded-sm px-2 py-1 text-sm font-mono transition-colors hover:bg-white/5">
+            [ MENU ]
+          </button>
+        </div>
+
         {/* VIEW: WORKSPACE */}
         {activeTab === "workspace" && (
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-in fade-in duration-500 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8 animate-in fade-in duration-500 max-w-7xl mx-auto">
             {/* LEFT PANE: COMMAND TERMINAL */}
             <section className="xl:col-span-2 flex flex-col gap-4">
               <div className="flex flex-col gap-2">
@@ -272,7 +296,7 @@ export default function InkOS() {
                   value={intent}
                   onChange={(e) => setIntent(e.target.value)}
                   placeholder="Initiate prompt sequence..."
-                  className="w-full h-32 bg-black/60 border border-white/10 rounded-sm text-[var(--color-text-main)] text-sm p-4 font-mono focus:outline-none focus:border-[var(--color-gold)] transition-all resize-none shadow-inner"
+                  className="w-full h-32 md:h-40 bg-black/60 border border-white/10 rounded-sm text-[var(--color-text-main)] text-sm p-4 font-mono focus:outline-none focus:border-[var(--color-gold)] transition-all resize-none shadow-inner"
                 />
               </div>
 
@@ -280,27 +304,28 @@ export default function InkOS() {
                 <button
                   onClick={handleRefine}
                   disabled={isLoading || !intent.trim()}
-                  className="bg-[var(--color-gold)] text-black px-12 py-3 text-[11px] font-mono font-bold tracking-[0.2em] uppercase rounded-sm hover:bg-[#E2D5BC] hover:shadow-[0_0_15px_rgba(201,168,76,0.4)] transition-all disabled:opacity-50"
+                  className="w-full md:w-auto bg-[var(--color-gold)] text-black px-12 py-3 text-[11px] font-mono font-bold tracking-[0.2em] uppercase rounded-sm hover:bg-[#E2D5BC] hover:shadow-[0_0_15px_rgba(201,168,76,0.4)] transition-all disabled:opacity-50"
                 >
                   {isLoading ? "Compiling..." : "⚡ Refine Payload"}
                 </button>
               </div>
 
               {systemError && (
-                <div className="bg-black/40 border border-[var(--color-danger)] rounded-sm p-4 text-xs font-mono text-[var(--color-danger)]">
+                <div className="bg-black/40 border border-[var(--color-danger)] rounded-sm p-4 text-xs font-mono text-[var(--color-danger)] break-words">
                   System Fault: {systemError}
                 </div>
               )}
 
               {audit && (
-                <div className="mt-2 bg-black/40 border border-white/5 rounded-sm p-4 flex items-center gap-5">
-                  <div className="flex flex-col items-center pr-5 border-r border-white/10">
+                <div className="mt-2 bg-black/40 border border-white/5 rounded-sm p-4 flex flex-col md:flex-row md:items-center gap-4 md:gap-5">
+                  <div className="flex md:flex-col items-center gap-2 md:pr-5 md:border-r border-white/10">
+                    <span className="text-[9px] text-[var(--color-steel)] font-mono uppercase md:hidden">Score:</span>
                     <span className={`font-mono text-3xl font-bold leading-none ${audit.score >= 85 ? 'text-[var(--color-success)]' : audit.score >= 70 ? 'text-[var(--color-gold)]' : 'text-[var(--color-danger)]'}`}>
                       {audit.score}
                     </span>
                   </div>
                   <div className="flex-1 font-mono text-[12px] text-[var(--color-steel)] leading-relaxed">
-                    <span className="text-[var(--color-gold)] font-bold">ANALYSIS:</span> {audit.critique}
+                    <span className="text-[var(--color-gold)] font-bold hidden md:inline">ANALYSIS: </span> {audit.critique}
                   </div>
                 </div>
               )}
@@ -319,14 +344,14 @@ export default function InkOS() {
                   <textarea
                     readOnly
                     value={refinedPrompt}
-                    className="w-full h-[400px] bg-black/60 border border-white/10 rounded-sm text-[var(--color-text-main)] text-[13px] p-5 font-mono focus:outline-none transition-all resize-none shadow-inner leading-relaxed"
+                    className="w-full h-64 md:h-[400px] bg-black/60 border border-white/10 rounded-sm text-[var(--color-text-main)] text-[13px] p-4 md:p-5 font-mono focus:outline-none transition-all resize-none shadow-inner leading-relaxed"
                   />
                 </div>
               )}
             </section>
 
             {/* RIGHT PANE: COGNITIVE MAP & SETTINGS */}
-            <aside className="xl:col-span-1 flex flex-col gap-6 bg-black/40 border border-white/5 p-6 rounded-sm h-fit">
+            <aside className="xl:col-span-1 flex flex-col gap-6 bg-black/40 border border-white/5 p-5 md:p-6 rounded-sm h-fit mt-6 xl:mt-0">
               <div className="flex items-center gap-2 border-b border-white/10 pb-4">
                 <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-steel)]"></div>
                 <h2 className="text-[11px] text-white tracking-[0.2em] font-mono uppercase">Control Matrix</h2>
@@ -455,7 +480,7 @@ export default function InkOS() {
                   const targetModel = item.target || item.target_model || "ChatGPT";
 
                   return (
-                    <div key={idx} className="bg-black/60 border border-white/10 rounded-sm p-6 flex flex-col gap-4 hover:border-white/30 transition-all shadow-md">
+                    <div key={idx} className="bg-black/60 border border-white/10 rounded-sm p-4 md:p-6 flex flex-col gap-4 hover:border-white/30 transition-all shadow-md">
                       <div className="flex justify-between items-start">
                         <span className="text-[10px] font-mono text-[var(--color-gold)] border border-[var(--color-gold)]/20 px-3 py-1 rounded-sm shadow-inner">
                           {targetModel}
@@ -464,13 +489,13 @@ export default function InkOS() {
                           onClick={() => copyToClipboard(textToCopy, `archive-${idx}`)} 
                           className={`text-[10px] font-mono transition-colors ${copiedId === `archive-${idx}` ? "text-[var(--color-success)]" : "text-[var(--color-steel)] hover:text-white"}`}
                         >
-                          {copiedId === `archive-${idx}` ? "[ COPIED ]" : "[ EXTRACT PAYLOAD ]"}
+                          {copiedId === `archive-${idx}` ? "[ COPIED ]" : "[ EXTRACT ]"}
                         </button>
                       </div>
                       
                       <div className="border-t border-white/5 pt-3">
                         <div className="text-[9px] text-[var(--color-text-dim)] font-mono uppercase mb-2">Original Protocol Intent:</div>
-                        <p className="text-[13px] text-[var(--color-steel)] line-clamp-3 leading-relaxed">{displayIntent}</p>
+                        <p className="text-[12px] md:text-[13px] text-[var(--color-steel)] line-clamp-3 leading-relaxed break-words">{displayIntent}</p>
                       </div>
                     </div>
                   );
@@ -491,9 +516,9 @@ export default function InkOS() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Identity Card */}
               <div className="bg-black/60 border border-white/10 rounded-sm p-6 flex flex-col gap-6 shadow-lg">
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 overflow-hidden">
                   <span className="text-[9px] text-[var(--color-steel)] tracking-[0.2em] font-mono uppercase">System ID</span>
-                  <span className="text-xl text-white font-mono">{userHash}</span>
+                  <span className="text-xl text-white font-mono break-all">{userHash}</span>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4">
