@@ -6,3 +6,4 @@ pandas
 pytest
 fastapi
 uvicorn
+PyJW
