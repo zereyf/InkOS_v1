@@ -11,6 +11,11 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+try:
+    import streamlit as st
+except ImportError:
+    st = None  # type: ignore[assignment]
+
 
 # ── SESSION STATE KEY REGISTRY ────────────────────────────────────────────────
 
@@ -82,11 +87,9 @@ def init_session_state() -> None:
     Idempotent: only sets keys that are not already present.
     Designed for use in Streamlit via st.session_state.
     """
-    try:
-        import streamlit as st
-        state = st.session_state
-    except ImportError:
+    if st is None:
         return
+    ss = st.session_state
 
     defaults: dict[str, Any] = {
         K.USER_HASH:      None,
@@ -118,8 +121,8 @@ def init_session_state() -> None:
     }
 
     for key, value in defaults.items():
-        if key not in state:
-            state[key] = value
+        if key not in ss:
+            ss[key] = value
 
 
 def reset_session() -> None:
@@ -127,9 +130,7 @@ def reset_session() -> None:
     Clear volatile session keys while preserving identity and DNA.
     Equivalent to a soft reboot — user stays logged in.
     """
-    try:
-        import streamlit as st
-    except ImportError:
+    if st is None:
         return
 
     volatile = [
